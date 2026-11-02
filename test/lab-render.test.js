@@ -50,7 +50,7 @@ function setPreviewCO(v) {
 function bindTargets(c, cells) {
     for (var i = 0; i < cells.length; i++) {
         H.bind(c, cells[i], {
-            func: XoneK3.FUNCS.ledSelectTarget, args: [cells[i]]
+            func: myCatnip.FUNCS.ledSelectTarget, args: [cells[i]]
         });
     }
 }
@@ -69,9 +69,9 @@ function renderSegments(c) {
 test('_findCellsByFunc: finds cells by func id', function(t) {
     var c = setupLab();
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid0_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid0_0']
     });
-    var cells = c._findCellsByFunc([XoneK3.FUNCS.ledSelectTarget]);
+    var cells = c._findCellsByFunc([myCatnip.FUNCS.ledSelectTarget]);
     t.hasKey(cells, 'grid0_0');
     t.eq(cells.grid0_0, ['grid0_0']);
 });
@@ -79,16 +79,16 @@ test('_findCellsByFunc: finds cells by func id', function(t) {
 test('_findCellsByFunc: caches until _applied changes', function(t) {
     var c = setupLab();
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid0_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid0_0']
     });
-    c._findCellsByFunc([XoneK3.FUNCS.ledSelectTarget]);
+    c._findCellsByFunc([myCatnip.FUNCS.ledSelectTarget]);
     t.eq(c._cellIndexFor, c._applied);
 });
 
 test('_claimedCells: returns union of painter-owned cells', function(t) {
     var c = setupLab();
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [0]
+        func: myCatnip.FUNCS.labSlotPress, args: [0]
     });
     var claimed = c._claimedCells();
     // _claimedCells returns a Set — membership via .has(), not hasKey.
@@ -217,7 +217,7 @@ test('_renderSegmentGrid: shift does not highlight during preview', function(t) 
 test('_renderMarkerLED: paints marker colour', function(t) {
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]], markerColor: 'green, 90'});
-    var compiled = XoneK3.compileScheme(XoneK3.resolveScheme(c._lab.edit));
+    var compiled = myCatnip.compileScheme(myCatnip.resolveScheme(c._lab.edit));
     H.clearLeds(c);
     c._renderMarkerLED(compiled);
     t.rgb(H.led(c, 'grid3_3'), 0, 127, 0);
@@ -226,7 +226,7 @@ test('_renderMarkerLED: paints marker colour', function(t) {
 test('_renderMarkerLED: no marker → black', function(t) {
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]]});
-    var compiled = XoneK3.compileScheme(XoneK3.resolveScheme(c._lab.edit));
+    var compiled = myCatnip.compileScheme(myCatnip.resolveScheme(c._lab.edit));
     H.clearLeds(c);
     c._renderMarkerLED(compiled);
     t.rgb(H.led(c, 'grid3_3'), 0, 0, 0);
@@ -237,7 +237,7 @@ test('_renderMarkerLED: no marker → black', function(t) {
 test('_renderSlotLEDs: empty slot → black', function(t) {
     var c = setupLab({initialPatches: ['slots']});
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [5]
+        func: myCatnip.FUNCS.labSlotPress, args: [5]
     });
     H.clearLeds(c);
     c._renderSlotLEDs();
@@ -249,7 +249,7 @@ test('_renderSlotLEDs: populated save slot → yellow', function(t) {
     var c = setupLab({initialPatches: ['slots']});
     c._lab.slots[5] = {colors: [[0,0,0]]};
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [5]
+        func: myCatnip.FUNCS.labSlotPress, args: [5]
     });
     H.clearLeds(c);
     c._renderSlotLEDs();
@@ -261,7 +261,7 @@ test('_renderSlotLEDs: populated save slot → yellow', function(t) {
 test('_renderSlotLEDs: slot 0 → green', function(t) {
     var c = setupLab({initialPatches: ['slots']});
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [0]
+        func: myCatnip.FUNCS.labSlotPress, args: [0]
     });
     H.clearLeds(c);
     c._renderSlotLEDs();
@@ -272,7 +272,7 @@ test('_renderSlotLEDs: previewed slot brighter', function(t) {
     var c = setupLab({initialPatches: ['slots']});
     c._lab.slots[5] = {colors: [[0,0,0]]};
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [5]
+        func: myCatnip.FUNCS.labSlotPress, args: [5]
     });
     H.clearLeds(c);
     c._renderSlotLEDs();
@@ -292,7 +292,7 @@ test('_renderBeatGrid: target cells painted', function(t) {
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]], beat: {bar: {color: 'red'}}});
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labBeatSelect, args: ['bar']
+        func: myCatnip.FUNCS.labBeatSelect, args: ['bar']
     });
     H.clearLeds(c);
     c._renderBeatGrid();
@@ -303,20 +303,20 @@ test('_renderBeatGrid: unset target paints white at off-brightness', function(t)
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]], beat: {barBeats: 4}});
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labBeatSelect, args: ['bar']
+        func: myCatnip.FUNCS.labBeatSelect, args: ['bar']
     });
     H.clearLeds(c);
     c._renderBeatGrid();
     var led = H.led(c, 'grid0_0');
     t.rgb(led, 127, 127, 127);
-    t.hw(led, XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF);
+    t.hw(led, myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF);
 });
 
 test('_renderBeatGrid: toggle cell green when on', function(t) {
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]], beat: {color: 'red'}});
     H.bind(c, 'grid0_1', {
-        func: XoneK3.FUNCS.labBeatToggleEnabled
+        func: myCatnip.FUNCS.labBeatToggleEnabled
     });
     H.clearLeds(c);
     c._renderBeatGrid();
@@ -327,7 +327,7 @@ test('_renderBeatGrid: toggle cell red when off', function(t) {
     var c = setupLab();
     setEdit(c, {colors: [[127,0,0]], beat: {enabled: false, color: 'red'}});
     H.bind(c, 'grid0_1', {
-        func: XoneK3.FUNCS.labBeatToggleEnabled
+        func: myCatnip.FUNCS.labBeatToggleEnabled
     });
     H.clearLeds(c);
     c._renderBeatGrid();
@@ -467,7 +467,7 @@ test('_paintLED: on=false without scheme off-brightness falls back', function(t)
     var c = setupLab();
     H.clearLeds(c);
     c._paintLED('button0_0', 'red, 80', false);
-    t.hw(H.led(c, 'button0_0'), XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF);
+    t.hw(H.led(c, 'button0_0'), myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF);
 });
 
 test('_paintLED: numeric third arg overrides everything', function(t) {

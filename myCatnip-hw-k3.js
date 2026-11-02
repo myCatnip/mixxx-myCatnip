@@ -1,4 +1,4 @@
-// xone-k3-hw-k3.js — Xone K3 hardware descriptor.
+// myCatnip-hw-k3.js — Xone K3 hardware descriptor.
 //
 // The HAL contract a hardware descriptor must satisfy:
 //
@@ -12,10 +12,10 @@
 //                        { name: { r: [[hw,lum],...], g: [...], b: [...] } }
 //                        Framework's _buildTransferRGB normalises.
 //   hw.PALETTE           named-colour RGB table. Consumed by
-//                        XoneK3.resolveNamedColour (overridden
+//                        myCatnip.resolveNamedColour (overridden
 //                        by the descriptor at module load).
 //   hw.MIXXX_COLORS      Mixxx-colour → RGB table. Consumed by
-//                        XoneK3.mapMixxxColor (overridden by the
+//                        myCatnip.mapMixxxColor (overridden by the
 //                        descriptor at module load).
 //
 //   hw.buildBindings(ctrl)               -> { name: Binding, ... }
@@ -30,28 +30,28 @@
 // directly. Framework treats every LED as (idx, rgb, hw); the wire
 // format is the hardware's concern.
 //
-// LED brightness defaults (XoneK3.DEFAULT_RGB_BRIGHTNESS = 110,
+// LED brightness defaults (myCatnip.DEFAULT_RGB_BRIGHTNESS = 110,
 // _OFF = 12) are re-declared at the bottom of this file — same
 // values as the framework defaults in lib-core.js, but explicitly
 // restated so a second hardware descriptor has an obvious place to
 // set its own. A hardware wanting different "medium / dim" levels
-// overrides XoneK3.DEFAULT_RGB_BRIGHTNESS / _OFF at its module
+// overrides myCatnip.DEFAULT_RGB_BRIGHTNESS / _OFF at its module
 // load and every consumer downstream picks it up.
 //
 // Loaded after lib-binding.js (buildBindings constructs Binding
 // instances), after lib-timing.js (Pacing / TIMING), before
-// lib-controller.js (constructor references XoneK3.HW_K3 as the
+// lib-controller.js (constructor references myCatnip.HW_K3 as the
 // default descriptor).
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-hw-k3.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-hw-k3.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-hw-k3.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-hw-k3.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-hw-k3.js',
+myCatnip._requireLoad('myCatnip-hw-k3.js',
     ['Binding', 'TIMING', 'Pacing', '_warnOnce']);
 
 (function() {
@@ -105,7 +105,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         0x34, 0x35, 0x36, 0x37
     ];
 
-    XoneK3.HW_K3 = {
+    myCatnip.HW_K3 = {
         name: 'Xone K3',
 
         // ============================================================
@@ -134,7 +134,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // Empty — K3 uses all TIMING defaults. A hardware with a
         // slower LED bus could set `{ pacingDefaultThrottleMs: 20 }`
         // here. (The older `sysexThrottleMs` key is still accepted
-        // as an alias — see xone-k3-lib-timing.js.)
+        // as an alias — see myCatnip-lib-timing.js.)
         pacing: {},
 
         // ============================================================
@@ -174,7 +174,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // PALETTE — named colour RGB values
         // ============================================================
         // Perceived RGB under the measured transfer curve. Consumed
-        // by XoneK3.resolveNamedColour (overridden below at module
+        // by myCatnip.resolveNamedColour (overridden below at module
         // load). A different hardware tunes different values.
         PALETTE: {
             off:        [0,0,0],
@@ -214,7 +214,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // ============================================================
         // MIXXX_COLORS — Mixxx hotcue-colour → perceived RGB
         // ============================================================
-        // Consumed by XoneK3.mapMixxxColor (overridden below at
+        // Consumed by myCatnip.mapMixxxColor (overridden below at
         // module load). Unknown hexes fall back to a plain halving
         // of the 8-bit RGB — the K3's perceptual curve makes the
         // tuned table entries look right, but a straight 8→7 bit
@@ -252,7 +252,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // ============================================================
         // Enumerates every physical control the K3 exposes and
         // wraps it in a Binding. Called once per controller, from
-        // K3Controller's constructor. Returned map keys are the
+        // Controller's constructor. Returned map keys are the
         // vocabulary config files reference (encoder0..3,
         // knob<col>_<row>, button<col>_<row>, grid<col>_<row>,
         // encoderL/R, pressL/R, layer, shift).
@@ -261,8 +261,8 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
             var bindings = {};
 
             function add(name, status, note, type) {
-                var idx = XoneK3.HW_K3.noteToLEDIndex(note);
-                bindings[name] = new XoneK3.Binding(
+                var idx = myCatnip.HW_K3.noteToLEDIndex(note);
+                bindings[name] = new myCatnip.Binding(
                     name,
                     { midi: [status + ch, note], type: type, idx: idx },
                     ctrl
@@ -484,8 +484,8 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         },
 
         sendK2Note: function(ch, idx, r, g, b, hw) {
-            var pos = XoneK3.HW_K3.idxToK2(idx); if (!pos) return;
-            var bucket = XoneK3.HW_K3.rgbToK2(r, g, b, hw);
+            var pos = myCatnip.HW_K3.idxToK2(idx); if (!pos) return;
+            var bucket = myCatnip.HW_K3.rgbToK2(r, g, b, hw);
             if (bucket < 0) { midi.sendShortMsg(0x90 + ch, pos.base, 0x00); return; }
             var peak = Math.max(r, g, b);
             var vel = Math.max(4, Math.min(127, Math.round(hw * peak / 127)));
@@ -504,13 +504,13 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
     //
     // The framework defaults (in lib-core.js) warn once and return
     // null; overriding here means the K3 never hits those warns.
-    XoneK3.resolveNamedColour = function(name) {
-        return XoneK3.HW_K3.PALETTE[name] || null;
+    myCatnip.resolveNamedColour = function(name) {
+        return myCatnip.HW_K3.PALETTE[name] || null;
     };
 
-    XoneK3.mapMixxxColor = function(rgb) {
+    myCatnip.mapMixxxColor = function(rgb) {
         if (!rgb || rgb <= 0) return null;
-        if (XoneK3.HW_K3.MIXXX_COLORS[rgb]) return XoneK3.HW_K3.MIXXX_COLORS[rgb];
+        if (myCatnip.HW_K3.MIXXX_COLORS[rgb]) return myCatnip.HW_K3.MIXXX_COLORS[rgb];
         return [
             Math.round(((rgb >> 16) & 0xFF) / 2),
             Math.round(((rgb >> 8)  & 0xFF) / 2),
@@ -524,9 +524,9 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
     // Same values as the framework defaults in lib-core.js, but
     // re-declared here so a second hardware descriptor has an
     // obvious place to set its own. A hardware wanting different
-    // "medium / dim" levels overrides XoneK3.DEFAULT_RGB_BRIGHTNESS
+    // "medium / dim" levels overrides myCatnip.DEFAULT_RGB_BRIGHTNESS
     // and _OFF at its module load; every consumer downstream picks
     // it up because resolveColorEntry reads them lazily.
-    XoneK3.DEFAULT_RGB_BRIGHTNESS     = 110;
-    XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF = 12;
+    myCatnip.DEFAULT_RGB_BRIGHTNESS     = 110;
+    myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF = 12;
 })();

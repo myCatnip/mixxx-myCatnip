@@ -8,7 +8,7 @@ var H = require('./helpers');
 
 function callFunc(c, name, v) {
     var bl = {_ctrl: c};
-    XoneK3.FUNCS[name].call(bl, [], 0, 0, (v === undefined) ? 127 : v, 0x90);
+    myCatnip.FUNCS[name].call(bl, [], 0, 0, (v === undefined) ? 127 : v, 0x90);
 }
 
 function has(arr, name) { return arr.indexOf(name) !== -1; }

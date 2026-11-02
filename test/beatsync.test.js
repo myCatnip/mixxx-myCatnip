@@ -12,7 +12,7 @@ function setup(patches) {
     // for the 4 slots in PHRASE_HOTCUE_SLOTS). These tests only
     // verify base connection counts, so clear the marker list —
     // otherwise _playConns grows to 76 (19 × 4).
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     engine._set('[Channel1]', 'duration', 300);
     engine._set('[Channel1]', 'file_bpm', 120);
     engine._set('[Channel1]', 'track_samples', 1000);
@@ -103,7 +103,7 @@ test('track_samples change invalidates _trackMetaCache', function(t) {
 
 test('_seedHotcueCache populates from COs', function(t) {
     var c = setup();
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
 
@@ -112,10 +112,10 @@ test('_seedHotcueCache populates from COs', function(t) {
     t.eq(c._decks[1].hotcueState[9].color, 0xC50A08);
     t.eq(c._decks[1].hotcueState[9].pos, 500);
     t.eq(Object.keys(c._decks[1].hotcueState).length,
-         XoneK3._phraseHotcueSlots().length,
+         myCatnip._phraseHotcueSlots().length,
          'all declared slots cached');
 
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_seedHotcueCache no-op when PHRASE_MARKER_COLORS empty', function(t) {
@@ -129,7 +129,7 @@ test('_seedHotcueCache no-op when PHRASE_MARKER_COLORS empty', function(t) {
 test('track_samples change re-seeds hotcueState', function(t) {
     var c = setup();
     withBeat(c);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
 
     // Simulate a marker on hotcue 9, seed manually to establish
     // the pre-load state.
@@ -149,14 +149,14 @@ test('track_samples change re-seeds hotcueState', function(t) {
          'cache must reflect new track after track_samples change');
     t.eq(c._decks[1].hotcueState[9].pos, -1);
 
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_wireHotcueObservers seeds hotcueState on open', function(t) {
     var c = setup();
     // Set markers BEFORE withBeat so _openBeatClocks sees a
     // non-empty marker list and wires observers + seeds cache.
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
 
@@ -165,7 +165,7 @@ test('_wireHotcueObservers seeds hotcueState on open', function(t) {
     t.eq(c._decks[1].hotcueState[9].color, 0xC50A08);
     t.eq(c._decks[1].hotcueState[9].pos, 500);
 
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 // ── beat_active handler ─────────────────────────────────────

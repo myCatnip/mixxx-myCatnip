@@ -13,7 +13,7 @@ test('_closeBeatClocks: preserves _phraseOrigin, resets deck state', function(t)
     // Clear the shipped marker list so the hotcue observer block
     // is skipped — otherwise _openBeatClocks wires 32 extra
     // playConns per channel.
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 
     c._openBeatClocks();
     t.eq(c._beatConns.length, 4,  'one beat_active per channel');

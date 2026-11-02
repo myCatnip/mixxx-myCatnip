@@ -54,7 +54,7 @@ test('build ramp: extend to 2 stops by pressing segment 1', function(t) {
     c._lab._version++;
 
     H.bind(c, 'grid1_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid1_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid1_0']
     });
     H.press(c, 'grid1_0');
 
@@ -69,7 +69,7 @@ test('build ramp: RGB edit on selected segment', function(t) {
     c._lab.selectedSegment = 0;
 
     H.bind(c, 'encoder0', {
-        func: XoneK3.FUNCS.ledRGB, args: ['r']
+        func: myCatnip.FUNCS.ledRGB, args: ['r']
     });
     H.send(c, 'encoder0', 1);
     H.send(c, 'encoder0', 1);
@@ -84,7 +84,7 @@ test('build ramp: fader writes absolute', function(t) {
     c._lab.selectedSegment = 0;
 
     H.bind(c, 'fader0', {
-        func: XoneK3.FUNCS.ledFader, args: ['g']
+        func: myCatnip.FUNCS.ledFader, args: ['g']
     });
     H.send(c, 'fader0', 64);
     var g = c._lab.edit.colors[0][1];
@@ -102,10 +102,10 @@ test('save workflow: arm + press slot', function(t) {
     t.ok(c._patchActive('slots'));
 
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [5]
+        func: myCatnip.FUNCS.labSlotPress, args: [5]
     });
     H.bind(c, 'pressR', {
-        func: XoneK3.FUNCS.labArmSave
+        func: myCatnip.FUNCS.labArmSave
     });
     H.press(c, 'pressR');
     t.eq(c._lab.saveArmed, true);
@@ -125,10 +125,10 @@ test('save workflow: slot save loads into edit', function(t) {
 
     c.replacePatch('colorLab', 'slots');
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [5]
+        func: myCatnip.FUNCS.labSlotPress, args: [5]
     });
     H.bind(c, 'pressR', {
-        func: XoneK3.FUNCS.labArmSave
+        func: myCatnip.FUNCS.labArmSave
     });
 
     H.press(c, 'pressR');
@@ -145,12 +145,12 @@ test('dump preview: prints a scheme block', function(t) {
     c._lab._version++;
 
     H.bind(c, 'press0', {
-        func: XoneK3.FUNCS.ledDumpScheme
+        func: myCatnip.FUNCS.ledDumpScheme
     });
     _printLog.length = 0;
     H.press(c, 'press0');
     var joined = _printLog.join('\n');
-    t.contains(joined, 'XoneK3.SCHEMES.NAME');
+    t.contains(joined, 'myCatnip.SCHEMES.NAME');
     t.contains(joined, '[127, 0, 0]');
 });
 
@@ -162,15 +162,15 @@ test('dump preview: slot source uses slotN label', function(t) {
     _printLog.length = 0;
     c._dumpPreview();
     var joined = _printLog.join('\n');
-    t.contains(joined, 'XoneK3.SCHEMES.slot5');
+    t.contains(joined, 'myCatnip.SCHEMES.slot5');
 });
 
 test('dump preview: slot 0 inlines off/co chain as objects', function(t) {
     var c = setup();
-    c._lab.slots[XoneK3.LAB_SLOT.ON] = {colors: [[127, 0, 0]]};
-    c._lab.slots[XoneK3.LAB_SLOT.OFF] = {colors: [[10, 10, 10]]};
-    c._lab.slots[XoneK3.LAB_SLOT.CO]  = {colors: [[40, 40, 40]]};
-    c._lab.previewSource = XoneK3.LAB_SLOT.ON;
+    c._lab.slots[myCatnip.LAB_SLOT.ON] = {colors: [[127, 0, 0]]};
+    c._lab.slots[myCatnip.LAB_SLOT.OFF] = {colors: [[10, 10, 10]]};
+    c._lab.slots[myCatnip.LAB_SLOT.CO]  = {colors: [[40, 40, 40]]};
+    c._lab.previewSource = myCatnip.LAB_SLOT.ON;
     _printLog.length = 0;
     c._dumpPreview();
     var joined = _printLog.join('\n');
@@ -192,7 +192,7 @@ test('beat edit toggle: grid2_3 toggles colorLabBeat', function(t) {
         patches: {
             colorLabTop: {},
             colorLab: {
-                grid2_3: { func: XoneK3.FUNCS.labBeatEditToggle, noLED: true }
+                grid2_3: { func: myCatnip.FUNCS.labBeatEditToggle, noLED: true }
             },
             colorLabBeat:     {_host: 'colorLab'},
             colorLabBeatShift:{},
@@ -221,13 +221,13 @@ test('beat edit: select target and edit colour', function(t) {
     c.activePatches = ['colorLabTop', 'colorLab', 'colorLabBeat'];
 
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labBeatSelect, args: ['bar']
+        func: myCatnip.FUNCS.labBeatSelect, args: ['bar']
     });
     H.press(c, 'grid0_0');
     t.eq(c._lab.beatTarget, 'bar');
 
     H.bind(c, 'encoder0', {
-        func: XoneK3.FUNCS.ledRGB, args: ['r']
+        func: myCatnip.FUNCS.ledRGB, args: ['r']
     });
     H.send(c, 'encoder0', 1);
     H.send(c, 'encoder0', 1);
@@ -239,7 +239,7 @@ test('beat edit: toggle enabled', function(t) {
     c._lab.edit = {colors: [[0,0,0]], beat: {enabled: true}};
     c._lab._version++;
     H.bind(c, 'grid0_1', {
-        func: XoneK3.FUNCS.labBeatToggleEnabled
+        func: myCatnip.FUNCS.labBeatToggleEnabled
     });
     H.press(c, 'grid0_1');
     t.eq(c._lab.edit.beat.enabled, false);
@@ -250,7 +250,7 @@ test('beat edit: barBeats encoder', function(t) {
     c._lab.edit = {colors: [[0,0,0]], beat: {enabled: true}};
     c._lab._version++;
     H.bind(c, 'encoderL', {
-        func: XoneK3.FUNCS.labBeatBarBeats
+        func: myCatnip.FUNCS.labBeatBarBeats
     });
     H.send(c, 'encoderL', 1);
     t.eq(c._lab.edit.beat.barBeats, 5);
@@ -261,7 +261,7 @@ test('beat edit: barBeats encoder', function(t) {
 test('scheme scroll: cycles through registry', function(t) {
     var c = setup();
     H.bind(c, 'encoderL', {
-        func: XoneK3.FUNCS.labSchemeScroll
+        func: myCatnip.FUNCS.labSchemeScroll
     });
     H.send(c, 'encoderL', 1);
     t.ok(c._lab.schemeName);
@@ -274,7 +274,7 @@ test('slots grid: on-slot 0 painted green', function(t) {
     var c = setup();
     c.replacePatch('colorLab', 'slots');
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.labSlotPress, args: [0]
+        func: myCatnip.FUNCS.labSlotPress, args: [0]
     });
     H.clearLeds(c);
     c._renderSlotLEDs();
@@ -293,11 +293,11 @@ test('shutdown: dumps populated slots', function(t) {
 });
 
 test('shutdown: LAB_DUMP_ON_SHUTDOWN false silences', function(t) {
-    XoneK3.LAB_DUMP_ON_SHUTDOWN = false;
+    myCatnip.LAB_DUMP_ON_SHUTDOWN = false;
     var c = setup();
     c._lab.slots[5] = {colors: [[100, 100, 100]]};
     _printLog.length = 0;
     c.shutdown();
     t.eq(_printLog.length, 0);
-    XoneK3.LAB_DUMP_ON_SHUTDOWN = true;
+    myCatnip.LAB_DUMP_ON_SHUTDOWN = true;
 });

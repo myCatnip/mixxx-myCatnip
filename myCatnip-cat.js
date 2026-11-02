@@ -1,15 +1,15 @@
-// xone-k3-cat.js — Cat preset assembler. Loads LAST of the
+// myCatnip-cat.js — Cat preset assembler. Loads LAST of the
 // cat-* files (needs their exports).
 //
 // Kitten / oneK3 / oneK3 miniFX load this file last and override
-// XoneK3.init with their own bootCat() call. colorLab loads this
+// myCatnip.init with their own bootCat() call. colorLab loads this
 // file, then lab.js, then colorlab.js — colorlab.js overrides
 // init.
 //
 // bootCat resolves the hardware descriptor (overrides.hw ||
-// XoneK3.HW_K3), applies that hardware's pacing overrides to
-// XoneK3.TIMING (idempotent — _bootWith also calls applyPacing,
-// for direct XoneK3.boot(cfg) callers), and merges the hardware's
+// myCatnip.HW_K3), applies that hardware's pacing overrides to
+// myCatnip.TIMING (idempotent — _bootWith also calls applyPacing,
+// for direct myCatnip.boot(cfg) callers), and merges the hardware's
 // DEFAULTS into cfg before BOOT_DEFAULTS and per-preset overrides.
 // Presets that want a different controller (channel, calibration,
 // sysex mode) override the corresponding field on the overrides
@@ -19,21 +19,21 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-cat.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-cat.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat.js',
+    myCatnip._requireLoad('myCatnip-cat.js',
         ['CAT', 'HW_K3', 'applyPacing', 'boot', 'halt']);
 
-    var CAT = XoneK3.CAT;
+    var CAT = myCatnip.CAT;
 
     // ============================================================
     // LAYER TREE
     // ============================================================
-    XoneK3.CAT_LAYERS = {
+    myCatnip.CAT_LAYERS = {
         // Top — focus mode
         topShared:        CAT.TOP_SHARED,
         topShift:         CAT.TOP_SHIFT,
@@ -84,7 +84,7 @@
     // ============================================================
     // Preset-generic boot defaults. Hardware-level defaults
     // (midiChannel, sysex, calibration data) come from
-    // XoneK3.HW_K3.DEFAULTS — see bootCat below. Presets that
+    // myCatnip.HW_K3.DEFAULTS — see bootCat below. Presets that
     // need a different hw pass it via overrides.hw.
     var BOOT_DEFAULTS = {
         label: 'Cat',
@@ -111,21 +111,21 @@
         }
     };
 
-    XoneK3.bootCat = function(overrides) {
+    myCatnip.bootCat = function(overrides) {
         overrides = overrides || {};
-        var hw = overrides.hw || XoneK3.HW_K3;
+        var hw = overrides.hw || myCatnip.HW_K3;
         // Apply pacing here as well as in _bootWith — this closes
         // the window between building cfg and calling boot, where
         // any code reading TIMING would otherwise see stale values
         // from the previous preset. Both calls are idempotent
         // (applyPacing resets from defaults first).
-        XoneK3.applyPacing(hw.pacing);
+        myCatnip.applyPacing(hw.pacing);
         var cfg = Object.assign({}, hw.DEFAULTS, BOOT_DEFAULTS, overrides);
         cfg.hw = hw;
-        if (!cfg.patches) cfg.patches = XoneK3.CAT_LAYERS;
-        XoneK3.boot([cfg]);
+        if (!cfg.patches) cfg.patches = myCatnip.CAT_LAYERS;
+        myCatnip.boot([cfg]);
     };
 
-    XoneK3.init = function() { XoneK3.bootCat({}); };
-    XoneK3.shutdown = function() { XoneK3.halt(); };
+    myCatnip.init = function() { myCatnip.bootCat({}); };
+    myCatnip.shutdown = function() { myCatnip.halt(); };
 })();

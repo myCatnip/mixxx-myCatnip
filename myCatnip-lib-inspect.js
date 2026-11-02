@@ -1,4 +1,4 @@
-// xone-k3-lib-inspect.js — read-only runtime probes for K3Controller.
+// myCatnip-lib-inspect.js — read-only runtime probes for Controller.
 // Loaded after lib-controller and lib-funcs. No mutation.
 //
 // The "last LED write" section of inspect('why') reads the
@@ -9,14 +9,14 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: xone-k3-lib-inspect.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: myCatnip-lib-inspect.js — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-lib-inspect.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-lib-inspect.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-lib-inspect.js',
-        ['K3Controller', 'FUNCS', 'TOKENS', '_funcId']);
+    myCatnip._requireLoad('myCatnip-lib-inspect.js',
+        ['Controller', 'FUNCS', 'TOKENS', '_funcId']);
 
     function makeRow(width) {
         return function(label, value) {
@@ -25,15 +25,15 @@
         };
     }
 
-    XoneK3._funcName = function(fn) {
+    myCatnip._funcName = function(fn) {
         if (!fn) return null;
-        for (var k in XoneK3.FUNCS) {
-            if (XoneK3.FUNCS[k] === fn) return k;
+        for (var k in myCatnip.FUNCS) {
+            if (myCatnip.FUNCS[k] === fn) return k;
         }
-        return XoneK3._funcId(fn);
+        return myCatnip._funcId(fn);
     };
 
-    XoneK3.K3Controller.prototype.inspect = function(what, sub) {
+    myCatnip.Controller.prototype.inspect = function(what, sub) {
         if (what === undefined || what === null || what === '') {
             this._inspectRoot();
             return;
@@ -44,7 +44,7 @@
         if (what === 'dark')    { this._inspectDark();    return; }
         if (what === 'rate')    {
             print('[inspect] rate system removed — beatjump gated at ' +
-                  XoneK3.BEATJUMP_GAP_MS + 'ms when in loop');
+                  myCatnip.BEATJUMP_GAP_MS + 'ms when in loop');
             return;
         }
         if (what === 'why') {
@@ -59,7 +59,7 @@
         print('[inspect] no such target: ' + what);
     };
 
-    XoneK3.K3Controller.prototype._inspectRoot = function() {
+    myCatnip.Controller.prototype._inspectRoot = function() {
         var row = makeRow(24);
 
         print('');
@@ -104,7 +104,7 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._inspectBinding = function(name) {
+    myCatnip.Controller.prototype._inspectBinding = function(name) {
         var b = this.bindings[name];
         var row = makeRow(14);
 
@@ -121,7 +121,7 @@
         row('inKey:', b.inKey);
         row('outKey:', b.outKey);
         row('buttonMode:', b.buttonMode);
-        row('func:', XoneK3._funcName(b._func));
+        row('func:', myCatnip._funcName(b._func));
         row('args:', b._funcArgs && b._funcArgs.length
             ? JSON.stringify(b._funcArgs) : null);
         row('tokens:', b._usedTokens && b._usedTokens.length
@@ -149,7 +149,7 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._inspectPatches = function() {
+    myCatnip.Controller.prototype._inspectPatches = function() {
         print('');
         print('== patches ==');
         print('  active:  ' + (this.activePatches.join(', ') || '(empty)'));
@@ -179,7 +179,7 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._inspectBeat = function() {
+    myCatnip.Controller.prototype._inspectBeat = function() {
         print('');
         print('== beat ==');
         var open = this._beatConns.length > 0;
@@ -220,12 +220,12 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._inspectTokens = function() {
+    myCatnip.Controller.prototype._inspectTokens = function() {
         print('');
         print('== tokens ==');
         var counts = {};
-        for (var ti = 0; ti < XoneK3.TOKENS.length; ti++) {
-            counts[XoneK3.TOKENS[ti].token] = [];
+        for (var ti = 0; ti < myCatnip.TOKENS.length; ti++) {
+            counts[myCatnip.TOKENS[ti].token] = [];
         }
         for (var name in this.bindings) {
             if (!this.bindings.hasOwnProperty(name)) continue;
@@ -250,7 +250,7 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._inspectDark = function() {
+    myCatnip.Controller.prototype._inspectDark = function() {
         print('');
         print('== dark bindings ==');
         var any = false;
@@ -271,8 +271,8 @@
     // Read-only. Prints where in the render pipeline the binding
     // stopped.
     //
-    //   XoneK3.controllers[0].inspect('why', 'layer')
-    XoneK3.K3Controller.prototype._inspectWhy = function(name) {
+    //   myCatnip.controllers[0].inspect('why', 'layer')
+    myCatnip.Controller.prototype._inspectWhy = function(name) {
         var b = this.bindings[name];
         if (!b) { print('[inspect] no such binding: ' + name); return; }
 
@@ -285,7 +285,7 @@
         if (b._csSchemeFn) {
             try {
                 ref = b._csSchemeFn();
-                if (ref) refCompiled = XoneK3.compileScheme(ref);
+                if (ref) refCompiled = myCatnip.compileScheme(ref);
             } catch (e) { refThrew = e.message; }
         }
 
@@ -312,7 +312,7 @@
         row('group:', b.group);
         row('inKey:', b.inKey);
         row('outKey:', b.outKey);
-        row('func:', XoneK3._funcName(b._func));
+        row('func:', myCatnip._funcName(b._func));
         row('noLED:', b._noLED);
 
         print('');
@@ -406,7 +406,7 @@
         print('');
     };
 
-    XoneK3.K3Controller.prototype._verdictFor = function(name, b, isOn, onThrew, beatScheme, deckCh) {
+    myCatnip.Controller.prototype._verdictFor = function(name, b, isOn, onThrew, beatScheme, deckCh) {
         if (!b._rawCfg) return 'binding is not in the active stack — check the patch tree.';
         if (b.idx < 0) return 'no physical LED is mapped to this control.';
         if (b._noLED) return 'noLED: true — this binding never sends LED frames.';

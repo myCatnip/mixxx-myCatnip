@@ -2,18 +2,18 @@
 
 var H = require('./helpers');
 
-// XoneK3.TOP_MODES table, currentTopMode, setTopMode.
+// myCatnip.TOP_MODES table, currentTopMode, setTopMode.
 
 // ── TOP_MODES shape ────────────────────────────────────────
 
 test('TOP_MODES: three modes declared', function(t) {
-    t.hasKey(XoneK3.TOP_MODES, 'focus');
-    t.hasKey(XoneK3.TOP_MODES, 'twoDeck');
-    t.hasKey(XoneK3.TOP_MODES, 'twoDeckMini');
+    t.hasKey(myCatnip.TOP_MODES, 'focus');
+    t.hasKey(myCatnip.TOP_MODES, 'twoDeck');
+    t.hasKey(myCatnip.TOP_MODES, 'twoDeckMini');
 });
 
 test('TOP_MODES.focus: owns includes base + four layouts', function(t) {
-    var owns = XoneK3.TOP_MODES.focus.owns;
+    var owns = myCatnip.TOP_MODES.focus.owns;
     t.contains(owns, 'topShared');
     t.contains(owns, 'fxLayout1');
     t.contains(owns, 'fxLayout2');
@@ -22,14 +22,14 @@ test('TOP_MODES.focus: owns includes base + four layouts', function(t) {
 });
 
 test('TOP_MODES.twoDeck: owns includes both column families', function(t) {
-    var owns = XoneK3.TOP_MODES.twoDeck.owns;
+    var owns = myCatnip.TOP_MODES.twoDeck.owns;
     t.contains(owns, 'twoDeck');
     t.contains(owns, 'fxLayoutA1');
     t.contains(owns, 'fxLayoutB4');
 });
 
 test('TOP_MODES.twoDeckMini: owns includes mini family', function(t) {
-    var owns = XoneK3.TOP_MODES.twoDeckMini.owns;
+    var owns = myCatnip.TOP_MODES.twoDeckMini.owns;
     t.contains(owns, 'twoDeckMini');
     t.contains(owns, 'fxMini1');
     t.contains(owns, 'fxMini4');
@@ -169,7 +169,7 @@ test('setTopMode unknown: no change, prints warning', function(t) {
 // ── PATCH_NAMES used consistently ──────────────────────────
 
 test('PATCH_NAMES: has every referenced name', function(t) {
-    var P = XoneK3.PATCH_NAMES;
+    var P = myCatnip.PATCH_NAMES;
     var required = [
         'FOCUS_BASE', 'FOCUS_LAYOUT', 'TWODECK_BASE',
         'TWODECK_A_LAYOUT', 'TWODECK_B_LAYOUT',

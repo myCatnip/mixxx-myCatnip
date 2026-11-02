@@ -17,7 +17,7 @@ function fresh(opts) {
 }
 
 // Register a deterministic 2-stop scheme once.
-XoneK3.SCHEMES.linearRedBlue = {
+myCatnip.SCHEMES.linearRedBlue = {
     colors: [[127, 0, 0], [0, 0, 127]],
     markerWidth: 0,
     coScheme: null,
@@ -156,7 +156,7 @@ test('deviation: knob mid ramps interpolate', function(t) {
 });
 
 test('deviation: reverse flips direction', function(t) {
-    XoneK3.SCHEMES.revTest = {
+    myCatnip.SCHEMES.revTest = {
         colors: [[127,0,0], [0,0,127]],
         markerWidth: 0, coScheme: null, calibration: false, reverse: true
     };
@@ -172,7 +172,7 @@ test('deviation: reverse flips direction', function(t) {
 // ── Marker band ──────────────────────────────────────────────
 
 test('deviation: marker hit shows marker colour', function(t) {
-    XoneK3.SCHEMES.markerTest = {
+    myCatnip.SCHEMES.markerTest = {
         colors: [[127, 0, 0], [0, 0, 127]],
         markerColor: [0, 127, 0, 90],
         markerPosition: 63.5, markerWidth: 20,
@@ -202,7 +202,7 @@ test('deviation: marker miss falls through to ramp', function(t) {
 // ── Beat integration (via render) ────────────────────────────
 
 test('beat: skip on half → no LED write', function(t) {
-    XoneK3.SCHEMES.beatHalf = {
+    myCatnip.SCHEMES.beatHalf = {
         colors: [[127, 0, 0]],
         beat: {half: true, color: 'blue', deck: 1}
     };

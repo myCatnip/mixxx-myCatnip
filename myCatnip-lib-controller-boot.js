@@ -1,7 +1,7 @@
-// xone-k3-lib-controller-boot.js — init / shutdown, boot, halt.
+// myCatnip-lib-controller-boot.js — init / shutdown, boot, halt.
 //
 // Loaded after lib-controller-render.js. Extends
-// K3Controller.prototype. Defines XoneK3.boot / bootLab / halt.
+// Controller.prototype. Defines myCatnip.boot / bootLab / halt.
 //
 // Input wiring is the hardware descriptor's job (hw.wireInputs) —
 // the status-nibble test that distinguishes "also wire note-off"
@@ -10,20 +10,20 @@
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-controller-boot.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-controller-boot.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-controller-boot.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-controller-boot.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
-    ['K3Controller', 'HW_K3', 'applyPacing']);
+myCatnip._requireLoad('myCatnip-lib-controller-boot.js',
+    ['Controller', 'HW_K3', 'applyPacing']);
 
 (function() {
     // ============================================================
     // INIT / SHUTDOWN
     // ============================================================
-    XoneK3.K3Controller.prototype.init = function() {
+    myCatnip.Controller.prototype.init = function() {
         this._blankLeds();
         this._recompute();
         var self = this;
@@ -41,8 +41,8 @@ XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
             self._startBootSettle();
         }, true);
     };
-    XoneK3.K3Controller.prototype._initExtra = function() {};
-    XoneK3.K3Controller.prototype._shutdownExtra = function() {};
+    myCatnip.Controller.prototype._initExtra = function() {};
+    myCatnip.Controller.prototype._shutdownExtra = function() {};
 
     // Sets _shuttingDown (blocks every other send path),
     // enqueues the blanks, then polls until the hardware reports
@@ -51,7 +51,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
     // is the abstraction. For K3 that's
     // ctrl._pacers.led.length() > 0; a zero-throttle hardware
     // that sends synchronously returns false immediately.
-    XoneK3.K3Controller.prototype.shutdown = function() {
+    myCatnip.Controller.prototype.shutdown = function() {
         if (this._shuttingDown) return;
         this._shuttingDown = true;
 
@@ -82,9 +82,9 @@ XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
     // ============================================================
     // BOOT / HALT
     // ============================================================
-    XoneK3.controllers = [];
+    myCatnip.controllers = [];
 
-    XoneK3._bootWith = function(devices, Ctor, label) {
+    myCatnip._bootWith = function(devices, Ctor, label) {
         print('\n=== Xone K3 INIT' + (label ? ' (' + label + ')' : '') + ' ===');
         // Shut down any controllers from a previous boot (console
         // init() without a preset reload). Mixxx's controller
@@ -92,31 +92,31 @@ XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
         // so this only matters for manual re-init — but the old
         // controllers' timers and CO connections would otherwise
         // leak and keep firing alongside the new ones.
-        XoneK3.controllers.forEach(function(c) { c.shutdown(); });
-        XoneK3.controllers = [];
-        XoneK3._schemeCache = {};
-        XoneK3._compiledCache = {};
-        XoneK3._warned = Object.create(null);
-        XoneK3._modeSeen = { edit: false, slots: false };
-        XoneK3.MODE_PRINTS = false;
-        XoneK3._funcIdCounter = 0;
-        XoneK3._funcIdMap = new WeakMap();
-        XoneK3._segsCacheCounter = 0;
+        myCatnip.controllers.forEach(function(c) { c.shutdown(); });
+        myCatnip.controllers = [];
+        myCatnip._schemeCache = {};
+        myCatnip._compiledCache = {};
+        myCatnip._warned = Object.create(null);
+        myCatnip._modeSeen = { edit: false, slots: false };
+        myCatnip.MODE_PRINTS = false;
+        myCatnip._funcIdCounter = 0;
+        myCatnip._funcIdMap = new WeakMap();
+        myCatnip._segsCacheCounter = 0;
 
         if (!Array.isArray(devices)) devices = [devices];
 
         // Apply the hardware's pacing overrides. Idempotent —
-        // bootCat also calls this (before calling XoneK3.boot) for
+        // bootCat also calls this (before calling myCatnip.boot) for
         // the window between building cfg and running boot. This
-        // is the fallback for direct XoneK3.boot(cfg) /
+        // is the fallback for direct myCatnip.boot(cfg) /
         // bootLab(cfg) calls that bypass bootCat. Primary hw =
         // first device's hw, defaulting to HW_K3. Pacing is global
         // (TIMING); multiple devices with different hw would need
         // per-device restructuring if that ever becomes a real case.
-        var primaryHw = (devices[0] && devices[0].hw) || XoneK3.HW_K3;
-        XoneK3.applyPacing(primaryHw.pacing);
+        var primaryHw = (devices[0] && devices[0].hw) || myCatnip.HW_K3;
+        myCatnip.applyPacing(primaryHw.pacing);
 
-        XoneK3.TIME_SIG = (devices[0] && devices[0].timeSig)
+        myCatnip.TIME_SIG = (devices[0] && devices[0].timeSig)
             ? devices[0].timeSig : null;
         devices.forEach(function(d) {
             print('  spawning ' + d.label + ' ch 0x' + d.midiChannel.toString(16));
@@ -124,23 +124,23 @@ XoneK3._requireLoad('xone-k3-lib-controller-boot.js',
                 var ctrl = new Ctor(d);
                 ctrl.init();
                 ctrl.hw.wireInputs(ctrl);
-                XoneK3.controllers.push(ctrl);
+                myCatnip.controllers.push(ctrl);
             } catch (e) {
-                XoneK3._warnOnce('bootDeviceThrow:' + (d.label || '?'),
+                myCatnip._warnOnce('bootDeviceThrow:' + (d.label || '?'),
                     'device "' + (d.label || '?') + '" failed to boot: ' +
                     (e && e.message ? e.message : e));
             }
         });
-        XoneK3._auditSnapshotFields();
+        myCatnip._auditSnapshotFields();
     };
 
-    XoneK3.boot    = function(devices) { XoneK3._bootWith(devices, XoneK3.K3Controller, ''); };
-    XoneK3.bootLab = function(devices) { XoneK3._bootWith(devices, XoneK3.LabController, 'colorLab'); };
+    myCatnip.boot    = function(devices) { myCatnip._bootWith(devices, myCatnip.Controller, ''); };
+    myCatnip.bootLab = function(devices) { myCatnip._bootWith(devices, myCatnip.LabController, 'colorLab'); };
 
-    XoneK3.halt = function() {
+    myCatnip.halt = function() {
         print('\n=== Xone K3 SHUTDOWN ===');
-        XoneK3.controllers.forEach(function(ctrl) { ctrl.shutdown(); });
-        XoneK3.controllers = [];
+        myCatnip.controllers.forEach(function(ctrl) { ctrl.shutdown(); });
+        myCatnip.controllers = [];
         print('=== shutdown requested (teardown continues async) ===');
     };
 })();

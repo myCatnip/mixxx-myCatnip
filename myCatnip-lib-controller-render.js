@@ -1,7 +1,7 @@
-// xone-k3-lib-controller-render.js — pacer, calibration math,
+// myCatnip-lib-controller-render.js — pacer, calibration math,
 // ramp sampling, beatjump gate.
 //
-// Loaded after lib-controller-beat.js. Extends K3Controller.prototype.
+// Loaded after lib-controller-beat.js. Extends Controller.prototype.
 //
 // The sysex write path (frame construction, dedupe, pacing) and
 // the blank sweeps live in the hardware descriptor (hw.writeLED,
@@ -12,19 +12,19 @@
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-controller-render.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-controller-render.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-controller-render.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-controller-render.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-controller-render.js',
-    ['K3Controller', 'HW_K3', 'Pacing', 'TIMING',
+myCatnip._requireLoad('myCatnip-lib-controller-render.js',
+    ['Controller', 'HW_K3', 'Pacing', 'TIMING',
      'sampleT', 'sampleSegs', 'applyBeat', 'BEAT_HOLD', 'scaleTarget']);
 
 (function() {
     // Per-boot counter for segments-array ids. Cleared in _bootWith.
-    XoneK3._segsCacheCounter = 0;
+    myCatnip._segsCacheCounter = 0;
 
     // ============================================================
     // LED WRITE + CALIBRATION
@@ -35,7 +35,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // these two functions.
     var _WB_SCRATCH = [0, 0, 0];
 
-    XoneK3.K3Controller.prototype._wbRGB = function(r, g, b) {
+    myCatnip.Controller.prototype._wbRGB = function(r, g, b) {
         if (!this.wbActive) {
             _WB_SCRATCH[0] = r; _WB_SCRATCH[1] = g; _WB_SCRATCH[2] = b;
             return _WB_SCRATCH;
@@ -68,17 +68,17 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // onDrop clears the cache slot for any frame lost to overflow,
     // so a future render with the same frame re-enqueues instead
     // of hitting a stale cache hit and silently dropping the LED.
-    XoneK3.K3Controller.prototype.pacer = function(name, opts) {
+    myCatnip.Controller.prototype.pacer = function(name, opts) {
         if (this._pacers[name]) return this._pacers[name];
         opts = opts || {};
 
         var throttleMs = (typeof opts.throttleMs === 'number')
             ? opts.throttleMs
-            : XoneK3.TIMING.pacingDefaultThrottleMs;
+            : myCatnip.TIMING.pacingDefaultThrottleMs;
 
         var sendFn = opts.sendFn;
         if (typeof sendFn !== 'function') {
-            XoneK3._warnOnce('pacerNoSendFn:' + name + ':' + this.label,
+            myCatnip._warnOnce('pacerNoSendFn:' + name + ':' + this.label,
                 'ctrl.pacer("' + name + '") on ' + this.label +
                 ' created without opts.sendFn — payloads will be dropped. ' +
                 'The hardware descriptor should pass a sendFn to ctrl.pacer().');
@@ -86,7 +86,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         }
 
         var self = this;
-        var p = new XoneK3.Pacing(name, throttleMs, sendFn);
+        var p = new myCatnip.Pacing(name, throttleMs, sendFn);
         p.onDrop = function(idx) { delete self._ledCache[idx]; };
         this._pacers[name] = p;
         return p;
@@ -100,7 +100,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // application, dedupe, and pacing now live in the hardware
     // descriptor. This method never sees a sysex byte or a note
     // number. Transport is whole-controller: ctrl.sysex.
-    XoneK3.K3Controller.prototype.sendLED = function(idx, r, g, b, hw) {
+    myCatnip.Controller.prototype.sendLED = function(idx, r, g, b, hw) {
         if (this._shuttingDown) return;
         if (idx < 0) return;
         this.hw.writeLED(this, idx, r, g, b, hw);
@@ -112,7 +112,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // blank sweep re-populates it from zero (matching the old
     // behaviour where _blankSysexSweep went through _sendSysExLED
     // on an empty cache).
-    XoneK3.K3Controller.prototype._blankLeds = function() {
+    myCatnip.Controller.prototype._blankLeds = function() {
         for (var name in this._pacers) this._pacers[name].clear();
         this._ledCache = {};
         this.hw.blank(this);
@@ -122,9 +122,9 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // compat alias on the main namespace, so tests that poke the
     // alias (and applyPacing overrides) both take effect. TIMING
     // stays canonical; applyPacing updates both.
-    XoneK3.K3Controller.prototype._pulseCo = function(group, co) {
+    myCatnip.Controller.prototype._pulseCo = function(group, co) {
         engine.setValue(group, co, 1);
-        engine.beginTimer(XoneK3.PULSE_CO_MS, function() {
+        engine.beginTimer(myCatnip.PULSE_CO_MS, function() {
             engine.setValue(group, co, 0);
         }, true);
     };
@@ -145,13 +145,13 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // encoder spin path. beatjumpButton omits it and the gate
     // reads fresh.
     //
-    // Reads XoneK3.BEATJUMP_GAP_MS (compat alias), not
-    // XoneK3.TIMING.beatjumpGapMs — matches lib-controller-beat.js's
+    // Reads myCatnip.BEATJUMP_GAP_MS (compat alias), not
+    // myCatnip.TIMING.beatjumpGapMs — matches lib-controller-beat.js's
     // pattern for BEAT_STALL_MS / META_SETTLE_MS / BOOT_SETTLE_MS,
     // and keeps tests / external tooling that poke the alias in
     // working order. applyPacing refreshes both on hardware
     // overrides.
-    XoneK3.K3Controller.prototype._beatjumpAllowed = function(group, loopOn) {
+    myCatnip.Controller.prototype._beatjumpAllowed = function(group, loopOn) {
         var ch = this._channelOf(group);
         if (!ch) return true;
         if (loopOn === undefined) {
@@ -160,10 +160,10 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         var now = Date.now();
         if (loopOn) {
             var last = this._lastLoopTouchMs[ch];
-            if (last && now - last < XoneK3.BEATJUMP_GAP_MS) {
-                if (XoneK3._debugPrintsOn) {
+            if (last && now - last < myCatnip.BEATJUMP_GAP_MS) {
+                if (myCatnip._debugPrintsOn) {
                     print('[k3] beatjump gated: ' + (now - last) + 'ms / ' +
-                          XoneK3.BEATJUMP_GAP_MS + 'ms');
+                          myCatnip.BEATJUMP_GAP_MS + 'ms');
                 }
                 return false;
             }
@@ -175,7 +175,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // Record a loop-touching event on this group's channel.
     // Beatjump will gate against this timestamp when the channel
     // is in an active loop.
-    XoneK3.K3Controller.prototype._touchLoop = function(group) {
+    myCatnip.Controller.prototype._touchLoop = function(group) {
         var ch = this._channelOf(group);
         if (ch) this._lastLoopTouchMs[ch] = Date.now();
     };
@@ -220,7 +220,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
 
     var _EMIT_SCRATCH = [0, 0, 0];
 
-    XoneK3.K3Controller.prototype._channelEmit = function(rgb, hw) {
+    myCatnip.Controller.prototype._channelEmit = function(rgb, hw) {
         var wbRgb = this._wbRGB(rgb[0], rgb[1], rgb[2]);
         var t = this._transfer, w = this.channelPerceptual;
         if (!t) {
@@ -236,7 +236,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         return _EMIT_SCRATCH;
     };
 
-    XoneK3.K3Controller.prototype._emitAt = function(rgb, hw) {
+    myCatnip.Controller.prototype._emitAt = function(rgb, hw) {
         var c = this._channelEmit(rgb, hw);
         var Y = c[0] + c[1] + c[2];
         if (Y <= 0) return 0;
@@ -244,17 +244,17 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         return P * (1 + this.hkBoost * _saturation(rgb));
     };
 
-    XoneK3.K3Controller.prototype._solveHw = function(rgb, hw, ramp, compiled) {
+    myCatnip.Controller.prototype._solveHw = function(rgb, hw, ramp, compiled) {
         if (!compiled.calibration) return hw;
         if (this.calibrationMode === 'off') return hw;
         if (rgb[0] === 0 && rgb[1] === 0 && rgb[2] === 0) return hw;
         var target = this._flatTarget(ramp);
         if (target === null) return hw;
-        target = XoneK3.scaleTarget(target, compiled.brightnessScale);
+        target = myCatnip.scaleTarget(target, compiled.brightnessScale);
         return this._calibratedHw(rgb, target);
     };
 
-    XoneK3.K3Controller.prototype._calibFingerprint = function() {
+    myCatnip.Controller.prototype._calibFingerprint = function() {
         return [
             this._calibCurveName,
             this.calibrationMode,
@@ -266,14 +266,14 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         ].join('|');
     };
 
-    XoneK3.K3Controller.prototype._flatTarget = function(segs) {
+    myCatnip.Controller.prototype._flatTarget = function(segs) {
         if (!segs || segs.length === 0) return null;
         if (this.calibrationMode === 'off') return null;
 
         // Segments-array cache ids are boot-scoped. The arrays
-        // themselves live in XoneK3._compiledCache, reset per boot.
+        // themselves live in myCatnip._compiledCache, reset per boot.
         if (segs._cacheId === undefined) {
-            segs._cacheId = ++XoneK3._segsCacheCounter;
+            segs._cacheId = ++myCatnip._segsCacheCounter;
         }
         var cache = this._flatCache;
         var entry = cache[segs._cacheId];
@@ -306,7 +306,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // reached from _solveHw for full schemes (calibration: true);
     // _compileSingleColor sets calibration: false, so a single-
     // colour mixxx never hits this path, but a mixed ramp can.
-    XoneK3.K3Controller.prototype._minSegmentEmit = function(segs) {
+    myCatnip.Controller.prototype._minSegmentEmit = function(segs) {
         var minEmit = Infinity;
         for (var i = 0; i < segs.length; i++) {
             var c = segs[i].color;
@@ -318,7 +318,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         return isFinite(minEmit) ? minEmit : null;
     };
 
-    XoneK3.K3Controller.prototype._calibratedHw = function(rgb, targetLum) {
+    myCatnip.Controller.prototype._calibratedHw = function(rgb, targetLum) {
         if (targetLum <= 0) return 0;
         var key = rgb[0] + ':' + rgb[1] + ':' + rgb[2] + ':' + targetLum.toFixed(6);
         var cached = this._hwCache[key];
@@ -346,7 +346,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // resolves the interval to < 0.1 — one bit finer than the
     // 7-bit hw space, so the returned integer is stable under
     // small luminance perturbations.
-    XoneK3.K3Controller.prototype._bisectHw = function(rgb, targetLum) {
+    myCatnip.Controller.prototype._bisectHw = function(rgb, targetLum) {
         var lo = 0, hi = 127;
         for (var i = 0; i < 12; i++) {
             var mid = (lo + hi) / 2;
@@ -356,9 +356,9 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         return Math.round((lo + hi) / 2);
     };
 
-    XoneK3.K3Controller.prototype._sampleRamp = function(ramp, t, compiled, isOn, skipBeat) {
-        var tw = XoneK3.sampleT(compiled, t);
-        var entry = XoneK3.sampleSegs(ramp, tw, compiled.interp);
+    myCatnip.Controller.prototype._sampleRamp = function(ramp, t, compiled, isOn, skipBeat) {
+        var tw = myCatnip.sampleT(compiled, t);
+        var entry = myCatnip.sampleSegs(ramp, tw, compiled.interp);
         if (!entry) return null;
         if (isOn) {
             entry.brightness = this._solveHw(entry.rgb, entry.brightness, ramp, compiled);
@@ -366,8 +366,8 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
         if (!skipBeat && isOn && compiled.beat) {
             var st = this._deckStateFor(compiled);
             if (st && st.hasBeat) {
-                var beat = XoneK3.applyBeat(entry, compiled.beat, st.count);
-                if (beat === XoneK3.BEAT_HOLD) return XoneK3.BEAT_HOLD;
+                var beat = myCatnip.applyBeat(entry, compiled.beat, st.count);
+                if (beat === myCatnip.BEAT_HOLD) return myCatnip.BEAT_HOLD;
                 entry = beat;
             }
         }

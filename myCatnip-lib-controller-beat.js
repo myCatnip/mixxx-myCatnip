@@ -1,8 +1,8 @@
-// xone-k3-lib-controller-beat.js — timeline (loop clock),
+// myCatnip-lib-controller-beat.js — timeline (loop clock),
 // display-source resolution, beat count derivation, beat clock
 // connections.
 //
-// Loaded after lib-controller-colour.js. Extends K3Controller.prototype.
+// Loaded after lib-controller-colour.js. Extends Controller.prototype.
 // Pulse phase always from track position; cascade count from the
 // active display source. See CONCEPTS §8.
 //
@@ -16,27 +16,27 @@
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-controller-beat.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-controller-beat.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-controller-beat.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-controller-beat.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
-    ['K3Controller', '_freshDeckState',
+myCatnip._requireLoad('myCatnip-lib-controller-beat.js',
+    ['Controller', '_freshDeckState',
      'DEFAULT_BEAT_DECK', 'BEAT_REPAINT_THROTTLE_MS', 'BEAT_STALL_MS']);
 
 (function() {
-    var freshDeckState = XoneK3._freshDeckState;
+    var freshDeckState = myCatnip._freshDeckState;
 
     // Hotcue slots scanned for phrase-marker colours. Default is
     // the top row of the hotcue2 overlay; override in the preset
     // config next to PHRASE_MARKER_COLORS.
-    XoneK3.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
+    myCatnip.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
 
     // Mixxx pre-instantiates 36 hotcue COs, but four of those are
     // the intro/outro markers — 32 real hotcues per deck.
-    XoneK3.MIXXX_HOTCUE_LIMIT = 32;
+    myCatnip.MIXXX_HOTCUE_LIMIT = 32;
 
     // Validated, deduped, in-range slot list. Single source for
     // every consumer in the origin path. Invalid entries are
@@ -50,11 +50,11 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // set-before-boot, so replace-array is the supported way to
     // change it (mutation in place keeps the identity and the
     // cache; that's not the contract).
-    XoneK3._phraseHotcueSlots = function() {
-        var slots = XoneK3.PHRASE_HOTCUE_SLOTS;
-        if (XoneK3._phraseHotcueSlotsCacheSrc === slots &&
-            XoneK3._phraseHotcueSlotsCache) {
-            return XoneK3._phraseHotcueSlotsCache;
+    myCatnip._phraseHotcueSlots = function() {
+        var slots = myCatnip.PHRASE_HOTCUE_SLOTS;
+        if (myCatnip._phraseHotcueSlotsCacheSrc === slots &&
+            myCatnip._phraseHotcueSlotsCache) {
+            return myCatnip._phraseHotcueSlotsCache;
         }
         var out = [];
         if (Array.isArray(slots)) {
@@ -62,21 +62,21 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
             for (var i = 0; i < slots.length; i++) {
                 var n = slots[i];
                 if (typeof n !== 'number' || n !== Math.floor(n) ||
-                    n < 1 || n > XoneK3.MIXXX_HOTCUE_LIMIT) continue;
+                    n < 1 || n > myCatnip.MIXXX_HOTCUE_LIMIT) continue;
                 if (seen[n]) continue;
                 seen[n] = true;
                 out.push(n);
             }
         }
-        XoneK3._phraseHotcueSlotsCache = out;
-        XoneK3._phraseHotcueSlotsCacheSrc = slots;
+        myCatnip._phraseHotcueSlotsCache = out;
+        myCatnip._phraseHotcueSlotsCacheSrc = slots;
         return out;
     };
 
     // ============================================================
     // CHANNEL / LOOP STATE
     // ============================================================
-    XoneK3.K3Controller.prototype._channelOf = function(group) {
+    myCatnip.Controller.prototype._channelOf = function(group) {
         if (typeof group !== 'string') return null;
         var m = /^\[Channel(\d)\]$/.exec(group);
         if (!m) return null;
@@ -87,7 +87,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // loopActive is the only loop state _syncVirtualClock and
     // _inspectBeat consume — the loop bounds were fed only to
     // the removed trackTempo wrap heuristic.
-    XoneK3.K3Controller.prototype._readLoopState = function(ch) {
+    myCatnip.Controller.prototype._readLoopState = function(ch) {
         this._decks[ch].loopActive =
             engine.getValue('[Channel' + ch + ']', 'loop_enabled') > 0;
     };
@@ -102,7 +102,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // read in _catchUpChannel — falls back to a live CO read on
     // a cold cache. The fallback to `1 + rate` covers Mixxx
     // builds that predate rate_ratio.
-    XoneK3.K3Controller.prototype._channelRate = function(ch) {
+    myCatnip.Controller.prototype._channelRate = function(ch) {
         var cached = this._rateCache[ch];
         if (typeof cached === 'number' && isFinite(cached) && cached > 0) {
             return cached;
@@ -126,7 +126,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // clock.pos accumulates playhead movement through loop wraps.
     // It's the cascade source in loop mode.
-    XoneK3.K3Controller.prototype._startVirtualClock = function(ch) {
+    myCatnip.Controller.prototype._startVirtualClock = function(ch) {
         var st = this._decks[ch];
         var clock = st.loopClock;
         var grp = '[Channel' + ch + ']';
@@ -140,7 +140,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         this._resolveDisplaySource(ch);
     };
 
-    XoneK3.K3Controller.prototype._stopVirtualClock = function(ch) {
+    myCatnip.Controller.prototype._stopVirtualClock = function(ch) {
         var st = this._decks[ch];
         st.loopClock.running = false;
         this._resolveDisplaySource(ch);
@@ -153,7 +153,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // The bool lets callers (`_onPlayIndicator`) distinguish
     // "the clock-start path already repainted" from "nothing
     // happened, I need an explicit refresh".
-    XoneK3.K3Controller.prototype._syncVirtualClock = function(ch) {
+    myCatnip.Controller.prototype._syncVirtualClock = function(ch) {
         var st = this._decks[ch];
         var shouldRun = st.loopActive && st.playing;
         if (shouldRun && !st.loopClock.running) {
@@ -167,7 +167,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return false;
     };
 
-    XoneK3.K3Controller.prototype._advanceVirtualClock = function(ch) {
+    myCatnip.Controller.prototype._advanceVirtualClock = function(ch) {
         var st = this._decks[ch];
         var clock = st.loopClock;
         if (!clock.running) return;
@@ -201,7 +201,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // No change means nothing to repaint — the display source is
     // already what the loop state implies, and every reader is
     // up to date.
-    XoneK3.K3Controller.prototype._resolveDisplaySource = function(ch) {
+    myCatnip.Controller.prototype._resolveDisplaySource = function(ch) {
         var st = this._decks[ch];
         var choice = st.loopClock.running ? 'loop' : 'track';
         if (choice === st.displaySource) return;
@@ -226,7 +226,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // start is always 0 (file start) — intro_start is never read.
     // end is outro_end_position / samples, or 1 when unset.
-    XoneK3.K3Controller.prototype._getContentBounds = function(ch) {
+    myCatnip.Controller.prototype._getContentBounds = function(ch) {
         var meta = this._trackMeta(ch);
         if (!(meta.samples > 0)) return null;
         var endN = (meta.outroEnd > 0 && meta.outroEnd <= meta.samples)
@@ -234,7 +234,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return { start: 0, end: endN };
     };
 
-    XoneK3.K3Controller.prototype._readFileBpm = function(ch) {
+    myCatnip.Controller.prototype._readFileBpm = function(ch) {
         var grp = '[Channel' + ch + ']';
         var fileBpm = engine.getValue(grp, 'file_bpm');
         if (fileBpm > 0) return fileBpm;
@@ -264,7 +264,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // 4 channels. Same pattern as BOOT_WHITE_ENTRY.
     var EMPTY_META = { duration: 0, fileBpm: null, samples: 0, outroEnd: 0 };
 
-    XoneK3.K3Controller.prototype._trackMeta = function(ch) {
+    myCatnip.Controller.prototype._trackMeta = function(ch) {
         var cached = this._trackMetaCache[ch];
         if (cached !== undefined) return cached;
 
@@ -289,17 +289,17 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         // cache engages. This covers slow metadata arrival paths
         // without a per-event state machine.
         if (meta.duration > 0 &&
-            Date.now() - this._loadSettlingAt[ch] >= XoneK3.META_SETTLE_MS) {
+            Date.now() - this._loadSettlingAt[ch] >= myCatnip.META_SETTLE_MS) {
             this._trackMetaCache[ch] = meta;
         }
         return meta;
     };
 
-    XoneK3.K3Controller.prototype._fileBpm = function(ch) {
+    myCatnip.Controller.prototype._fileBpm = function(ch) {
         return this._trackMeta(ch).fileBpm;
     };
 
-    XoneK3.K3Controller.prototype._beatF = function(ch, pos) {
+    myCatnip.Controller.prototype._beatF = function(ch, pos) {
         if (typeof pos !== 'number' || !isFinite(pos)) return null;
         var meta = this._trackMeta(ch);
         if (!(meta.duration > 0)) return null;
@@ -313,21 +313,21 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return pos * meta.duration * meta.fileBpm / 60;
     };
 
-    XoneK3.K3Controller.prototype._trackBeatF = function(ch) {
+    myCatnip.Controller.prototype._trackBeatF = function(ch) {
         var pos = engine.getValue('[Channel' + ch + ']', 'playposition');
         return this._beatF(ch, pos);
     };
 
     // Legacy accessor for inspect / tests. The cascade uses
     // _cascadeCount directly.
-    XoneK3.K3Controller.prototype._phraseSourcePos = function(ch) {
+    myCatnip.Controller.prototype._phraseSourcePos = function(ch) {
         var st = this._decks[ch];
         if (st.displaySource === 'loop' && st.loopClock.running)
             return st.loopClock.pos;
         return engine.getValue('[Channel' + ch + ']', 'playposition');
     };
 
-    XoneK3.K3Controller.prototype._cascadeCount = function(ch, trackBeatF) {
+    myCatnip.Controller.prototype._cascadeCount = function(ch, trackBeatF) {
         var st = this._decks[ch];
         if (st.displaySource === 'loop' && st.loopClock.running) {
             var loopBeatF = this._beatF(ch, st.loopClock.pos);
@@ -338,7 +338,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return Math.floor(trackBeatF) - this._phraseOrigin[ch] + 1;
     };
 
-    XoneK3.K3Controller.prototype._virtualBeatFor = function(ch) {
+    myCatnip.Controller.prototype._virtualBeatFor = function(ch) {
         var st = this._decks[ch];
         if (!st.loopClock.running) return null;
         var beatF = this._beatF(ch, st.loopClock.pos);
@@ -346,7 +346,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return Math.floor(beatF) - this._phraseOrigin[ch] + 1;
     };
 
-    XoneK3.K3Controller.prototype._syncBeatCount = function(ch, pos) {
+    myCatnip.Controller.prototype._syncBeatCount = function(ch, pos) {
         var st = this._decks[ch];
         var beatF = (pos !== undefined)
             ? this._beatF(ch, pos)
@@ -371,14 +371,14 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     //
     // Self-guarding: if PHRASE_MARKER_COLORS is empty the feature
     // is off; leave the cache empty and skip the reads.
-    XoneK3.K3Controller.prototype._seedHotcueCache = function(ch) {
+    myCatnip.Controller.prototype._seedHotcueCache = function(ch) {
         var st = this._decks[ch];
         st.hotcueState = {};
-        if (!Array.isArray(XoneK3.PHRASE_MARKER_COLORS) ||
-            XoneK3.PHRASE_MARKER_COLORS.length === 0) return;
+        if (!Array.isArray(myCatnip.PHRASE_MARKER_COLORS) ||
+            myCatnip.PHRASE_MARKER_COLORS.length === 0) return;
 
         var grp = '[Channel' + ch + ']';
-        var slots = XoneK3._phraseHotcueSlots();
+        var slots = myCatnip._phraseHotcueSlots();
         for (var i = 0; i < slots.length; i++) {
             var n = slots[i];
             st.hotcueState[n] = {
@@ -402,8 +402,8 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     //
     // Pure cache iteration — zero CO reads. The hotcue observers
     // keep st.hotcueState current; this is the per-tick consumer.
-    XoneK3.K3Controller.prototype._deriveOriginFromPosition = function(ch, pos) {
-        var markers = XoneK3.PHRASE_MARKER_COLORS;
+    myCatnip.Controller.prototype._deriveOriginFromPosition = function(ch, pos) {
+        var markers = myCatnip.PHRASE_MARKER_COLORS;
         if (!Array.isArray(markers) || markers.length === 0) return;
 
         var st = this._decks[ch];
@@ -415,7 +415,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         var best = null;
         var bestAhead = null;
         var cache = st.hotcueState;
-        var slots = XoneK3._phraseHotcueSlots();
+        var slots = myCatnip._phraseHotcueSlots();
 
         // Array walk over the declared slot list. Only those slots
         // are seeded; anything else in the cache is stale and
@@ -449,7 +449,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._resetBeat = function(ch) {
+    myCatnip.Controller.prototype._resetBeat = function(ch) {
         this._decks[ch] = freshDeckState();
         this._phraseOrigin[ch] = 0;
         if (this.selectedDeckCurrent === ch) {
@@ -474,7 +474,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._repaintBeat = function(ch) {
+    myCatnip.Controller.prototype._repaintBeat = function(ch) {
         var refreshed = this._syncBeatCount(ch);
         if (!refreshed) this._refreshBeatLeds(ch);
     };
@@ -485,7 +485,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     //
     // `pos` may be passed by the caller to avoid re-reading
     // playposition — the caller just read it for `_advanceVirtualClock`.
-    XoneK3.K3Controller.prototype._repaintFromPosition = function(ch, pos) {
+    myCatnip.Controller.prototype._repaintFromPosition = function(ch, pos) {
         var st = this._decks[ch];
         var trackBeatF = (pos !== undefined)
             ? this._beatF(ch, pos)
@@ -511,7 +511,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // DISPLAY FLAGS
     // ============================================================
-    XoneK3.K3Controller.prototype._refreshDisplayFlags = function() {
+    myCatnip.Controller.prototype._refreshDisplayFlags = function() {
         var st = this._decks[this.selectedDeckCurrent];
         if (!st) {
             this.activeDeckVirtual   = false;
@@ -527,12 +527,12 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // BEAT CLOCKS — OPEN
     // ============================================================
-    XoneK3.K3Controller.prototype._openBeatClocks = function() {
+    myCatnip.Controller.prototype._openBeatClocks = function() {
         for (var ch = 1; ch <= 4; ch++) this._openChannelBeatClocks(ch);
         for (var ch2 = 1; ch2 <= 4; ch2++) this._catchUpChannel(ch2);
     };
 
-    XoneK3.K3Controller.prototype._openChannelBeatClocks = function(ch) {
+    myCatnip.Controller.prototype._openChannelBeatClocks = function(ch) {
         var self = this;
         var grp = '[Channel' + ch + ']';
         function wire(conns, co, fn) {
@@ -647,8 +647,8 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
             self._syncBeatCount(ch, pos);
         });
 
-        if (Array.isArray(XoneK3.PHRASE_MARKER_COLORS) &&
-            XoneK3.PHRASE_MARKER_COLORS.length > 0) {
+        if (Array.isArray(myCatnip.PHRASE_MARKER_COLORS) &&
+            myCatnip.PHRASE_MARKER_COLORS.length > 0) {
             this._wireHotcueObservers(ch, grp);
         }
     };
@@ -675,14 +675,14 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // _deriveOriginFromPosition reads the current one, so user
     // hotcue changes after a load would never reach origin
     // derivation.
-    XoneK3.K3Controller.prototype._wireHotcueObservers = function(ch, grp) {
+    myCatnip.Controller.prototype._wireHotcueObservers = function(ch, grp) {
         // Seed first so the observer's cache write always has a
         // slot to write into, even if a CO fires before the
         // wiring loop completes.
         this._seedHotcueCache(ch);
 
         var self = this;
-        var slots = XoneK3._phraseHotcueSlots();
+        var slots = myCatnip._phraseHotcueSlots();
 
         function onColor(n, v) {
             var st = self._decks[ch];
@@ -727,10 +727,10 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // Warn-once at boot for a malformed PHRASE_HOTCUE_SLOTS. The
     // runtime filters bad entries via _phraseHotcueSlots, so this
     // is diagnostic only.
-    XoneK3.K3Controller.prototype._validatePhraseHotcueSlots = function() {
-        var slots = XoneK3.PHRASE_HOTCUE_SLOTS;
+    myCatnip.Controller.prototype._validatePhraseHotcueSlots = function() {
+        var slots = myCatnip.PHRASE_HOTCUE_SLOTS;
         if (!Array.isArray(slots)) {
-            XoneK3._warnOnce('phraseSlotsShape',
+            myCatnip._warnOnce('phraseSlotsShape',
                 'PHRASE_HOTCUE_SLOTS must be an array — phrase origin ' +
                 'derivation disabled');
             return;
@@ -739,15 +739,15 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         for (var i = 0; i < slots.length; i++) {
             var n = slots[i];
             if (typeof n !== 'number' || n !== Math.floor(n) ||
-                n < 1 || n > XoneK3.MIXXX_HOTCUE_LIMIT) {
-                XoneK3._warnOnce('phraseSlotRange:' + n,
+                n < 1 || n > myCatnip.MIXXX_HOTCUE_LIMIT) {
+                myCatnip._warnOnce('phraseSlotRange:' + n,
                     'PHRASE_HOTCUE_SLOTS contains ' + n + ' — must be ' +
-                    'an integer between 1 and ' + XoneK3.MIXXX_HOTCUE_LIMIT +
+                    'an integer between 1 and ' + myCatnip.MIXXX_HOTCUE_LIMIT +
                     '. Slot skipped.');
                 continue;
             }
             if (seen[n]) {
-                XoneK3._warnOnce('phraseSlotDup:' + n,
+                myCatnip._warnOnce('phraseSlotDup:' + n,
                     'PHRASE_HOTCUE_SLOTS contains duplicate ' + n +
                     ' — extra entry ignored');
                 continue;
@@ -760,7 +760,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // fires are still landing (the tree is still populating).
     // Capped to prevent runaway reschedules. Warn-once on cap hit
     // so a slow-settling tree is diagnosable.
-    XoneK3.K3Controller.prototype._startBootSettle = function() {
+    myCatnip.Controller.prototype._startBootSettle = function() {
         for (var ch = 1; ch <= 4; ch++) {
             this._bootSettledAt[ch] = Date.now();
             this._bootAttempt[ch] = 0;
@@ -769,21 +769,21 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._checkBootChannel = function(ch) {
+    myCatnip.Controller.prototype._checkBootChannel = function(ch) {
         var elapsed = Date.now() - this._bootSettledAt[ch];
-        if (elapsed < XoneK3.BOOT_SETTLE_MS &&
-            this._bootAttempt[ch] < XoneK3.BOOT_MAX_ATTEMPTS) {
+        if (elapsed < myCatnip.BOOT_SETTLE_MS &&
+            this._bootAttempt[ch] < myCatnip.BOOT_MAX_ATTEMPTS) {
             this._bootAttempt[ch]++;
             var self = this;
-            engine.beginTimer(XoneK3.BOOT_SETTLE_MS, function() {
+            engine.beginTimer(myCatnip.BOOT_SETTLE_MS, function() {
                 if (self._shuttingDown) return;
                 self._catchUpChannel(ch);
                 self._checkBootChannel(ch);
             }, true);
             return;
         }
-        if (elapsed < XoneK3.BOOT_SETTLE_MS) {
-            XoneK3._warnOnce('bootSettle:' + ch,
+        if (elapsed < myCatnip.BOOT_SETTLE_MS) {
+            myCatnip._warnOnce('bootSettle:' + ch,
                 'channel ' + ch + ' boot CO tree did not settle after ' +
                 this._bootAttempt[ch] + ' attempts — reads may be stale');
         }
@@ -796,7 +796,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // the loop clock idle; a reload during playback would leave
     // st.playing = false, rendering the paused beat mode on a
     // playing deck.
-    XoneK3.K3Controller.prototype._catchUpChannel = function(ch) {
+    myCatnip.Controller.prototype._catchUpChannel = function(ch) {
         // track_loaded and track_samples listeners were disconnected
         // for the whole closed-window. Any load during it left the
         // cache stale — clear it so _syncBeatCount below reads
@@ -849,14 +849,14 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // BEAT CLOCKS — CO HANDLERS
     // ============================================================
-    XoneK3.K3Controller.prototype._onBeatActive = function(ch, v) {
+    myCatnip.Controller.prototype._onBeatActive = function(ch, v) {
         var st = this._decks[ch];
         if (v === 1) {
             st.lastBeatEdge = Date.now();
             st.active = true;
             st.hasBeat = true;
             if (st.lastBeatEdge - st.lastBeatRepaint >=
-                XoneK3.BEAT_REPAINT_THROTTLE_MS) {
+                myCatnip.BEAT_REPAINT_THROTTLE_MS) {
                 st.lastBeatRepaint = st.lastBeatEdge;
                 this._repaintBeat(ch);
             }
@@ -881,7 +881,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // fallback covers test mocks or any future Mixxx version that
     // might invoke the callback without a value — keeps behaviour
     // identical to the old read-in-callback path in that case.
-    XoneK3.K3Controller.prototype._onPlayposition = function(ch, newPos) {
+    myCatnip.Controller.prototype._onPlayposition = function(ch, newPos) {
         var st = this._decks[ch];
         if (newPos === undefined) {
             newPos = engine.getValue('[Channel' + ch + ']', 'playposition');
@@ -889,7 +889,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         var movingBackward = this._trackPlayhead(st, newPos);
 
         var now = Date.now();
-        if (now - st.lastPositionSync < XoneK3.BEAT_REPAINT_THROTTLE_MS) return;
+        if (now - st.lastPositionSync < myCatnip.BEAT_REPAINT_THROTTLE_MS) return;
         st.lastPositionSync = now;
 
         // Throttled. The clock accumulates by dt (real seconds),
@@ -911,7 +911,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // happened — not a stale comparison against a pre-gate
     // position. Returns true if the playhead moved backward
     // since the previous tick.
-    XoneK3.K3Controller.prototype._trackPlayhead = function(st, newPos) {
+    myCatnip.Controller.prototype._trackPlayhead = function(st, newPos) {
         var movingBackward = (st.lastPlayPos !== undefined) && (newPos < st.lastPlayPos);
         st.lastPlayPos = newPos;
         return movingBackward;
@@ -948,12 +948,12 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // (outside a loop) it acts as a pure dedupe; where it jumps
     // (loop wrap, track end → start) it's what prevents the
     // flicker.
-    XoneK3.K3Controller.prototype._shouldSkipPulse = function(ch, movingBackward, now) {
+    myCatnip.Controller.prototype._shouldSkipPulse = function(ch, movingBackward, now) {
         var st = this._decks[ch];
         var playing   = st.playing;
         var reversing = this._reverseCache[ch] > 0;
         return playing && !reversing && !movingBackward &&
-            (now - st.lastBeatEdge < XoneK3.BEAT_STALL_MS);
+            (now - st.lastBeatEdge < myCatnip.BEAT_STALL_MS);
     };
 
     // Dispatch after the throttle gate. Skip-pulse path only
@@ -963,7 +963,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     //
     // newPos is passed through — already read by _onPlayposition,
     // no need for _repaintFromPosition to re-read it.
-    XoneK3.K3Controller.prototype._dispatchPositionTick = function(ch, newPos, movingBackward, now) {
+    myCatnip.Controller.prototype._dispatchPositionTick = function(ch, newPos, movingBackward, now) {
         if (this._shouldSkipPulse(ch, movingBackward, now)) {
             this._syncBeatCount(ch, newPos);
             return;
@@ -971,7 +971,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         this._repaintFromPosition(ch, newPos);
     };
 
-    XoneK3.K3Controller.prototype._onPlayIndicator = function(ch, v) {
+    myCatnip.Controller.prototype._onPlayIndicator = function(ch, v) {
         var st = this._decks[ch];
         var wasPlaying = st.playing;
         st.playing = v > 0;
@@ -994,7 +994,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._onTrackLoaded = function(ch, v) {
+    myCatnip.Controller.prototype._onTrackLoaded = function(ch, v) {
         // Stamp settle, gate, and clear — all before _resetBeat.
         // _resetBeat internally calls _refreshBeatLeds, which
         // reads _trackMeta. If the gate/clear lands after that
@@ -1043,7 +1043,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
 
     // Enabling the loop while paused does not start the clock —
     // `_syncVirtualClock` gates on both loopActive and playing.
-    XoneK3.K3Controller.prototype._onLoopEnabled = function(ch) {
+    myCatnip.Controller.prototype._onLoopEnabled = function(ch) {
         this._readLoopState(ch);
         this._syncVirtualClock(ch);
     };
@@ -1051,7 +1051,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // BEAT CLOCKS — CLOSE / SYNC
     // ============================================================
-    XoneK3.K3Controller.prototype._closeBeatClocks = function() {
+    myCatnip.Controller.prototype._closeBeatClocks = function() {
         for (var i = 0; i < this._beatConns.length; i++)
             if (this._beatConns[i]) this._beatConns[i].disconnect();
         for (var j = 0; j < this._playConns.length; j++)
@@ -1065,7 +1065,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         this._refreshDisplayFlags();
     };
 
-    XoneK3.K3Controller.prototype._needsBeatClocks = function() {
+    myCatnip.Controller.prototype._needsBeatClocks = function() {
         if (this._beatLeds.length > 0) return true;
         var applied = this._applied || {};
         for (var name in applied) {
@@ -1081,10 +1081,10 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
         return false;
     };
 
-    XoneK3.K3Controller.prototype._syncBeatClocks = function() {
+    myCatnip.Controller.prototype._syncBeatClocks = function() {
         var want = this._needsBeatClocks();
         var have = this._beatConns.length > 0;
-        if (XoneK3._debugPrintsOn) {
+        if (myCatnip._debugPrintsOn) {
             var appliedCount = 0;
             var applied = this._applied || {};
             for (var k in applied) if (applied.hasOwnProperty(k)) appliedCount++;
@@ -1100,7 +1100,7 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
     // ============================================================
     // BEAT LED BOOKKEEPING
     // ============================================================
-    XoneK3.K3Controller.prototype._refreshBeatLeds = function(ch) {
+    myCatnip.Controller.prototype._refreshBeatLeds = function(ch) {
         for (var i = 0; i < this._beatLeds.length; i++) {
             var b = this._beatLeds[i];
             try {
@@ -1125,24 +1125,24 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
                 if (deckCh === undefined || deckCh === null) { b._refresh(); continue; }
                 if (deckCh === ch) b._refresh();
             } catch (e) {
-                XoneK3._warnOnce('refreshBeatThrow:' + b._name,
+                myCatnip._warnOnce('refreshBeatThrow:' + b._name,
                     '_refreshBeatLeds: ' + b._name + ' threw: ' +
                     (e && e.message ? e.message : e));
             }
         }
     };
 
-    XoneK3.K3Controller.prototype._attachBeatLed = function(b) {
+    myCatnip.Controller.prototype._attachBeatLed = function(b) {
         if (this._beatLeds.indexOf(b) === -1) this._beatLeds.push(b);
     };
 
-    XoneK3.K3Controller.prototype._detachBeatLed = function(b) {
+    myCatnip.Controller.prototype._detachBeatLed = function(b) {
         var i = this._beatLeds.indexOf(b);
         if (i >= 0) this._beatLeds.splice(i, 1);
     };
 
-    XoneK3.K3Controller.prototype._resolveDeckRef = function(ref) {
-        if (ref === undefined || ref === null) ref = XoneK3.DEFAULT_BEAT_DECK;
+    myCatnip.Controller.prototype._resolveDeckRef = function(ref) {
+        if (ref === undefined || ref === null) ref = myCatnip.DEFAULT_BEAT_DECK;
         if (typeof ref === 'number') return (ref >= 1 && ref <= 4) ? ref : null;
         if (typeof ref === 'string') {
             // Fast path for the three deck tokens every shipped
@@ -1154,14 +1154,14 @@ XoneK3._requireLoad('xone-k3-lib-controller-beat.js',
             if (ref === '$DECK_ACTIVE$') return this.selectedDeckCurrent;
             if (ref === '$DECK_A$')      return this.selectedDeckA;
             if (ref === '$DECK_B$')      return this.selectedDeckB;
-            var s = XoneK3.resolve(ref, this);
+            var s = myCatnip.resolve(ref, this);
             var m = /\[Channel(\d)\]/.exec(s);
             return m ? parseInt(m[1], 10) : null;
         }
         return null;
     };
 
-    XoneK3.K3Controller.prototype._deckStateFor = function(compiled) {
+    myCatnip.Controller.prototype._deckStateFor = function(compiled) {
         if (!compiled || !compiled.beat) return null;
         var ch = this._resolveDeckRef(compiled.beat.deck);
         return ch ? this._decks[ch] : null;

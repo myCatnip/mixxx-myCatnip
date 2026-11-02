@@ -356,7 +356,7 @@ test('_evalOnCoValue: falls back to live read when cachedValue undefined', funct
 
 test('_dispatchCapturedRelease: throwing func is caught, warn fired', function(t) {
     var c = H.ctrl();
-    XoneK3._warned = {};
+    myCatnip._warned = {};
     _printLog.length = 0;
     c._applyBinding('press0', {
         type: 'push',

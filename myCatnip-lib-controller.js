@@ -1,10 +1,10 @@
-// xone-k3-lib-controller.js — K3Controller core: constructor,
+// myCatnip-lib-controller.js — Controller core: constructor,
 // patch resolution, focus, top-half mode table, binding
 // application, and the modifier-state system.
 //
 // Loaded BEFORE lib-controller-colour.js, lib-controller-beat.js,
 // lib-controller-render.js, lib-controller-boot.js. The other four
-// extend K3Controller.prototype and require K3Controller to exist.
+// extend Controller.prototype and require Controller to exist.
 // Inspection probes live in lib-inspect.js.
 //
 // Modifier states
@@ -28,27 +28,27 @@
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-controller.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-controller.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-controller.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-controller.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-controller.js',
+myCatnip._requireLoad('myCatnip-lib-controller.js',
     ['Binding', '_bindingDefaults', '_SNAPSHOT_FIELDS',
      '_snapshotTransform', '_buildTransferRGB',
      '_tokenFields', '_BINDING_FIELDS', 'PATCH_NAMES', 'HW_K3']);
 
 (function() {
-    var PN = XoneK3.PATCH_NAMES;
+    var PN = myCatnip.PATCH_NAMES;
 
     var EMPTY_ARGS = [];
 
     // ============================================================
     // TOP-HALF MODE TABLE
     // ============================================================
-    XoneK3.TOP_MODES = {};
-    XoneK3.TOP_MODES.focus = {
+    myCatnip.TOP_MODES = {};
+    myCatnip.TOP_MODES.focus = {
         owns: [
             PN.FOCUS_BASE,
             PN.FOCUS_LAYOUT + '1', PN.FOCUS_LAYOUT + '2',
@@ -61,7 +61,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             ];
         }
     };
-    XoneK3.TOP_MODES.twoDeck = {
+    myCatnip.TOP_MODES.twoDeck = {
         owns: [
             PN.TWODECK_BASE,
             PN.TWODECK_A_LAYOUT + '1', PN.TWODECK_A_LAYOUT + '2',
@@ -77,7 +77,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             ];
         }
     };
-    XoneK3.TOP_MODES.twoDeckMini = {
+    myCatnip.TOP_MODES.twoDeckMini = {
         owns: [
             PN.MINI_BASE,
             PN.MINI_LAYOUT + '1', PN.MINI_LAYOUT + '2',
@@ -125,12 +125,12 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         };
     }
 
-    XoneK3._freshDeckState = freshDeckState;
+    myCatnip._freshDeckState = freshDeckState;
 
     // ============================================================
     // CONTROLLER
     // ============================================================
-    XoneK3.K3Controller = function(cfg) {
+    myCatnip.Controller = function(cfg) {
         this.label = cfg.label;
         this.midiChannel = cfg.midiChannel;
 
@@ -138,7 +138,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         // reads this.hw.LED_TRANSFERS (calibration curve lookup)
         // before any other HW dependency. Preset overrides may
         // pass a custom hw to bootCat/bootLab; defaults to HW_K3.
-        this.hw = cfg.hw || XoneK3.HW_K3;
+        this.hw = cfg.hw || myCatnip.HW_K3;
 
         // Clamp to 1..4. A non-numeric, out-of-range, or zero
         // initial value would otherwise resolve $DECK_A$ etc. to
@@ -196,7 +196,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
 
         var cp = cfg.channelPerceptual;
         if (!Array.isArray(cp) || cp.length < 3) {
-            XoneK3._warnOnce('channelPerceptualShape:' + this.label,
+            myCatnip._warnOnce('channelPerceptualShape:' + this.label,
                 'channelPerceptual must be a 3-element array on ' + this.label +
                 ' — got ' + JSON.stringify(cp) + '; using [1,1,1]');
             cp = [1, 1, 1];
@@ -212,7 +212,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         // channelPerceptual precedent.
         var wb = cfg.wbGain;
         if (!Array.isArray(wb) || wb.length < 3) {
-            XoneK3._warnOnce('wbGainShape:' + this.label,
+            myCatnip._warnOnce('wbGainShape:' + this.label,
                 'wbGain must be a 3-element array on ' + this.label +
                 ' — got ' + JSON.stringify(wb) + '; using [1,1,1]');
             wb = [1, 1, 1];
@@ -267,7 +267,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         if (typeof cfg.calibration === 'string') {
             var curve = (this.hw.LED_TRANSFERS || {})[cfg.calibration];
             if (curve && curve.r && curve.g && curve.b) {
-                this._transfer = XoneK3._buildTransferRGB(curve);
+                this._transfer = myCatnip._buildTransferRGB(curve);
             } else {
                 print('Xone K3: calibration curve "' + cfg.calibration +
                       '" missing for ' + this.label + '; calibration off.');
@@ -298,26 +298,26 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // MODIFIERS
     // ============================================================
-    XoneK3.K3Controller.prototype._isHeld = function(name) {
+    myCatnip.Controller.prototype._isHeld = function(name) {
         var b = this.bindings[name];
         return !!(b && b._transaction && b._transaction.active);
     };
 
-    XoneK3.K3Controller.prototype._onBindingPress = function(name) {
+    myCatnip.Controller.prototype._onBindingPress = function(name) {
         try {
             this._updateModifiers();
         } catch (e) {
-            XoneK3._warnOnce('updateModifiersPressThrow:' + name,
+            myCatnip._warnOnce('updateModifiersPressThrow:' + name,
                 '_onBindingPress(' + name + ') threw: ' +
                 (e && e.message ? e.message : e));
         }
     };
 
-    XoneK3.K3Controller.prototype._onBindingRelease = function(name) {
+    myCatnip.Controller.prototype._onBindingRelease = function(name) {
         try {
             this._updateModifiers();
         } catch (e) {
-            XoneK3._warnOnce('updateModifiersReleaseThrow:' + name,
+            myCatnip._warnOnce('updateModifiersReleaseThrow:' + name,
                 '_onBindingRelease(' + name + ') threw: ' +
                 (e && e.message ? e.message : e));
         }
@@ -326,7 +326,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // True if any active patch declares _noModifiers. Suppresses
     // modifier-driven patch enforcement (snake removes chord out
     // of band and must not have it re-added while it's running).
-    XoneK3.K3Controller.prototype._hasNoModifierPatch = function() {
+    myCatnip.Controller.prototype._hasNoModifierPatch = function() {
         for (var i = 0; i < this.activePatches.length; i++) {
             var p = this.patches[this.activePatches[i]];
             if (p && p._noModifiers && this._patchActive(this.activePatches[i])) return true;
@@ -349,7 +349,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // one _batchPatches, which owns the recompute. Any changes
     // with recompute: true but no patch change trigger a
     // standalone _recompute.
-    XoneK3.K3Controller.prototype._updateModifiers = function() {
+    myCatnip.Controller.prototype._updateModifiers = function() {
         var changes = this._deriveModifierChanges();
         this._applyModifierChanges(changes);
     };
@@ -370,7 +370,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // some state changed under a recompute: true modifier —
     // used when no patch delta is queued so the caller still
     // needs a repaint.
-    XoneK3.K3Controller.prototype._deriveModifierChanges = function() {
+    myCatnip.Controller.prototype._deriveModifierChanges = function() {
         var patchChanges = [];
         var needsRecompute = false;
         var suppressPatchActivate = this._hasNoModifierPatch();
@@ -412,7 +412,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // _batchPatches (which owns the recompute). A standalone
     // recompute fires when no patch deltas queued but the
     // recompute flag was raised by a state change.
-    XoneK3.K3Controller.prototype._applyModifierChanges = function(changes) {
+    myCatnip.Controller.prototype._applyModifierChanges = function(changes) {
         var patchChanges = changes.patchChanges;
         if (patchChanges.length > 0) {
             this._batchPatches(function(patches) {
@@ -434,13 +434,13 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // PATCH RESOLUTION
     // ============================================================
-    XoneK3.K3Controller.prototype._parentList = function(name) {
+    myCatnip.Controller.prototype._parentList = function(name) {
         var p = this.patches[name];
         if (!p || !p.patch) return [];
         return Array.isArray(p.patch) ? p.patch : [p.patch];
     };
 
-    XoneK3.K3Controller.prototype._resolvePatch = function(name, seen) {
+    myCatnip.Controller.prototype._resolvePatch = function(name, seen) {
         var cached = this._resolvedPatchCache[name];
         if (cached !== undefined) return cached;
 
@@ -463,7 +463,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return out;
     };
 
-    XoneK3.K3Controller.prototype._collectShiftPatches = function(name, out, seen) {
+    myCatnip.Controller.prototype._collectShiftPatches = function(name, out, seen) {
         var p = this.patches[name];
         if (!p || seen[name]) return;
         seen[name] = true;
@@ -474,7 +474,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         if (p._shift && out.indexOf(p._shift) === -1) out.push(p._shift);
     };
 
-    XoneK3.K3Controller.prototype._patchActive = function(name) {
+    myCatnip.Controller.prototype._patchActive = function(name) {
         if (this.activePatches.indexOf(name) === -1) return false;
         var p = this.patches[name];
         if (!p) return false;
@@ -493,7 +493,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     //   2. Append shift companions (deduped) if shift is held —
     //      unless suppressed.
     //   3. Append chord last (if held and not suppressed).
-    XoneK3.K3Controller.prototype._buildStack = function() {
+    myCatnip.Controller.prototype._buildStack = function() {
         var stack = [];
         var hasChord = false;
         var suppressModifiers = false;
@@ -527,7 +527,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return stack;
     };
 
-    XoneK3.K3Controller.prototype._resolveStack = function(stack) {
+    myCatnip.Controller.prototype._resolveStack = function(stack) {
         var out = {};
         for (var i = 0; i < stack.length; i++) {
             Object.assign(out, this._resolvePatch(stack[i], {}));
@@ -538,7 +538,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // RECOMPUTE
     // ============================================================
-    XoneK3.K3Controller.prototype._recompute = function() {
+    myCatnip.Controller.prototype._recompute = function() {
         this._recomputeDepth++;
         try {
             var resolved = this._resolveStack(this._buildStack());
@@ -552,13 +552,13 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             // "outside a recompute" warnings on the next refresh.
             try { this._afterRecompute(); }
             catch (e) {
-                XoneK3._warnOnce('afterRecomputeThrow:' + this.label,
+                myCatnip._warnOnce('afterRecomputeThrow:' + this.label,
                     '_afterRecompute threw on ' + this.label + ': ' +
                     (e && e.message ? e.message : e));
             }
             try { this._refreshAllLeds(); }
             catch (e) {
-                XoneK3._warnOnce('recomputeRefreshThrow:' + this.label,
+                myCatnip._warnOnce('recomputeRefreshThrow:' + this.label,
                     '_refreshAllLeds threw on ' + this.label + ': ' +
                     (e && e.message ? e.message : e));
             }
@@ -571,22 +571,22 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // Subclass hooks — no-ops in base. Overridden by LabController
     // (auto-bake on patch change, MIDI-input hooks) and any custom
     // controller subclass.
-    XoneK3.K3Controller.prototype._afterRecompute = function() {};
-    XoneK3.K3Controller.prototype._onInput = function(b) {};
-    XoneK3.K3Controller.prototype._onPatchChange = function(from, to) {};
+    myCatnip.Controller.prototype._afterRecompute = function() {};
+    myCatnip.Controller.prototype._onInput = function(b) {};
+    myCatnip.Controller.prototype._onPatchChange = function(from, to) {};
 
-    XoneK3.K3Controller.prototype._safeBinding = function(
+    myCatnip.Controller.prototype._safeBinding = function(
             fn, thisArg, args, name, keyPrefix, msgPrefix) {
         try {
             fn.apply(thisArg, args);
         } catch (e) {
-            XoneK3._warnOnce(
+            myCatnip._warnOnce(
                 keyPrefix + name,
                 msgPrefix + name + ' threw: ' + (e && e.message ? e.message : e));
         }
     };
 
-    XoneK3.K3Controller.prototype._refreshBinding = function(name) {
+    myCatnip.Controller.prototype._refreshBinding = function(name) {
         var b = this.bindings[name];
         if (!b) return;
         this._safeBinding(b._refresh, b, EMPTY_ARGS, b._name,
@@ -602,7 +602,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // recompute over an unchanged stack returns the same cfg
     // objects. _applied itself holds those references; no
     // separate cfg map is needed.
-    XoneK3.K3Controller.prototype._applyResolved = function(resolved) {
+    myCatnip.Controller.prototype._applyResolved = function(resolved) {
         var oldHashes = this._appliedHashes || {};
         var oldCfgs   = this._applied || {};
         var newHashes = {};
@@ -617,7 +617,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             var cfg = resolved[name];
             var h = (oldCfgs[name] === cfg)
                 ? oldHashes[name]
-                : XoneK3._hashBinding(cfg);
+                : myCatnip._hashBinding(cfg);
             newHashes[name] = h;
             if (oldHashes[name] === h) continue;
             this._applyOneSafe(name, cfg, skipRefresh);
@@ -627,7 +627,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         this._appliedHashes = newHashes;
     };
 
-    XoneK3.K3Controller.prototype._unbindRemoved = function(resolved, oldHashes, skipRefresh) {
+    myCatnip.Controller.prototype._unbindRemoved = function(resolved, oldHashes, skipRefresh) {
         for (var oldName in oldHashes) {
             if (!oldHashes.hasOwnProperty(oldName)) continue;
             if (oldName.charAt(0) === '_') continue;
@@ -636,7 +636,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._applyOneSafe = function(name, cfg, skipRefresh, fingerprint) {
+    myCatnip.Controller.prototype._applyOneSafe = function(name, cfg, skipRefresh, fingerprint) {
         try {
             this._applyBinding(name, cfg, fingerprint, skipRefresh);
         } catch (e) {
@@ -644,17 +644,17 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             var key    = (isUnbind ? 'applyUnbindThrow:' : 'applyBindThrow:') + name;
             var prefix = '_applyBinding(' + name +
                          (isUnbind ? ', null' : '') + ') threw: ';
-            XoneK3._warnOnce(key, prefix + (e && e.message ? e.message : e));
+            myCatnip._warnOnce(key, prefix + (e && e.message ? e.message : e));
         }
     };
 
-    XoneK3.K3Controller.prototype._snapshotBinding = function(b) {
+    myCatnip.Controller.prototype._snapshotBinding = function(b) {
         var snap = {};
-        for (var i = 0; i < XoneK3._SNAPSHOT_FIELDS.length; i++) {
-            var src = XoneK3._SNAPSHOT_FIELDS[i][0];
-            var dst = XoneK3._SNAPSHOT_FIELDS[i][1];
-            var tr  = XoneK3._SNAPSHOT_FIELDS[i][2];
-            snap[dst] = XoneK3._snapshotTransform(tr, b[src]);
+        for (var i = 0; i < myCatnip._SNAPSHOT_FIELDS.length; i++) {
+            var src = myCatnip._SNAPSHOT_FIELDS[i][0];
+            var dst = myCatnip._SNAPSHOT_FIELDS[i][1];
+            var tr  = myCatnip._SNAPSHOT_FIELDS[i][2];
+            snap[dst] = myCatnip._snapshotTransform(tr, b[src]);
         }
         return snap;
     };
@@ -669,7 +669,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return true;
     }
 
-    XoneK3.K3Controller.prototype._orphanTransaction = function(b) {
+    myCatnip.Controller.prototype._orphanTransaction = function(b) {
         var t = b._transaction;
         if (!t || !t.active) return;
         if (t.orphaned) return;
@@ -682,7 +682,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         if (!same) t.orphaned = true;
     };
 
-    XoneK3.K3Controller.prototype._unbind = function(b, prev) {
+    myCatnip.Controller.prototype._unbind = function(b, prev) {
         if (prev.wasPot && prev.group && prev.inKey) {
             engine.softTakeoverIgnoreNextValue(prev.group, prev.inKey);
         }
@@ -691,11 +691,11 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._bindCore = function(b, cfg) {
+    myCatnip.Controller.prototype._bindCore = function(b, cfg) {
         b._rawCfg = cfg;
-        b.group   = XoneK3.resolve(cfg.group, this);
-        b.inKey   = XoneK3.resolve(cfg.inKey, this);
-        b.outKey  = cfg.outKey ? XoneK3.resolve(cfg.outKey, this) : undefined;
+        b.group   = myCatnip.resolve(cfg.group, this);
+        b.inKey   = myCatnip.resolve(cfg.inKey, this);
+        b.outKey  = cfg.outKey ? myCatnip.resolve(cfg.outKey, this) : undefined;
         b.buttonMode = (cfg.type === 'push') ? 'push' : 'toggle';
         b.softTakeover = (cfg.softTakeover !== undefined)
             ? cfg.softTakeover
@@ -705,10 +705,10 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             ? cfg.valueCurve : 1;
     };
 
-    XoneK3.K3Controller.prototype._collectTokens = function(b, cfg) {
-        var sources = XoneK3._tokenFields(cfg);
-        for (var ti = 0; ti < XoneK3.TOKENS.length; ti++) {
-            var tok = XoneK3.TOKENS[ti].token;
+    myCatnip.Controller.prototype._collectTokens = function(b, cfg) {
+        var sources = myCatnip._tokenFields(cfg);
+        for (var ti = 0; ti < myCatnip.TOKENS.length; ti++) {
+            var tok = myCatnip.TOKENS[ti].token;
             for (var i = 0; i < sources.length; i++) {
                 if (sources[i][1] !== undefined &&
                     typeof sources[i][1] === 'string' &&
@@ -720,7 +720,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._rearmSoftTakeover = function(b, prev) {
+    myCatnip.Controller.prototype._rearmSoftTakeover = function(b, prev) {
         if (!prev.wasPot || !b.group || !b.inKey || !b.softTakeover) return;
         if (b.group === prev.group && b.inKey === prev.inKey) return;
         engine.softTakeover(b.group, b.inKey, false);
@@ -728,17 +728,17 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
 
         if (b._normalized !== undefined) {
             var co = engine.getParameter(b.group, b.inKey);
-            if (Math.abs(co - b._normalized) <= XoneK3.TAKEOVER_EPSILON) {
+            if (Math.abs(co - b._normalized) <= myCatnip.TAKEOVER_EPSILON) {
                 engine.setParameter(b.group, b.inKey, co);
             }
         }
     };
 
-    XoneK3.K3Controller.prototype._bindFunc = function(b, cfg) {
+    myCatnip.Controller.prototype._bindFunc = function(b, cfg) {
         if (!cfg.func) return;
         var f = cfg.func;
         if (typeof f !== 'function') {
-            XoneK3._warnOnce('funcType:' + b._name,
+            myCatnip._warnOnce('funcType:' + b._name,
                 'binding func must be a function reference, got ' +
                 typeof f + ' on ' + b._name);
             return;
@@ -747,7 +747,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         b._funcArgs = cfg.args || [];
     };
 
-    XoneK3.K3Controller.prototype._bindConns = function(b) {
+    myCatnip.Controller.prototype._bindConns = function(b) {
         b._armOwnConn();
         if (b.outKey && b.group) {
             var m = b.outKey.match(/^(hotcue_\d+)_status$/);
@@ -789,15 +789,15 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // RESOLVED-TARGET HASH
     // ============================================================
-    XoneK3.K3Controller.prototype._tokenFingerprint = function() {
+    myCatnip.Controller.prototype._tokenFingerprint = function() {
         var parts = [];
-        for (var i = 0; i < XoneK3.TOKENS.length; i++) {
-            parts.push(this[XoneK3.TOKENS[i].state]);
+        for (var i = 0; i < myCatnip.TOKENS.length; i++) {
+            parts.push(this[myCatnip.TOKENS[i].state]);
         }
         return parts.join('|');
     };
 
-    XoneK3.K3Controller.prototype._resolvedTargetHash = function(cfg, fingerprint) {
+    myCatnip.Controller.prototype._resolvedTargetHash = function(cfg, fingerprint) {
         if (!cfg) return '';
         if (fingerprint === undefined) fingerprint = this._tokenFingerprint();
 
@@ -805,12 +805,12 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         if (cached && cached.fingerprint === fingerprint) return cached.value;
 
         var parts = [];
-        for (var i = 0; i < XoneK3._BINDING_FIELDS.length; i++) {
-            var row = XoneK3._BINDING_FIELDS[i];
+        for (var i = 0; i < myCatnip._BINDING_FIELDS.length; i++) {
+            var row = myCatnip._BINDING_FIELDS[i];
             if (!row.token) continue;
-            var v = XoneK3.readPath(cfg, row.name);
+            var v = myCatnip.readPath(cfg, row.name);
             if (v === undefined) v = '';
-            parts.push(XoneK3.resolve(v, this) || '');
+            parts.push(myCatnip.resolve(v, this) || '');
         }
         var value = parts.join('\u0001');
         this._resolvedTargetHashCache.set(cfg, { fingerprint: fingerprint, value: value });
@@ -827,7 +827,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     //      d. CO connections
     //      e. Resolved-target hash for future re-apply skip
     //      f. Render (skipped when caller passes skipRefresh)
-    XoneK3.K3Controller.prototype._applyBinding = function(name, cfg, fingerprint, skipRefresh) {
+    myCatnip.Controller.prototype._applyBinding = function(name, cfg, fingerprint, skipRefresh) {
         var b = this.bindings[name];
         if (!b) return;
 
@@ -842,7 +842,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
 
         this._bindCore(b, cfg);
-        XoneK3._auditBindingCfg(cfg, name);
+        myCatnip._auditBindingCfg(cfg, name);
         this._collectTokens(b, cfg);
         this._rearmSoftTakeover(b, prev);
         this._bindFunc(b, cfg);
@@ -862,9 +862,9 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         if (!skipRefresh) b._refresh();
     };
 
-    XoneK3.K3Controller.prototype._resolveSchemeRef = function(ref) {
+    myCatnip.Controller.prototype._resolveSchemeRef = function(ref) {
         if (ref === undefined || ref === null) return null;
-        return XoneK3.compileScheme(ref);
+        return myCatnip.compileScheme(ref);
     };
 
     // ============================================================
@@ -876,7 +876,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     //   3. Copy result back into activePatches
     //   4. One recompute (patches are already final)
     //   5. Fire per-patch change hooks AFTER recompute
-    XoneK3.K3Controller.prototype._batchPatches = function(mutator) {
+    myCatnip.Controller.prototype._batchPatches = function(mutator) {
         if (this._batchPatchesActive) {
             throw new Error('_batchPatches cannot nest');
         }
@@ -912,7 +912,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._diffPatches = function(before, after) {
+    myCatnip.Controller.prototype._diffPatches = function(before, after) {
         var same = (before.length === after.length);
         if (same) {
             for (var i = 0; i < before.length; i++) {
@@ -936,7 +936,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return { added: added, removed: removed };
     };
 
-    XoneK3.K3Controller.prototype.addPatch = function(name) {
+    myCatnip.Controller.prototype.addPatch = function(name) {
         if (this._batchPatchesActive) {
             throw new Error('addPatch called inside a _batchPatches mutator — mutate the array argument instead');
         }
@@ -947,7 +947,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         this._onPatchChange(null, name);
     };
 
-    XoneK3.K3Controller.prototype.removePatch = function(name) {
+    myCatnip.Controller.prototype.removePatch = function(name) {
         if (this._batchPatchesActive) {
             throw new Error('removePatch called inside a _batchPatches mutator — mutate the array argument instead');
         }
@@ -958,7 +958,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         this._onPatchChange(name, null);
     };
 
-    XoneK3.K3Controller.prototype.replacePatch = function(from, to) {
+    myCatnip.Controller.prototype.replacePatch = function(from, to) {
         if (this._batchPatchesActive) {
             throw new Error('replacePatch called inside a _batchPatches mutator — mutate the array argument instead');
         }
@@ -974,21 +974,21 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // TOP-HALF MODES
     // ============================================================
-    XoneK3.K3Controller.prototype.currentTopMode = function() {
-        for (var mode in XoneK3.TOP_MODES) {
-            if (!XoneK3.TOP_MODES.hasOwnProperty(mode)) continue;
-            if (this._patchActive(XoneK3.TOP_MODES[mode].owns[0])) return mode;
+    myCatnip.Controller.prototype.currentTopMode = function() {
+        for (var mode in myCatnip.TOP_MODES) {
+            if (!myCatnip.TOP_MODES.hasOwnProperty(mode)) continue;
+            if (this._patchActive(myCatnip.TOP_MODES[mode].owns[0])) return mode;
         }
         return null;
     };
 
-    XoneK3.K3Controller.prototype.setTopMode = function(mode) {
-        var target = XoneK3.TOP_MODES[mode];
+    myCatnip.Controller.prototype.setTopMode = function(mode) {
+        var target = myCatnip.TOP_MODES[mode];
         if (!target) { print('[k3] unknown top mode: ' + mode); return; }
         var ownedByAnyMode = {};
-        for (var m in XoneK3.TOP_MODES) {
-            if (!XoneK3.TOP_MODES.hasOwnProperty(m)) continue;
-            var owns = XoneK3.TOP_MODES[m].owns;
+        for (var m in myCatnip.TOP_MODES) {
+            if (!myCatnip.TOP_MODES.hasOwnProperty(m)) continue;
+            var owns = myCatnip.TOP_MODES[m].owns;
             for (var i = 0; i < owns.length; i++) ownedByAnyMode[owns[i]] = true;
         }
         var ctrl = this;
@@ -1010,7 +1010,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // LED REPAINT
     // ============================================================
-    XoneK3.K3Controller.prototype._refreshAllLeds = function(why) {
+    myCatnip.Controller.prototype._refreshAllLeds = function(why) {
         if (this._refreshAllLedsDepth > 0) return;
         this._refreshAllLedsDepth++;
         try {
@@ -1018,7 +1018,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
                 this._recomputeCompletedAt &&
                 (Date.now() - this._recomputeCompletedAt) < 10 &&
                 why === undefined) {
-                XoneK3._warnOnce('redundantRefresh:' + this.label,
+                myCatnip._warnOnce('redundantRefresh:' + this.label,
                     this.label + ': _refreshAllLeds called outside a recompute ' +
                     'within 10ms of one finishing — pass a reason string if intentional');
             }
@@ -1035,7 +1035,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         }
     };
 
-    XoneK3.K3Controller.prototype._validateBindings = function() {
+    myCatnip.Controller.prototype._validateBindings = function() {
         if (this._validated) return;
         this._validated = true;
 
@@ -1046,18 +1046,18 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             if (!this.bindings.hasOwnProperty(name)) continue;
             var b = this.bindings[name];
             if (!b._rawCfg) continue;
-            var sources = XoneK3._tokenFields(b._rawCfg);
+            var sources = myCatnip._tokenFields(b._rawCfg);
 
             for (var s = 0; s < sources.length; s++) {
                 var field = sources[s][0];
                 var val   = sources[s][1];
                 if (typeof val !== 'string') continue;
-                var unknown = XoneK3._findUnknownTokens(val);
+                var unknown = myCatnip._findUnknownTokens(val);
                 for (var u = 0; u < unknown.length; u++) {
                     var key = name + '|' + field + '|' + unknown[u];
                     if (seen[key]) continue;
                     seen[key] = true;
-                    XoneK3._warnOnce('token:' + key,
+                    myCatnip._warnOnce('token:' + key,
                         'unknown token ' + unknown[u] +
                         ' in ' + b._name + '.' + field);
                     issues++;
@@ -1071,14 +1071,14 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             var heldBy = mod.heldBy || [];
             for (var h = 0; h < heldBy.length; h++) {
                 if (!this.bindings[heldBy[h]]) {
-                    XoneK3._warnOnce('modifierHeldBy:' + modName + ':' + heldBy[h],
+                    myCatnip._warnOnce('modifierHeldBy:' + modName + ':' + heldBy[h],
                         'modifier "' + modName + '" references unknown binding "' +
                         heldBy[h] + '"');
                     issues++;
                 }
             }
             if (mod.patchActivate && !this.patches[mod.patchActivate]) {
-                XoneK3._warnOnce('modifierPatch:' + modName,
+                myCatnip._warnOnce('modifierPatch:' + modName,
                     'modifier "' + modName + '" references unknown patch "' +
                     mod.patchActivate + '"');
                 issues++;
@@ -1095,15 +1095,15 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     // ============================================================
     // FOCUS
     // ============================================================
-    XoneK3.K3Controller.prototype._afterFocusChanged = function(tokens, reason) {
+    myCatnip.Controller.prototype._afterFocusChanged = function(tokens, reason) {
         this._refreshActiveAlt();
         this._reapplyByTokens(tokens, { skipRefresh: true });
         if (!this._syncFxLayout().swapped) this._refreshAllLeds(reason);
     };
 
-    XoneK3.K3Controller.prototype.setSelectedFor = function(kind, which, value) {
+    myCatnip.Controller.prototype.setSelectedFor = function(kind, which, value) {
         if (value < 1 || value > 4) return;
-        var stateProp = XoneK3._selProp(kind, which);
+        var stateProp = myCatnip._selProp(kind, which);
         if (this[stateProp] === undefined || this[stateProp] === value) return;
         this[stateProp] = value;
 
@@ -1123,7 +1123,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         this._afterFocusChanged(tokens, 'focus-' + kind);
     };
 
-    XoneK3.K3Controller.prototype.setActiveDeck = function(slot) {
+    myCatnip.Controller.prototype.setActiveDeck = function(slot) {
         if (slot !== 'A' && slot !== 'B') return;
         if (this.activeDeck === slot) return;
         this.activeDeck = slot;
@@ -1132,7 +1132,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             'focus-deck');
     };
 
-    XoneK3.K3Controller.prototype.setActiveFx = function(slot) {
+    myCatnip.Controller.prototype.setActiveFx = function(slot) {
         if (slot !== 'A' && slot !== 'B') return;
         if (this.activeFx === slot) return;
         this.activeFx = slot;
@@ -1141,7 +1141,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             'focus-fx');
     };
 
-    XoneK3.K3Controller.prototype._refreshActiveAlt = function() {
+    myCatnip.Controller.prototype._refreshActiveAlt = function() {
         var isDeckB = (this.activeDeck === 'B');
         var isFxB   = (this.activeFx   === 'B');
         this.selectedDeckCurrent = isDeckB ? this.selectedDeckB : this.selectedDeckA;
@@ -1151,7 +1151,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         this._refreshDisplayFlags();
     };
 
-    XoneK3.K3Controller.prototype._reapplyByTokens = function(tokens, opts) {
+    myCatnip.Controller.prototype._reapplyByTokens = function(tokens, opts) {
         var fingerprint = null;
 
         for (var name in this.bindings) {
@@ -1176,7 +1176,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
     //   undefined   — name isn't an fx-pattern (not mine, skip)
     //   null        — fx-pattern but target patch is missing
     //   string      — the swap target
-    XoneK3.K3Controller.prototype._resolveFxPatchName = function(name) {
+    myCatnip.Controller.prototype._resolveFxPatchName = function(name) {
         var m = /^fx(Layout[AB]?|Mini)(\d)$/.exec(name);
         if (m) {
             var kind = m[1];
@@ -1190,7 +1190,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return undefined;
     };
 
-    XoneK3.K3Controller.prototype._syncFxLayout = function() {
+    myCatnip.Controller.prototype._syncFxLayout = function() {
         var swaps = [];
         var sawMissing = false;
         var missingNames = [];
@@ -1207,7 +1207,7 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
             swaps.push({ from: from, to: want });
         }
         if (sawMissing) {
-            XoneK3._warnOnce('fxLayoutMissing:' + missingNames.join(','),
+            myCatnip._warnOnce('fxLayoutMissing:' + missingNames.join(','),
                 '_syncFxLayout: fx-pattern patch ' + missingNames.join(',') +
                 ' has no matching target — check the patches: table');
         }
@@ -1223,5 +1223,5 @@ XoneK3._requireLoad('xone-k3-lib-controller.js',
         return { swapped: true, reason: 'swapped' };
     };
 
-    XoneK3.K3Controller.prototype._isPress = function(v, s) { return v > 0; };
+    myCatnip.Controller.prototype._isPress = function(v, s) { return v > 0; };
 })();

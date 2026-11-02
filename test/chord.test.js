@@ -19,7 +19,7 @@ function setup() {
             base: {
                 _shift: 'baseShift',
                 shift: { type: 'push' },
-                layer: { type: 'push', func: XoneK3.FUNCS.layerButton,
+                layer: { type: 'push', func: myCatnip.FUNCS.layerButton,
                          args: ['cue', 'loop'] },
                 press0: { group: 'a' }
             },
@@ -144,7 +144,7 @@ test('shift: companion excluded when modifiers.shift false', function(t) {
 
 test('shutdownHold: press arms a timer', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press3', {func: XoneK3.FUNCS.shutdownHold});
+    c._applyBinding('press3', {func: myCatnip.FUNCS.shutdownHold});
     var b = c.bindings.press3;
     b._func.call(b, [], 0, 0, 127, 0x90);
     t.ok(b._shutdownHoldTimer);
@@ -153,7 +153,7 @@ test('shutdownHold: press arms a timer', function(t) {
 
 test('shutdownHold: timer fires → shutdown', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press3', {func: XoneK3.FUNCS.shutdownHold});
+    c._applyBinding('press3', {func: myCatnip.FUNCS.shutdownHold});
     var b = c.bindings.press3;
     b._func.call(b, [], 0, 0, 127, 0x90);
     engine._fireOneShots();
@@ -162,7 +162,7 @@ test('shutdownHold: timer fires → shutdown', function(t) {
 
 test('shutdownHold: release cancels timer', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press3', {func: XoneK3.FUNCS.shutdownHold});
+    c._applyBinding('press3', {func: myCatnip.FUNCS.shutdownHold});
     var b = c.bindings.press3;
     b._func.call(b, [], 0, 0, 127, 0x90);
     b._func.call(b, [], 0, 0, 0, 0x80);
@@ -173,7 +173,7 @@ test('shutdownHold: release cancels timer', function(t) {
 
 test('shutdownHold: re-press replaces timer', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press3', {func: XoneK3.FUNCS.shutdownHold});
+    c._applyBinding('press3', {func: myCatnip.FUNCS.shutdownHold});
     var b = c.bindings.press3;
     b._func.call(b, [], 0, 0, 127, 0x90);
     var first = b._shutdownHoldTimer;
@@ -184,7 +184,7 @@ test('shutdownHold: re-press replaces timer', function(t) {
 test('shutdownHold: already shutting down → no-op', function(t) {
     var c = H.ctrl();
     c._shuttingDown = true;
-    c._applyBinding('press3', {func: XoneK3.FUNCS.shutdownHold});
+    c._applyBinding('press3', {func: myCatnip.FUNCS.shutdownHold});
     var b = c.bindings.press3;
     b._func.call(b, [], 0, 0, 127, 0x90);
     t.eq(b._shutdownHoldTimer, null);

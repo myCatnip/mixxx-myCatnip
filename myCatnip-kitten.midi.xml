@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<MixxxControllerPreset mixxxVersion="2.5" schemaVersion="1">
+    <info>
+        <name>Allen&amp;Heath Xone K3 Kitten</name>
+        <author>myCatnip</author>
+        <description>Xone K3 "Kitten" (ch 0x0D).</description>
+    </info>
+    <controller id="XONE:K3 Kitten MIDI 1">
+        <scriptfiles>
+            <file filename="myCatnip-lib-core.js"/>
+            <file filename="myCatnip-lib-timing.js"/>
+            <file filename="myCatnip-lib-schemes.js"/>
+            <file filename="myCatnip-lib-binding.js"/>
+            <file filename="myCatnip-hw-k3.js"/>
+            <file filename="myCatnip-lib-controller.js"/>
+            <file filename="myCatnip-lib-controller-colour.js"/>
+            <file filename="myCatnip-lib-controller-beat.js"/>
+            <file filename="myCatnip-lib-controller-render.js"/>
+            <file filename="myCatnip-lib-controller-boot.js"/>
+            <file filename="myCatnip-lib-funcs.js"/>
+            <file filename="myCatnip-lib-inspect.js"/>
+            <file filename="myCatnip-cat-schemes.js"/>
+            <file filename="myCatnip-cat-fx.js"/>
+            <file filename="myCatnip-cat-top.js"/>
+            <file filename="myCatnip-cat-bottom.js"/>
+            <file filename="myCatnip-cat-overlays.js"/>
+            <file filename="myCatnip-cat.js"/>
+            <file filename="myCatnip-snake.js"/>
+            <file filename="myCatnip-kitten.js" functionprefix="myCatnip"/>
+        </scriptfiles>
+        <controls>
+            <control><key>myCatnip.init</key></control>
+            <control><key>myCatnip.shutdown</key></control>
+        </controls>
+    </controller>
+</MixxxControllerPreset>

@@ -22,8 +22,8 @@ function setupLab(overrides) {
 
 test('LabController extends K3Controller', function(t) {
     var c = setupLab();
-    t.ok(c instanceof XoneK3.LabController);
-    t.ok(c instanceof XoneK3.K3Controller);
+    t.ok(c instanceof myCatnip.LabController);
+    t.ok(c instanceof myCatnip.Controller);
 });
 
 test('boot seeds slot 0 with labDefault', function(t) {
@@ -176,10 +176,10 @@ test('_setPreview: sets source and flag, runs auto-bake', function(t) {
     c._setPreview(5, 'slot5');
     t.eq(c._lab.previewSource, 5);
     t.eq(c._lab.previewing, true);
-    t.ok(c._lab.slots[XoneK3.LAB_SLOT.STRUCTURAL]);
-    t.ok(c._lab.slots[XoneK3.LAB_SLOT.BAKED_INTERP]);
-    t.ok(c._lab.slots[XoneK3.LAB_SLOT.BAKED]);
-    t.ok(c._lab.slots[XoneK3.LAB_SLOT.EXPORT]);
+    t.ok(c._lab.slots[myCatnip.LAB_SLOT.STRUCTURAL]);
+    t.ok(c._lab.slots[myCatnip.LAB_SLOT.BAKED_INTERP]);
+    t.ok(c._lab.slots[myCatnip.LAB_SLOT.BAKED]);
+    t.ok(c._lab.slots[myCatnip.LAB_SLOT.EXPORT]);
 });
 
 // ── _editSegmentTarget: no auto-trim ───────────────────────
@@ -210,7 +210,7 @@ test('ledFillGaps: interpolates between colorSet anchors', function(t) {
         colorSet: [true, false, true]
     };
     var bl = {_ctrl: c};
-    XoneK3.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
+    myCatnip.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
     t.approx(c._lab.edit.colors[1][0], 63, 2);
     t.approx(c._lab.edit.colors[1][2], 63, 2);
 });
@@ -222,7 +222,7 @@ test('ledFillGaps: paints multiple gap cells', function(t) {
         colorSet: [true, false, false, true]
     };
     var bl = {_ctrl: c};
-    XoneK3.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
+    myCatnip.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
     t.approx(c._lab.edit.colors[1][1], 85, 2);
     t.approx(c._lab.edit.colors[2][0], 85, 2);
 });
@@ -234,7 +234,7 @@ test('ledFillGaps: does not paint colorSet cells', function(t) {
         colorSet: [true, true, true]
     };
     var bl = {_ctrl: c};
-    XoneK3.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
+    myCatnip.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
     t.eq(c._lab.edit.colors[1], [0, 127, 0]);
 });
 
@@ -246,7 +246,7 @@ test('ledFillGaps: needs 2+ colorSet anchors', function(t) {
     };
     var bl = {_ctrl: c};
     _printLog.length = 0;
-    XoneK3.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
+    myCatnip.FUNCS.ledFillGaps.call(bl, [], 0, 0, 127, 0x90);
     t.ok(_printLog.join('\n').indexOf('need 2+') !== -1);
 });
 
@@ -256,7 +256,7 @@ test('ledSelectTarget: unshifted press marks colorSet true', function(t) {
     var c = setupLab();
     c._lab.edit = {colors: [[0,0,0]]};
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid0_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid0_0']
     });
     H.press(c, 'grid0_0');
     t.eq(c._lab.edit.colorSet[0], true);
@@ -266,7 +266,7 @@ test('ledSelectTarget: unshifted press extends + marks colorSet', function(t) {
     var c = setupLab();
     c._lab.edit = {colors: [[0,0,0]]};
     H.bind(c, 'grid1_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid1_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid1_0']
     });
     H.press(c, 'grid1_0');
     t.eq(c._lab.edit.colors.length, 2);
@@ -282,7 +282,7 @@ test('ledSelectTarget: shift+press on real stop removes it', function(t) {
     };
     c.modifiers.shift = true;
     H.bind(c, 'grid1_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid1_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid1_0']
     });
     H.press(c, 'grid1_0');
     t.eq(c._lab.edit.colors.length, 1);
@@ -299,7 +299,7 @@ test('ledSelectTarget: delete real stop cascades adjacent gaps', function(t) {
     };
     c.modifiers.shift = true;
     H.bind(c, 'grid2_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid2_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid2_0']
     });
     H.press(c, 'grid2_0');
     t.eq(c._lab.edit.colors.length, 2, 'cells 1-3 removed');
@@ -314,7 +314,7 @@ test('ledSelectTarget: delete cell 0 is no-op', function(t) {
     c._lab.edit = {colors: [[127,0,0]], colorSet: [true]};
     c.modifiers.shift = true;
     H.bind(c, 'grid0_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid0_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid0_0']
     });
     H.press(c, 'grid0_0');
     t.eq(c._lab.edit.colors.length, 1);
@@ -329,7 +329,7 @@ test('ledSelectTarget: delete gap splices that cell', function(t) {
     };
     c.modifiers.shift = true;
     H.bind(c, 'grid1_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid1_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid1_0']
     });
     H.press(c, 'grid1_0');
     t.eq(c._lab.edit.colors.length, 1);
@@ -351,7 +351,7 @@ test('ledSelectTarget: delete gap shifts subsequent cells down', function(t) {
     c._lab.edit = { colors: colors, colorSet: colorSet };
 
     H.bind(c, 'grid2_0', {
-        func: XoneK3.FUNCS.ledSelectTarget,
+        func: myCatnip.FUNCS.ledSelectTarget,
         args: ['button2_0']   // calib index 6
     });
     c.modifiers.shift = true;
@@ -393,7 +393,7 @@ test('ledSelectTarget: delete then edit recreates', function(t) {
     c._lab.selectedSegment = 1;
     c.modifiers.shift = true;
     H.bind(c, 'grid1_0', {
-        func: XoneK3.FUNCS.ledSelectTarget, args: ['grid1_0']
+        func: myCatnip.FUNCS.ledSelectTarget, args: ['grid1_0']
     });
     H.press(c, 'grid1_0');
     t.eq(c._lab.edit.colors.length, 1, 'cell 1 removed');
@@ -413,7 +413,7 @@ test('_applyAutoBake: fills slots 12-15', function(t) {
     c._lab.edit = {colors: [[127,0,0], [0,0,127]]};
     c._lab.previewSource = 'edit';
     c._applyAutoBake();
-    var S = XoneK3.LAB_SLOT;
+    var S = myCatnip.LAB_SLOT;
     t.ok(c._lab.slots[S.STRUCTURAL]);
     t.ok(c._lab.slots[S.BAKED_INTERP]);
     t.ok(c._lab.slots[S.BAKED]);
@@ -422,18 +422,18 @@ test('_applyAutoBake: fills slots 12-15', function(t) {
 
 test('_applyAutoBake: skips bake slots', function(t) {
     var c = setupLab();
-    c._lab.slots[XoneK3.LAB_SLOT.STRUCTURAL] = 'sentinel';
-    c._lab.previewSource = XoneK3.LAB_SLOT.STRUCTURAL;
+    c._lab.slots[myCatnip.LAB_SLOT.STRUCTURAL] = 'sentinel';
+    c._lab.previewSource = myCatnip.LAB_SLOT.STRUCTURAL;
     c._applyAutoBake();
-    t.eq(c._lab.slots[XoneK3.LAB_SLOT.STRUCTURAL], 'sentinel');
+    t.eq(c._lab.slots[myCatnip.LAB_SLOT.STRUCTURAL], 'sentinel');
 });
 
 test('_applyAutoBake: skips registry names', function(t) {
     var c = setupLab();
-    var before = c._lab.slots[XoneK3.LAB_SLOT.STRUCTURAL];
+    var before = c._lab.slots[myCatnip.LAB_SLOT.STRUCTURAL];
     c._lab.previewSource = 'coMatch';
     c._applyAutoBake();
-    t.eq(c._lab.slots[XoneK3.LAB_SLOT.STRUCTURAL], before);
+    t.eq(c._lab.slots[myCatnip.LAB_SLOT.STRUCTURAL], before);
 });
 
 // ── _selectSlot ────────────────────────────────────────────
@@ -630,13 +630,13 @@ test('_previewLabel: slot N', function(t) {
 
 test('_previewLabel: bake slots 12-15', function(t) {
     var c = setupLab();
-    c._lab.previewSource = XoneK3.LAB_SLOT.STRUCTURAL;
+    c._lab.previewSource = myCatnip.LAB_SLOT.STRUCTURAL;
     t.eq(c._previewLabel(), 'structural');
-    c._lab.previewSource = XoneK3.LAB_SLOT.BAKED_INTERP;
+    c._lab.previewSource = myCatnip.LAB_SLOT.BAKED_INTERP;
     t.eq(c._previewLabel(), 'baked+interp');
-    c._lab.previewSource = XoneK3.LAB_SLOT.BAKED;
+    c._lab.previewSource = myCatnip.LAB_SLOT.BAKED;
     t.eq(c._previewLabel(), 'baked');
-    c._lab.previewSource = XoneK3.LAB_SLOT.EXPORT;
+    c._lab.previewSource = myCatnip.LAB_SLOT.EXPORT;
     t.eq(c._previewLabel(), 'export');
 });
 
@@ -672,18 +672,18 @@ test('_toggleSaveArm: refreshes layer LED', function(t) {
 
     // Layer is not bound in this fixture; bind it inline.
     H.bind(c, 'layer', {
-        func: XoneK3.FUNCS.layerButton, args: ['colorLab', 'slots'],
+        func: myCatnip.FUNCS.layerButton, args: ['colorLab', 'slots'],
         colorScheme: { scheme: 'purple', on: { state: '_lab.saveArmed' } }
     });
     H.clearLeds(c);
 
     c._toggleSaveArm();
     var armed = H.led(c, 'layer');
-    t.ok(armed && armed.hw > XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF,
+    t.ok(armed && armed.hw > myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF,
          'armed state should be brighter than unarmed');
 
     c._toggleSaveArm();
     var unarmed = H.led(c, 'layer');
-    t.ok(unarmed && unarmed.hw <= XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF,
+    t.ok(unarmed && unarmed.hw <= myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF,
          'unarmed state should be the off-brightness');
 });

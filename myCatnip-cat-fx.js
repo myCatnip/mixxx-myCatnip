@@ -1,4 +1,4 @@
-// xone-k3-cat-fx.js — Cat's FX cell layout tables and a single
+// myCatnip-cat-fx.js — Cat's FX cell layout tables and a single
 // unified emitter.
 //
 //   FX_LAYOUTS                 focus, 16 cells per unit
@@ -8,17 +8,17 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-cat-fx.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-cat-fx.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat-fx.js',
+    myCatnip._requireLoad('myCatnip-cat-fx.js',
         ['FUNCS', 'builders', 'CAT']);
 
-    var B = XoneK3.builders;
-    var CAT = XoneK3.CAT;
+    var B = myCatnip.builders;
+    var CAT = myCatnip.CAT;
     var fxScheme = CAT.fxScheme;
 
     // ============================================================
@@ -27,7 +27,7 @@
     function emitFxCell(spec, unit, knobRef, schemeFn, slotMap) {
         if (spec === null) return null;
         if (spec === undefined) {
-            XoneK3._warnOnce('fxCellMissing:' + unit + ':' + (knobRef || '?'),
+            myCatnip._warnOnce('fxCellMissing:' + unit + ':' + (knobRef || '?'),
                 'fxCells: missing layout entry for unit ' + unit +
                 ' at ' + (knobRef || 'knob') + ' — table is incomplete');
             return null;
@@ -276,7 +276,7 @@
     function twoDeckMiniFxTable(layoutName) {
         var layout = MINI_LAYOUTS[layoutName];
         if (!layout) {
-            XoneK3._warnOnce('miniLayoutMissing:' + layoutName,
+            myCatnip._warnOnce('miniLayoutMissing:' + layoutName,
                 'twoDeckMiniFxTable: unknown layout "' + layoutName +
                 '" — falling back to "split"');
             layout = MINI_LAYOUTS.split;

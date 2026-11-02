@@ -21,7 +21,7 @@ exports.ctrl = function(opts) {
         lumGamma: 1,
         sysex: true
     }, opts || {});
-    var c = new XoneK3.K3Controller(cfg);
+    var c = new myCatnip.Controller(cfg);
     c.init();
     c.hw.wireInputs(c);
     return c;
@@ -39,8 +39,8 @@ exports.bootCat = function(overrides) {
         hkBoost: 0,
         lumGamma: 1
     }, overrides || {});
-    XoneK3.bootCat(cfg);
-    return XoneK3.controllers[XoneK3.controllers.length - 1];
+    myCatnip.bootCat(cfg);
+    return myCatnip.controllers[myCatnip.controllers.length - 1];
 };
 
 exports.bootLab = function(overrides) {
@@ -57,13 +57,13 @@ exports.bootLab = function(overrides) {
         modePrints: false,
         debugPrints: false
     }, overrides || {});
-    XoneK3.bootLab([cfg]);
-    return XoneK3.controllers[XoneK3.controllers.length - 1];
+    myCatnip.bootLab([cfg]);
+    return myCatnip.controllers[myCatnip.controllers.length - 1];
 };
 
 exports.bootMulti = function(devices) {
-    XoneK3.boot(devices);
-    return XoneK3.controllers;
+    myCatnip.boot(devices);
+    return myCatnip.controllers;
 };
 
 // Apply a binding AND update _applied so cell-discovery helpers

@@ -1,4 +1,4 @@
-// xone-k3-cat-overlays.js — Cat's two routing overlays and the
+// myCatnip-cat-overlays.js — Cat's two routing overlays and the
 // chord.
 //
 // Shift companions are shallow clones of their base, so grid
@@ -14,17 +14,17 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat-overlays.js',
+    myCatnip._requireLoad('myCatnip-cat-overlays.js',
         ['FUNCS', 'builders', 'CAT']);
 
-    var F = XoneK3.FUNCS;
-    var CAT = XoneK3.CAT;
+    var F = myCatnip.FUNCS;
+    var CAT = myCatnip.CAT;
 
     // ============================================================
     // CELL EMITTERS

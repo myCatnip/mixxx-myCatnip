@@ -16,14 +16,14 @@ var H = require('./helpers');
 
 function setup() {
     var c = H.ctrl();
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     engine._set('[Channel1]', 'duration', 300);
     engine._set('[Channel1]', 'file_bpm', 120);
     engine._set('[Channel1]', 'track_samples', 1000);
     engine._set('[Channel1]', 'outro_end_position', 1000);
     engine._set('[Channel1]', 'track_loaded', 1);
 
-    XoneK3.SCHEMES.lgBeat = { colors: [[127,0,0]], beat: { color: 'blue' } };
+    myCatnip.SCHEMES.lgBeat = { colors: [[127,0,0]], beat: { color: 'blue' } };
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl',
         colorScheme: { scheme: 'lgBeat' }
@@ -85,7 +85,7 @@ test('settle window: cache writes after META_SETTLE_MS', function(t) {
     var c = setup();
     c._onTrackLoaded(1, 1);
     // Fast-forward settle by setting the stamp to the past.
-    c._loadSettlingAt[1] = Date.now() - (XoneK3.META_SETTLE_MS + 100);
+    c._loadSettlingAt[1] = Date.now() - (myCatnip.META_SETTLE_MS + 100);
     c._trackMeta(1);
     t.ok(c._trackMetaCache[1] !== undefined, 'cache writes post-settle');
     t.eq(c._trackMetaCache[1].duration, 300);
@@ -111,7 +111,7 @@ test('duration observer: clears cache and refreshes', function(t) {
 
 test('_catchUpChannel: seeds _loadedState from track_loaded CO', function(t) {
     var c = H.ctrl();
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     engine._set('[Channel1]', 'track_loaded', 1);
     engine._set('[Channel2]', 'track_loaded', 0);
     c._catchUpChannel(1);

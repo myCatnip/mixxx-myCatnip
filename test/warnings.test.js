@@ -8,29 +8,29 @@ var H = require('./helpers');
 
 test('_warnOnce: same key fires once', function(t) {
     _printLog.length = 0;
-    XoneK3._warnOnce('k1', 'first');
-    XoneK3._warnOnce('k1', 'second');
+    myCatnip._warnOnce('k1', 'first');
+    myCatnip._warnOnce('k1', 'second');
     t.eq(_printLog.length, 1);
 });
 
 test('_warnOnce: different keys fire separately', function(t) {
     _printLog.length = 0;
-    XoneK3._warnOnce('k1', 'first');
-    XoneK3._warnOnce('k2', 'second');
+    myCatnip._warnOnce('k1', 'first');
+    myCatnip._warnOnce('k2', 'second');
     t.eq(_printLog.length, 2);
 });
 
 test('_warnOnce: clearing _warned re-arms', function(t) {
     _printLog.length = 0;
-    XoneK3._warnOnce('k1', 'first');
-    XoneK3._warned = {};
-    XoneK3._warnOnce('k1', 'second');
+    myCatnip._warnOnce('k1', 'first');
+    myCatnip._warned = {};
+    myCatnip._warnOnce('k1', 'second');
     t.eq(_printLog.length, 2);
 });
 
 test('_warnOnce: message prefixed with [k3]', function(t) {
     _printLog.length = 0;
-    XoneK3._warnOnce('k1', 'my message');
+    myCatnip._warnOnce('k1', 'my message');
     t.contains(_printLog[0], '[k3] my message');
 });
 
@@ -186,13 +186,13 @@ test('non-function func warns', function(t) {
 
 test('scheme patch syntax removed warns', function(t) {
     _printLog.length = 0;
-    XoneK3.resolveScheme({patch: ['x'], colors: [[0,0,0]]});
+    myCatnip.resolveScheme({patch: ['x'], colors: [[0,0,0]]});
     t.ok(_printLog.join('\n').indexOf('scheme patch syntax removed') !== -1);
 });
 
 test('scheme object with no colors warns', function(t) {
     _printLog.length = 0;
-    XoneK3.resolveScheme({markerWidth: 2});
+    myCatnip.resolveScheme({markerWidth: 2});
     t.ok(_printLog.join('\n').indexOf('scheme object has no colors') !== -1);
 });
 
@@ -203,20 +203,20 @@ test('composeScheme: unknown base warns', function(t) {
     // without checking existence. Force resolution via an
     // override.
     _printLog.length = 0;
-    XoneK3.builders.composeScheme({scheme: 'noSuchScheme', marker: 'low'});
+    myCatnip.builders.composeScheme({scheme: 'noSuchScheme', marker: 'low'});
     t.ok(_printLog.join('\n').indexOf('composeScheme: scheme "noSuchScheme" not found') !== -1);
 });
 
 test('composeScheme: patch syntax warns', function(t) {
     _printLog.length = 0;
-    XoneK3.builders.composeScheme({scheme: {patch: ['x']}});
+    myCatnip.builders.composeScheme({scheme: {patch: ['x']}});
     t.ok(_printLog.join('\n').indexOf('scheme patches are no longer supported') !== -1);
 });
 
 test('composeScheme: function returning null warns once', function(t) {
     _printLog.length = 0;
     var fn = function() { return null; };
-    var wrapped = XoneK3.builders.composeScheme({scheme: fn});
+    var wrapped = myCatnip.builders.composeScheme({scheme: fn});
     wrapped();
     wrapped();
     var n = _printLog.filter(function(s) {
@@ -228,9 +228,9 @@ test('composeScheme: function returning null warns once', function(t) {
 // ── boot re-arms warnings ─────────────────────────────────
 
 test('boot clears _warned', function(t) {
-    XoneK3._warnOnce('k1', 'first');
-    XoneK3.bootCat();
-    t.notOk(XoneK3._warned['k1']);
+    myCatnip._warnOnce('k1', 'first');
+    myCatnip.bootCat();
+    t.notOk(myCatnip._warned['k1']);
 });
 
 // ── audit path only fires when debug on ───────────────────
@@ -244,22 +244,22 @@ test('_auditBindingCfg: silent when debug off', function(t) {
 
 test('_auditBindingCfg: warns on unknown key when debug on', function(t) {
     var c = H.ctrl();
-    XoneK3._debugPrintsOn = true;
+    myCatnip._debugPrintsOn = true;
     _printLog.length = 0;
     c._applyBinding('press0', {fooBar: 1});
     t.ok(_printLog.join('\n').indexOf('"fooBar" not in _BINDING_CFG_FIELDS') !== -1);
-    XoneK3._debugPrintsOn = false;
+    myCatnip._debugPrintsOn = false;
 });
 
 test('_auditSnapshotFields: clean state produces no warnings', function(t) {
-    XoneK3._debugPrintsOn = true;
+    myCatnip._debugPrintsOn = true;
     _printLog.length = 0;
     H.bootCat();
     var audit = _printLog.filter(function(s) {
         return s.indexOf('not classified for _snapshotBinding') !== -1;
     });
     t.eq(audit.length, 0);
-    XoneK3._debugPrintsOn = false;
+    myCatnip._debugPrintsOn = false;
 });
 
 test('on: patchActive + equals warns', function(t) {

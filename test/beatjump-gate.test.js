@@ -2,7 +2,7 @@
 
 var H = require('./helpers');
 
-// Beatjump gate: XoneK3.BEATJUMP_GAP_MS, _beatjumpAllowed,
+// Beatjump gate: myCatnip.BEATJUMP_GAP_MS, _beatjumpAllowed,
 // _touchLoop, and the loop-touching funcs that stamp
 // _lastLoopTouchMs.
 //
@@ -16,7 +16,7 @@ var H = require('./helpers');
 function armBeatjump(c, name, ch) {
     ch = ch || 1;
     c._applyBinding(name, {
-        func: XoneK3.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
+        func: myCatnip.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
         group: '[Channel' + ch + ']'
     });
     engine._set('[Channel' + ch + ']', 'loop_enabled', 1);
@@ -25,12 +25,12 @@ function armBeatjump(c, name, ch) {
 
 // ═══ BEATJUMP_GAP_MS constant ═══════════════════════════════
 
-test('BEATJUMP_GAP_MS: exists on XoneK3', function(t) {
-    t.ok(typeof XoneK3.BEATJUMP_GAP_MS === 'number');
+test('BEATJUMP_GAP_MS: exists on myCatnip', function(t) {
+    t.ok(typeof myCatnip.BEATJUMP_GAP_MS === 'number');
 });
 
 test('BEATJUMP_GAP_MS: default is 130', function(t) {
-    t.eq(XoneK3.BEATJUMP_GAP_MS, 130);
+    t.eq(myCatnip.BEATJUMP_GAP_MS, 130);
 });
 
 // ═══ _beatjumpAllowed: group resolution ══════════════════════
@@ -87,7 +87,7 @@ test('_beatjumpAllowed: inside gap → false', function(t) {
 test('_beatjumpAllowed: gap exactly elapsed → true', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_enabled', 1);
-    c._lastLoopTouchMs[1] = Date.now() - XoneK3.BEATJUMP_GAP_MS - 5;
+    c._lastLoopTouchMs[1] = Date.now() - myCatnip.BEATJUMP_GAP_MS - 5;
     t.eq(c._beatjumpAllowed('[Channel1]'), true);
 });
 
@@ -101,12 +101,12 @@ test('_beatjumpAllowed: two consecutive jumps gate each other', function(t) {
 
 test('_beatjumpAllowed: gap=0 disables the gate', function(t) {
     var c = H.ctrl();
-    var orig = XoneK3.BEATJUMP_GAP_MS;
-    XoneK3.BEATJUMP_GAP_MS = 0;
+    var orig = myCatnip.BEATJUMP_GAP_MS;
+    myCatnip.BEATJUMP_GAP_MS = 0;
     engine._set('[Channel1]', 'loop_enabled', 1);
     c._lastLoopTouchMs[1] = Date.now();
     t.eq(c._beatjumpAllowed('[Channel1]'), true);
-    XoneK3.BEATJUMP_GAP_MS = orig;
+    myCatnip.BEATJUMP_GAP_MS = orig;
 });
 
 test('_beatjumpAllowed: per-channel isolation', function(t) {
@@ -177,7 +177,7 @@ test('beatjumpButton: does not fire when gated', function(t) {
 test('beatjumpButton: fires freely outside a loop', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_0', {
-        func: XoneK3.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
+        func: myCatnip.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
         group: '[Channel1]'
     });
     engine._set('[Channel1]', 'loop_enabled', 0);
@@ -199,7 +199,7 @@ test('beatjumpButton: release is not gated (no pulse either way)', function(t) {
 test('encBeatjump: fires when allowed', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     engine._set('[Channel1]', 'loop_enabled', 1);
     c._lastLoopTouchMs[1] = 0;
@@ -210,7 +210,7 @@ test('encBeatjump: fires when allowed', function(t) {
 test('encBeatjump: does not fire when gated', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     engine._set('[Channel1]', 'loop_enabled', 1);
     c._lastLoopTouchMs[1] = Date.now();
@@ -223,7 +223,7 @@ test('encBeatjump: does not fire when gated', function(t) {
 test('encLoopMove: stamps _lastLoopTouchMs', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encLoopMove, args: ['in', 0.01],
+        func: myCatnip.FUNCS.encLoopMove, args: ['in', 0.01],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     c._lastLoopTouchMs[1] = 0;
@@ -234,7 +234,7 @@ test('encLoopMove: stamps _lastLoopTouchMs', function(t) {
 test('pressSetValue on beatloop_size: stamps _lastLoopTouchMs', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.pressSetValue, args: ['1/4'],
+        func: myCatnip.FUNCS.pressSetValue, args: ['1/4'],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     c._lastLoopTouchMs[1] = 0;
@@ -245,7 +245,7 @@ test('pressSetValue on beatloop_size: stamps _lastLoopTouchMs', function(t) {
 test('pressSetValue on beatjump_size: does NOT stamp', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.pressSetValue, args: ['1/2'],
+        func: myCatnip.FUNCS.pressSetValue, args: ['1/2'],
         group: '[Channel1]', inKey: 'beatjump_size'
     });
     c._lastLoopTouchMs[1] = 0;
@@ -257,7 +257,7 @@ test('pressSetValue on beatjump_size: does NOT stamp', function(t) {
 test('reloopToggleResetAnchor: stamps _lastLoopTouchMs', function(t) {
     var c = H.ctrl();
     c._applyBinding('pressL', {
-        func: XoneK3.FUNCS.reloopToggleResetAnchor, group: '[Channel1]'
+        func: myCatnip.FUNCS.reloopToggleResetAnchor, group: '[Channel1]'
     });
     c._lastLoopTouchMs[1] = 0;
     H.press(c, 'pressL');
@@ -267,7 +267,7 @@ test('reloopToggleResetAnchor: stamps _lastLoopTouchMs', function(t) {
 test('beatloopActivateResetAnchor: stamps _lastLoopTouchMs', function(t) {
     var c = H.ctrl();
     c._applyBinding('pressR', {
-        func: XoneK3.FUNCS.beatloopActivateResetAnchor, group: '[Channel1]'
+        func: myCatnip.FUNCS.beatloopActivateResetAnchor, group: '[Channel1]'
     });
     c._lastLoopTouchMs[1] = 0;
     H.press(c, 'pressR');
@@ -277,7 +277,7 @@ test('beatloopActivateResetAnchor: stamps _lastLoopTouchMs', function(t) {
 test('non-loop func (encPregainStep) does not stamp', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoder0', {
-        func: XoneK3.FUNCS.encPregainStep, args: [0.025],
+        func: myCatnip.FUNCS.encPregainStep, args: [0.025],
         group: '[Channel1]', inKey: 'pregain'
     });
     c._lastLoopTouchMs[1] = 0;
@@ -288,7 +288,7 @@ test('non-loop func (encPregainStep) does not stamp', function(t) {
 test('encBeatjumpStepScale does not stamp', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderR', {
-        func: XoneK3.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
+        func: myCatnip.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
         group: '[Channel1]'
     });
     c._lastLoopTouchMs[1] = 0;
@@ -301,11 +301,11 @@ test('encBeatjumpStepScale does not stamp', function(t) {
 test('encoder move blocks a following beatjump', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encLoopMove, args: ['in', 0.01],
+        func: myCatnip.FUNCS.encLoopMove, args: ['in', 0.01],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     c._applyBinding('grid0_0', {
-        func: XoneK3.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
+        func: myCatnip.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
         group: '[Channel1]'
     });
     engine._set('[Channel1]', 'loop_enabled', 1);
@@ -320,7 +320,7 @@ test('encoder move blocks a following beatjump', function(t) {
 test('beatjump after gap elapses is allowed', function(t) {
     var c = H.ctrl();
     armBeatjump(c, 'grid0_0', 1);
-    c._lastLoopTouchMs[1] = Date.now() - (XoneK3.BEATJUMP_GAP_MS + 50);
+    c._lastLoopTouchMs[1] = Date.now() - (myCatnip.BEATJUMP_GAP_MS + 50);
     H.press(c, 'grid0_0');
     t.eq(engine.getValue('[Channel1]', 'beatjump_1_backward'), 1);
 });
@@ -328,11 +328,11 @@ test('beatjump after gap elapses is allowed', function(t) {
 test('beatjump outside a loop ignores recent encoder touch', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encLoopMove, args: ['in', 0.01],
+        func: myCatnip.FUNCS.encLoopMove, args: ['in', 0.01],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     c._applyBinding('grid0_0', {
-        func: XoneK3.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
+        func: myCatnip.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
         group: '[Channel1]'
     });
     engine._set('[Channel1]', 'loop_enabled', 0);

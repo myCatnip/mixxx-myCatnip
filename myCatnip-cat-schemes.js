@@ -1,24 +1,24 @@
-// xone-k3-cat-schemes.js — Cat's THEME, QFX chain list,
+// myCatnip-cat-schemes.js — Cat's THEME, QFX chain list,
 // phrase-marker colours, colour ramps, and the scheme-builder
 // helpers that the top / bottom / overlay files consume.
 //
-// Loads after lib-funcs.js. Registers on XoneK3.CAT so later cat
+// Loads after lib-funcs.js. Registers on myCatnip.CAT so later cat
 // files pull helpers by name.
 
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-cat-schemes.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-cat-schemes.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat-schemes.js',
+    myCatnip._requireLoad('myCatnip-cat-schemes.js',
         ['FUNCS', 'builders', 'SCHEMES', 'SCHEME_DEFAULTS']);
 
-    var B = XoneK3.builders;
-    var CAT = XoneK3.CAT = XoneK3.CAT || {};
+    var B = myCatnip.builders;
+    var CAT = myCatnip.CAT = myCatnip.CAT || {};
 
     // ============================================================
     // THEME — deck and FX number colours.
@@ -26,7 +26,7 @@
     // Emitters read THEME via deferred function schemes, so a
     // THEME mutation at runtime propagates on the next repaint.
     // ============================================================
-    XoneK3.THEME = {
+    myCatnip.THEME = {
         deck: { 1: 'green, 127', 2: 'red, 93', 3: [24, 24, 127, 127], 4: [127, 127, 32, 110] },
         fx:   { 1: 'magenta, 115', 2: 'yellow, 115', 3: 'cyan, 110', 4: 'orange, 127' }
     };
@@ -36,7 +36,7 @@
     // Quick Effect Chains. Indexed (0-based) from
     // loaded_chain_preset.
     // ============================================================
-    XoneK3.QFX_CHAIN_LIST = [
+    myCatnip.QFX_CHAIN_LIST = [
         'filterNone',
         'filterReverb', 'filterSmoothGrowl', 'filterEcho', 'filterFlanger',
         'filterMoog', 'filterBalance'
@@ -54,20 +54,20 @@
     // Place markers on beat boundaries — a marker mid-beat floors
     // to the start of its beat.
     //
-    // Only hotcues listed in XoneK3.PHRASE_HOTCUE_SLOTS are
+    // Only hotcues listed in myCatnip.PHRASE_HOTCUE_SLOTS are
     // scanned (default [9, 10, 11, 12] — the hotcue2 overlay's
     // top row; set before boot). Values are the integer RGB hexes
     // Mixxx stores on [ChannelN],hotcue_X_color. Empty list =
     // feature off.
     // ============================================================
-    XoneK3.PHRASE_MARKER_COLORS = [0xF2F2FF];
+    myCatnip.PHRASE_MARKER_COLORS = [0xF2F2FF];
 
     // Hotcue slots scanned for phrase-marker colours. Default is
     // [9, 10, 11, 12] (the hotcue2 overlay's top row). Change
     // to any 1..32 slots; duplicates and out-of-range entries are
     // dropped with a warn-once at boot. Empty list = feature off.
     //
-    // XoneK3.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
+    // myCatnip.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
 
     // ============================================================
     // SCHEMES — Cat's colour ramps.
@@ -89,7 +89,7 @@
         };
     }
 
-    Object.assign(XoneK3.SCHEMES, {
+    Object.assign(myCatnip.SCHEMES, {
         myCatnip: {
             colors: [[28,28,127], [28,28,69], [28,69,28], [28,127,28]],
             curve: -0.7,
@@ -223,7 +223,7 @@
         // in-place array mutation (THEME.fx[3][0] = 100) and would
         // return the stale composed scheme. String entries pass
         // through unchanged — join('|') is only paid on arrays.
-        var entry = XoneK3.THEME.fx[n];
+        var entry = myCatnip.THEME.fx[n];
         var key = Array.isArray(entry) ? entry.join('|') : entry;
         if (_fxSchemeKey[n] === key && _fxSchemeCache[n]) {
             return _fxSchemeCache[n];
@@ -249,7 +249,7 @@
     var _themeSchemeCache = { deck: {}, fx: {} };
     var _themeSchemeKey   = { deck: {}, fx: {} };
     function themeScheme(kind, n) {
-        var entry = XoneK3.THEME[kind][n];
+        var entry = myCatnip.THEME[kind][n];
         if (typeof entry === 'string') return entry;
         if (!Array.isArray(entry)) return entry;
         var key = entry.join('|');
@@ -350,8 +350,8 @@
             // 7/8 time signature puts the cascade and the countdown
             // out of sync — the cascade counts in 3-beat bars while
             // the countdown still treats 4 beats as a bar.
-            var barBeats = (XoneK3.TIME_SIG && XoneK3.TIME_SIG.barBeats > 0)
-                ? XoneK3.TIME_SIG.barBeats
+            var barBeats = (myCatnip.TIME_SIG && myCatnip.TIME_SIG.barBeats > 0)
+                ? myCatnip.TIME_SIG.barBeats
                 : 4;
 
             var beatsLeft = remainingNorm * dur * bpmFile / 60;

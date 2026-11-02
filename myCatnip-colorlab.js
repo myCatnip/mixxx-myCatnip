@@ -1,4 +1,4 @@
-// xone-k3-colorlab.js — Xone K3 colorLab. Mixxx 2.5.
+// myCatnip-colorlab.js — Xone K3 colorLab. Mixxx 2.5.
 //
 // Two modes, switched by the layer button:
 //   EDIT  (patch 'colorLab')     segment / marker / ratio / beat edits
@@ -15,24 +15,24 @@
 // state from its transaction.
 //
 // Hardware-level defaults (midiChannel, sysex, calibration data)
-// come from XoneK3.HW_K3.DEFAULTS via the boot object's merge.
-// The explicit `hw: XoneK3.HW_K3` makes bootLab's primaryHw
+// come from myCatnip.HW_K3.DEFAULTS via the boot object's merge.
+// The explicit `hw: myCatnip.HW_K3` makes bootLab's primaryHw
 // resolution deterministic (doesn't rely on the fallback).
 
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
 
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-colorlab.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-colorlab.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-colorlab.js',
+    myCatnip._requireLoad('myCatnip-colorlab.js',
     ['FUNCS', 'bootLab', 'LabController']);
 
-    var F = XoneK3.FUNCS;
+    var F = myCatnip.FUNCS;
 
     // ============================================================
     // TOP — editor, unshifted
@@ -228,13 +228,13 @@
     // ============================================================
     // BOOT
     // ============================================================
-    XoneK3.init = function() {
-        XoneK3.bootLab([Object.assign({}, XoneK3.HW_K3.DEFAULTS, {
+    myCatnip.init = function() {
+        myCatnip.bootLab([Object.assign({}, myCatnip.HW_K3.DEFAULTS, {
             label: 'colorLab',
             // midiChannel and sysex come from HW_K3.DEFAULTS.
             // Explicit hw reference so bootLab's primaryHw
             // resolution is deterministic.
-            hw: XoneK3.HW_K3,
+            hw: myCatnip.HW_K3,
 
             initialPatches: ['colorLabTop', 'colorLab'],
 
@@ -261,11 +261,11 @@
             markerTarget:     'grid3_3',
             labPreviewCO: { group: '[QuickEffectRack1_[Channel1]]', name: 'super1' },
 
-            ledTargetGroups: { calib: XoneK3.CALIB_TARGETS },
+            ledTargetGroups: { calib: myCatnip.CALIB_TARGETS },
 
             modePrints:  true,
             debugPrints: true
         })]);
     };
-    XoneK3.shutdown = function() { XoneK3.halt(); };
+    myCatnip.shutdown = function() { myCatnip.halt(); };
 })();

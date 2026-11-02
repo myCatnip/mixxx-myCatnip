@@ -7,8 +7,8 @@
 //
 // Between every test:
 //   - engine + midi mocks reset
-//   - XoneK3 mutable globals reset
-//   - XoneK3.TIMING reset from _TIMING_DEFAULTS (then 0-throttled
+//   - myCatnip mutable globals reset
+//   - myCatnip.TIMING reset from _TIMING_DEFAULTS (then 0-throttled
 //     via the _pacingTestOverride hook so bootCat / bootLab /
 //     _bootWith's applyPacing call doesn't clobber the test values)
 //   - controllers array cleared, print log cleared
@@ -35,10 +35,10 @@ for (var ai = 0; ai < argv.length; ai++) {
 
 var ctx = harness.load();
 
-global.XoneK3    = ctx.XoneK3;
-global.engine    = ctx.engine;
-global.midi      = ctx.midi;
-global.print     = ctx.print;
+global.myCatnip = ctx.myCatnip;
+global.engine   = ctx.engine;
+global.midi     = ctx.midi;
+global.print    = ctx.print;
 global._printLog = ctx._printLog;
 
 // -------------------------------------------------------------
@@ -135,7 +135,7 @@ function fmt(v) {
 // Reset between tests
 // -------------------------------------------------------------
 function _refreshTimingAliases() {
-    var X = global.XoneK3;
+    var X = global.myCatnip;
     X.PACING_DEFAULT_THROTTLE_MS = X.TIMING.pacingDefaultThrottleMs;
     X.SYSEX_THROTTLE_MS          = X.TIMING.sysexThrottleMs;
     X.BEAT_REPAINT_THROTTLE_MS   = X.TIMING.beatRepaintThrottleMs;
@@ -150,7 +150,7 @@ function _refreshTimingAliases() {
 }
 
 function resetGlobals() {
-    var X = global.XoneK3;
+    var X = global.myCatnip;
 
     // v1.1.0: applyPacing (called by bootCat / bootLab / _bootWith)
     // resets TIMING from _TIMING_DEFAULTS. Without a hook, every

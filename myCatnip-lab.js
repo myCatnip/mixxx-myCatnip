@@ -1,4 +1,4 @@
-// xone-k3-lab.js — Xone K3 colorLab extension. Mixxx 2.5.
+// myCatnip-lab.js — Xone K3 colorLab extension. Mixxx 2.5.
 //
 // Editor + slot browser for building LED colour schemes.
 //
@@ -22,24 +22,24 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
 
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-lab.js',
-        ['FUNCS', 'SCHEMES', 'K3Controller', 'compileScheme', 'resolveScheme',
+    myCatnip._requireLoad('myCatnip-lab.js',
+        ['FUNCS', 'SCHEMES', 'Controller', 'compileScheme', 'resolveScheme',
          'sampleT', 'sampleSegs', 'scaleTarget', 'resolveColorEntry',
          'markerHit', 'BEAT_HOLD', 'CO_MATCH_EPSILON', 'RATIO_GAIN',
          'registerPrintTable', '_funcId']);
 
     // Curated scroll order for the lab editor. When defined,
     // shift + encoderL iterates this list instead of scanning
-    // XoneK3.SCHEMES. Use it to control order and hide test schemes.
+    // myCatnip.SCHEMES. Use it to control order and hide test schemes.
     // Requires cat-schemes.js to be loaded before colorlab.js.
-    XoneK3.SCHEME_REGISTRY = [
+    myCatnip.SCHEME_REGISTRY = [
         'myCatnip',
         'myCatnipSpread',
         'catFX',
@@ -52,7 +52,7 @@
         'labDefault'
     ];
 
-    XoneK3.LAB_SLOT = {
+    myCatnip.LAB_SLOT = {
         ON: 0, OFF: 1, CO: 2, CO_OFF: 3,
         SAVE_START: 4, SAVE_END: 11,
         STRUCTURAL:   12,
@@ -62,15 +62,15 @@
     };
 
     // Slot-grid cell colours, keyed by LAB_SLOT index.
-    XoneK3.LAB_SLOT_COLOURS = {};
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.ON]         = [0, 127, 0];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.OFF]        = [127, 0, 0];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.CO]         = [127, 127, 127];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.CO_OFF]     = [60, 60, 127];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.STRUCTURAL]   = [0, 0, 127];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.BAKED_INTERP] = [0, 127, 127];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.BAKED]        = [127, 0, 127];
-    XoneK3.LAB_SLOT_COLOURS[XoneK3.LAB_SLOT.EXPORT]       = [127, 40, 0];
+    myCatnip.LAB_SLOT_COLOURS = {};
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.ON]         = [0, 127, 0];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.OFF]        = [127, 0, 0];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.CO]         = [127, 127, 127];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.CO_OFF]     = [60, 60, 127];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.STRUCTURAL]   = [0, 0, 127];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.BAKED_INTERP] = [0, 127, 127];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.BAKED]        = [127, 0, 127];
+    myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.EXPORT]       = [127, 40, 0];
 
     // Segment-grid cell names, in segment-index order. The
     // renderer paints CALIB_TARGETS[i] with compiled segment i —
@@ -78,7 +78,7 @@
     // _claimedCells only, to skip cells another painter (slot
     // grid, beat-edit targets) owns. Rebinding a cell moves the
     // LED but breaks the segment mapping — do not rebind these.
-    XoneK3.CALIB_TARGETS = [
+    myCatnip.CALIB_TARGETS = [
         'button3_0',
         'button0_1','button1_1','button2_1','button3_1',
         'button0_2','button1_2','button2_2','button3_2',
@@ -88,23 +88,23 @@
         'grid0_3','grid1_3'
     ];
 
-    XoneK3.LAB_DUMP_ON_SHUTDOWN = true;
-    XoneK3._modeSeen = { edit: false, slots: false };
+    myCatnip.LAB_DUMP_ON_SHUTDOWN = true;
+    myCatnip._modeSeen = { edit: false, slots: false };
 
-    XoneK3.modePrint = function(line) {
-        if (!XoneK3.MODE_PRINTS) return;
+    myCatnip.modePrint = function(line) {
+        if (!myCatnip.MODE_PRINTS) return;
         print('[k3] ' + line);
     };
 
-    XoneK3.modePrintFirst = function(mode, hint) {
-        if (!XoneK3.MODE_PRINTS) return;
-        if (XoneK3._modeSeen[mode]) return;
-        XoneK3._modeSeen[mode] = true;
+    myCatnip.modePrintFirst = function(mode, hint) {
+        if (!myCatnip.MODE_PRINTS) return;
+        if (myCatnip._modeSeen[mode]) return;
+        myCatnip._modeSeen[mode] = true;
         print('[k3]   ' + hint);
-        print('[k3]   silence: XoneK3.MODE_PRINTS = false  (xone-k3-lab.js)');
+        print('[k3]   silence: myCatnip.MODE_PRINTS = false  (myCatnip-lab.js)');
     };
 
-    XoneK3.registerPrintTable({
+    myCatnip.registerPrintTable({
         labSegment:      'segment {i}',
         labMarker:       'marker',
         labDeleteSeg:    'deleted segment {i}',
@@ -154,7 +154,7 @@
     // ============================================================
     function clamp127(x) { return Math.max(0, Math.min(127, x)); }
 
-    XoneK3._applyFieldEdit = function(rgb, br, field, mode, value) {
+    myCatnip._applyFieldEdit = function(rgb, br, field, mode, value) {
         var isStep = (mode === 'step');
         var v;
         if (field === 'r') { rgb[0] = clamp127(isStep ? rgb[0] + value : value); v = rgb[0]; }
@@ -218,10 +218,10 @@
     //                    calibration off, brightnessScale absent.
     //                    Reloading here double-applies wb — for
     //                    external raw-sysex hand-off only.
-    XoneK3.bakeScheme = function(ref, ctrl, level) {
-        var raw = XoneK3.resolveScheme(ref);
+    myCatnip.bakeScheme = function(ref, ctrl, level) {
+        var raw = myCatnip.resolveScheme(ref);
         if (!raw || !raw.colors) return null;
-        var compiled = XoneK3.compileScheme(raw);
+        var compiled = myCatnip.compileScheme(raw);
         if (!compiled) return null;
         var segs = compiled.on;
 
@@ -236,7 +236,7 @@
         if (bakeCal && raw.calibration &&
             ctrl && ctrl.calibrationMode !== 'off') {
             flatTarget = ctrl._flatTarget(segs);
-            flatTarget = XoneK3.scaleTarget(flatTarget, raw.brightnessScale);
+            flatTarget = myCatnip.scaleTarget(flatTarget, raw.brightnessScale);
         }
 
         var wb = (bakeWb && ctrl && ctrl.wbActive &&
@@ -295,8 +295,8 @@
         return out;
     };
 
-    XoneK3.LabController = function(cfg) {
-        XoneK3.K3Controller.call(this, cfg);
+    myCatnip.LabController = function(cfg) {
+        myCatnip.Controller.call(this, cfg);
 
         this.ledTargetGroups = cfg.ledTargetGroups || {};
         this._labPreviewTarget = cfg.labPreviewTarget || null;
@@ -320,12 +320,12 @@
             _version: 0
         };
 
-        if (cfg.modePrints   !== undefined) XoneK3.MODE_PRINTS     = !!cfg.modePrints;
-        if (cfg.debugPrints  !== undefined) XoneK3._debugPrintsOn  = !!cfg.debugPrints;
+        if (cfg.modePrints   !== undefined) myCatnip.MODE_PRINTS     = !!cfg.modePrints;
+        if (cfg.debugPrints  !== undefined) myCatnip._debugPrintsOn  = !!cfg.debugPrints;
     };
 
-    XoneK3.LabController.prototype = Object.create(XoneK3.K3Controller.prototype);
-    XoneK3.LabController.prototype.constructor = XoneK3.LabController;
+    myCatnip.LabController.prototype = Object.create(myCatnip.Controller.prototype);
+    myCatnip.LabController.prototype.constructor = myCatnip.LabController;
 
     // ============================================================
     // BINDING DISCOVERY
@@ -334,25 +334,25 @@
     // invalidated by _applied identity (reassigned on every
     // recompute).
     //
-    // Keys are XoneK3._funcId(fn), NOT `fn` itself. Using `fn` as an
+    // Keys are myCatnip._funcId(fn), NOT `fn` itself. Using `fn` as an
     // object key coerces through Function.prototype.toString(), and
     // every closure returned by the same expression (e.g. all the
     // _makeFieldEditor instances) stringifies identically — one
     // bucket, wrong cells painted.
-    XoneK3.LabController.prototype._buildCellIndex = function() {
+    myCatnip.LabController.prototype._buildCellIndex = function() {
         var idx = {};
         var resolved = this._applied || {};
         for (var cell in resolved) {
             var cfg = resolved[cell];
             if (!cfg || !cfg.func) continue;
-            var fid = XoneK3._funcId(cfg.func);
+            var fid = myCatnip._funcId(cfg.func);
             if (!idx[fid]) idx[fid] = {};
             idx[fid][cell] = cfg.args ? cfg.args.slice() : [];
         }
         return idx;
     };
 
-    XoneK3.LabController.prototype._findCellsByFunc = function(funcRefs) {
+    myCatnip.LabController.prototype._findCellsByFunc = function(funcRefs) {
         if (this._cellIndexFor !== this._applied) {
             this._cellIndex = this._buildCellIndex();
             this._cellIndexFor = this._applied;
@@ -360,7 +360,7 @@
         var out = {};
         var idx = this._cellIndex;
         for (var i = 0; i < funcRefs.length; i++) {
-            var fid = XoneK3._funcId(funcRefs[i]);
+            var fid = myCatnip._funcId(funcRefs[i]);
             var cells = idx[fid];
             if (!cells) continue;
             for (var cell in cells) out[cell] = cells[cell];
@@ -368,9 +368,9 @@
         return out;
     };
 
-    XoneK3.LabController.prototype._claimedCells = function() {
+    myCatnip.LabController.prototype._claimedCells = function() {
         var claimed = new Set();
-        var cells = this._findCellsByFunc(XoneK3.LAB_PAINTER_FUNCS);
+        var cells = this._findCellsByFunc(myCatnip.LAB_PAINTER_FUNCS);
         for (var c in cells) claimed.add(c);
         return claimed;
     };
@@ -382,29 +382,29 @@
     // never leak into a slot, a bake, or a loaded scheme. This is
     // the single hook that keeps colorSet inside _lab.edit —
     // every save / load path uses _cloneScheme.
-    XoneK3.LabController.prototype._cloneScheme = function(s) {
+    myCatnip.LabController.prototype._cloneScheme = function(s) {
         if (!s) return null;
         var clone = JSON.parse(JSON.stringify(s));
         delete clone.colorSet;
         return clone;
     };
 
-    XoneK3.LabController.prototype._editableScheme = function() {
+    myCatnip.LabController.prototype._editableScheme = function() {
         if (!this._patchActive('colorLab')) return null;
         return this._lab.edit;
     };
 
-    XoneK3.LabController.prototype._previewScheme = function() {
+    myCatnip.LabController.prototype._previewScheme = function() {
         var s = this._lab.previewSource;
         if (s === 'edit') return this._lab.edit;
         if (typeof s === 'number') return this._lab.slots[s] || null;
         if (typeof s === 'string') {
-            return XoneK3.SCHEMES[s] ? XoneK3.resolveScheme(s) : null;
+            return myCatnip.SCHEMES[s] ? myCatnip.resolveScheme(s) : null;
         }
         return null;
     };
 
-    XoneK3.LabController.prototype._labLEDScheme = function() {
+    myCatnip.LabController.prototype._labLEDScheme = function() {
         if (this._patchActive('colorLab')) {
             if (this._lab.previewing) return this._previewScheme();
             return this._lab.edit;
@@ -412,10 +412,10 @@
         return this._previewScheme();
     };
 
-    XoneK3.LabController.prototype._commitPreview = function() {
+    myCatnip.LabController.prototype._commitPreview = function() {
         if (!this._patchActive('colorLab')) return null;
         if (this._lab.previewSource !== 'edit') {
-            XoneK3._warnOnce('labEditWhilePreviewing',
+            myCatnip._warnOnce('labEditWhilePreviewing',
                 'preview is preview-only — shift+pressR loads the preview ' +
                 'into edit before edits take effect');
             return null;
@@ -423,77 +423,77 @@
         return this._lab.edit;
     };
 
-    XoneK3.LabController.prototype._withEdit = function(fn) {
+    myCatnip.LabController.prototype._withEdit = function(fn) {
         var scheme = this._commitPreview();
         if (!scheme) return;
         if (fn.call(this, scheme) === false) return;
         this._labRenderPreview();
     };
 
-    XoneK3.LabController.prototype._previewLabel = function() {
+    myCatnip.LabController.prototype._previewLabel = function() {
         var s = this._lab.previewSource;
         if (s === 'edit') return 'edit';
         if (typeof s === 'number') {
-            if (s === XoneK3.LAB_SLOT.STRUCTURAL)   return 'structural';
-            if (s === XoneK3.LAB_SLOT.BAKED_INTERP) return 'baked+interp';
-            if (s === XoneK3.LAB_SLOT.BAKED)        return 'baked';
-            if (s === XoneK3.LAB_SLOT.EXPORT)       return 'export';
+            if (s === myCatnip.LAB_SLOT.STRUCTURAL)   return 'structural';
+            if (s === myCatnip.LAB_SLOT.BAKED_INTERP) return 'baked+interp';
+            if (s === myCatnip.LAB_SLOT.BAKED)        return 'baked';
+            if (s === myCatnip.LAB_SLOT.EXPORT)       return 'export';
             return 'slot' + s;
         }
         return s;
     };
 
-    XoneK3.LabController.prototype._isBeatEdit = function() {
+    myCatnip.LabController.prototype._isBeatEdit = function() {
         return this._patchActive('colorLabBeat');
     };
 
     // ============================================================
     // AUTO-BAKE
     // ============================================================
-    XoneK3.LabController.prototype._applyAutoBake = function() {
+    myCatnip.LabController.prototype._applyAutoBake = function() {
         var src = this._lab.previewSource;
         var editable = (src === 'edit') ||
                        (typeof src === 'number' && src >= 0 && src <= 11);
         if (!editable) return;
         var preview = this._previewScheme();
         if (!preview) return;
-        var S = XoneK3.LAB_SLOT;
-        this._lab.slots[S.STRUCTURAL]   = XoneK3.bakeScheme(preview, this, 'structural');
-        this._lab.slots[S.BAKED_INTERP] = XoneK3.bakeScheme(preview, this, 'bakedInterp');
-        this._lab.slots[S.BAKED]        = XoneK3.bakeScheme(preview, this, 'baked');
-        this._lab.slots[S.EXPORT]       = XoneK3.bakeScheme(preview, this, 'export');
+        var S = myCatnip.LAB_SLOT;
+        this._lab.slots[S.STRUCTURAL]   = myCatnip.bakeScheme(preview, this, 'structural');
+        this._lab.slots[S.BAKED_INTERP] = myCatnip.bakeScheme(preview, this, 'bakedInterp');
+        this._lab.slots[S.BAKED]        = myCatnip.bakeScheme(preview, this, 'baked');
+        this._lab.slots[S.EXPORT]       = myCatnip.bakeScheme(preview, this, 'export');
     };
 
     // ============================================================
     // PREVIEW CHANGE
     // ============================================================
-    XoneK3.LabController.prototype._setPreview = function(src, label) {
+    myCatnip.LabController.prototype._setPreview = function(src, label) {
         this._lab.previewSource = src;
         this._lab.previewing = true;
         this._applyAutoBake();
         this._labRenderPreview();
-        XoneK3.modePrint('preview = ' + (label || this._previewLabel()));
+        myCatnip.modePrint('preview = ' + (label || this._previewLabel()));
     };
 
     // ============================================================
     // SLOT ACTIONS
     // ============================================================
-    XoneK3.LabController.prototype._selectSlot = function(idx) {
+    myCatnip.LabController.prototype._selectSlot = function(idx) {
         if (this._lab.saveArmed) {
             var preview = this._previewScheme();
             if (!preview) {
                 this._lab.saveArmed = false;
-                XoneK3.modePrint('arm = OFF');
-                XoneK3.debugPrint('labSlotPress', { i: idx });
+                myCatnip.modePrint('arm = OFF');
+                myCatnip.debugPrint('labSlotPress', { i: idx });
                 this._setPreview(idx, 'slot' + idx);
                 this._refreshBinding('layer');
                 return;
             }
             if (this._lab.previewSource !== idx) this._emitOverwriteBackup(idx);
-            this._lab.slots[idx] = this._cloneScheme(XoneK3.resolveScheme(preview));
-            XoneK3.debugPrint('labSlotSaved', { from: this._previewLabel(), to: idx });
+            this._lab.slots[idx] = this._cloneScheme(myCatnip.resolveScheme(preview));
+            myCatnip.debugPrint('labSlotSaved', { from: this._previewLabel(), to: idx });
             this._lab.saveArmed = false;
-            XoneK3.modePrint('arm = OFF');
+            myCatnip.modePrint('arm = OFF');
             this._lab.edit = this._cloneScheme(this._lab.slots[idx]);
             this._lab.previewSource = 'edit';
             this._lab.previewing = false;
@@ -502,27 +502,27 @@
             this.replacePatch('slots', 'colorLab');
             return;
         }
-        XoneK3.debugPrint('labSlotPress', { i: idx });
+        myCatnip.debugPrint('labSlotPress', { i: idx });
         this._setPreview(idx, 'slot' + idx);
     };
 
-    XoneK3.LabController.prototype._toggleSaveArm = function() {
+    myCatnip.LabController.prototype._toggleSaveArm = function() {
         this._lab.saveArmed = !this._lab.saveArmed;
-        XoneK3.modePrint('arm = ' + (this._lab.saveArmed ? 'ON' : 'OFF'));
+        myCatnip.modePrint('arm = ' + (this._lab.saveArmed ? 'ON' : 'OFF'));
         this._labRenderGrid();
         this._refreshBinding('layer');
     };
 
-    XoneK3.LabController.prototype._editReturn = function() {
+    myCatnip.LabController.prototype._editReturn = function() {
         this._lab.saveArmed = false;
         this.replacePatch('slots', 'colorLab');
     };
 
-    XoneK3.LabController.prototype._editThis = function() {
+    myCatnip.LabController.prototype._editThis = function() {
         var preview = this._previewScheme();
         if (!preview) return;
-        XoneK3.debugPrint('labEditThis', { from: this._previewLabel() });
-        this._lab.edit = this._cloneScheme(XoneK3.resolveScheme(preview));
+        myCatnip.debugPrint('labEditThis', { from: this._previewLabel() });
+        this._lab.edit = this._cloneScheme(myCatnip.resolveScheme(preview));
         this._lab.previewSource = 'edit';
         this._lab.previewing = false;
         this._lab.selectedSegment = 0;
@@ -531,13 +531,13 @@
         this.replacePatch('slots', 'colorLab');
     };
 
-    XoneK3.LabController.prototype._loadPreview = function() {
+    myCatnip.LabController.prototype._loadPreview = function() {
         if (!this._patchActive('colorLab')) return;
         if (this._lab.previewSource === 'edit') return;
         var preview = this._previewScheme();
         if (!preview) return;
-        XoneK3.debugPrint('labLoadPreview', { from: this._previewLabel() });
-        this._lab.edit = this._cloneScheme(XoneK3.resolveScheme(preview));
+        myCatnip.debugPrint('labLoadPreview', { from: this._previewLabel() });
+        this._lab.edit = this._cloneScheme(myCatnip.resolveScheme(preview));
         this._lab.previewSource = 'edit';
         this._lab.previewing = false;
         this._lab.selectedSegment = 0;
@@ -548,7 +548,7 @@
     // ============================================================
     // COLOUR EDIT
     // ============================================================
-    XoneK3.LabController.prototype._editColorField = function(field, mode, value) {
+    myCatnip.LabController.prototype._editColorField = function(field, mode, value) {
         if (this._isBeatEdit()) {
             if (!this._lab.beatTarget) return;
             if (mode === 'step') this._editBeatColor(field, value, undefined);
@@ -562,9 +562,9 @@
         });
     };
 
-    XoneK3.LabController.prototype._editMarkerTarget = function(scheme, field, mode, value) {
+    myCatnip.LabController.prototype._editMarkerTarget = function(scheme, field, mode, value) {
         var defaultBr = (typeof scheme.brightness === 'number') ? scheme.brightness : 127;
-        var src = XoneK3.resolveColorEntry(scheme.markerColor || 'off', defaultBr);
+        var src = myCatnip.resolveColorEntry(scheme.markerColor || 'off', defaultBr);
         if (!src) return false;
 
         var rgb = src.rgb ? src.rgb.slice() : [0, 0, 0];
@@ -575,7 +575,7 @@
         var curBr = editBr
             ? (this._lab.previewOn ? onBr : (offBr !== null ? offBr : onBr))
             : onBr;
-        var res = XoneK3._applyFieldEdit(rgb, curBr, field, mode, value);
+        var res = myCatnip._applyFieldEdit(rgb, curBr, field, mode, value);
         if (!res) return false;
 
         if (editBr) {
@@ -586,11 +586,11 @@
         var entry = [rgb[0], rgb[1], rgb[2], onBr];
         if (offBr !== null) entry.push(offBr);
         scheme.markerColor = entry;
-        XoneK3.debugPrint('labEditMarker', { field: field, v: res.val });
+        myCatnip.debugPrint('labEditMarker', { field: field, v: res.val });
         return true;
     };
 
-    XoneK3.LabController.prototype._editSegmentTarget = function(scheme, field, mode, value) {
+    myCatnip.LabController.prototype._editSegmentTarget = function(scheme, field, mode, value) {
         var segIdx = this._lab.selectedSegment;
         if (!scheme.colors || segIdx < 0) return false;
 
@@ -602,11 +602,11 @@
         if (segIdx >= scheme.colors.length) return false;
 
         var defaultBr = (typeof scheme.brightness === 'number') ? scheme.brightness : 127;
-        var source = XoneK3.resolveColorEntry(scheme.colors[segIdx], defaultBr);
+        var source = myCatnip.resolveColorEntry(scheme.colors[segIdx], defaultBr);
         if (!source) return false;
 
         var rgb = source.rgb ? source.rgb.slice() : [0, 0, 0];
-        var res = XoneK3._applyFieldEdit(rgb, source.brightness, field, mode, value);
+        var res = myCatnip._applyFieldEdit(rgb, source.brightness, field, mode, value);
         if (!res) return false;
 
         // Preserve existing off-brightness. Format is
@@ -623,14 +623,14 @@
         if (rgb[0] !== 0 || rgb[1] !== 0 || rgb[2] !== 0) {
             _setColorSet(scheme, segIdx, true);
         }
-        XoneK3.debugPrint('labEditSeg', { i: segIdx, field: field, v: res.val });
+        myCatnip.debugPrint('labEditSeg', { i: segIdx, field: field, v: res.val });
         return true;
     };
 
     // ============================================================
     // BEAT EDIT
     // ============================================================
-    XoneK3.LabController.prototype._editBeatColor = function(field, delta, absValue) {
+    myCatnip.LabController.prototype._editBeatColor = function(field, delta, absValue) {
         this._withEdit(function(scheme) {
             var level = this._lab.beatTarget;
             if (!level) return false;
@@ -640,7 +640,7 @@
                 ? scheme.beat
                 : (scheme.beat[level] = scheme.beat[level] || {});
 
-            var cur = XoneK3.resolveColorEntry(tgt.color || 'off');
+            var cur = myCatnip.resolveColorEntry(tgt.color || 'off');
             var rgb = (cur && cur.rgb) ? cur.rgb.slice() : [0, 0, 0];
             // Brightness may be embedded in the color spec
             // ('green, 60') or stored alongside it (brightness: 60).
@@ -651,7 +651,7 @@
                 ? tgt.brightness
                 : ((cur && typeof cur.brightness === 'number') ? cur.brightness : 127);
             var isAbs = (typeof absValue === 'number');
-            var res = XoneK3._applyFieldEdit(rgb, br, field,
+            var res = myCatnip._applyFieldEdit(rgb, br, field,
                                              isAbs ? 'abs' : 'step',
                                              isAbs ? absValue : delta);
             if (!res) return false;
@@ -659,7 +659,7 @@
             tgt.color = [rgb[0], rgb[1], rgb[2]];
             tgt.brightness = res.br;
 
-            XoneK3.debugPrint('labBeatColor', { level: level, field: field, v: res.val });
+            myCatnip.debugPrint('labBeatColor', { level: level, field: field, v: res.val });
             return true;
         });
     };
@@ -667,17 +667,17 @@
     // ============================================================
     // DUMP — per-slot emitters
     // ============================================================
-    XoneK3.LabController.prototype._emitOverwriteBackup = function(idx) {
+    myCatnip.LabController.prototype._emitOverwriteBackup = function(idx) {
         if (!this._lab.slots[idx]) return;
         var L = ['// ==================== overwriting slot ' + idx + ' ===================='];
         this._emitSlotDump(idx, L);
         print(L.join('\n'));
     };
 
-    XoneK3.LabController.prototype._emitSlotDump = function(slotIdx, L) {
-        var scheme = XoneK3.resolveScheme(this._lab.slots[slotIdx]);
+    myCatnip.LabController.prototype._emitSlotDump = function(slotIdx, L) {
+        var scheme = myCatnip.resolveScheme(this._lab.slots[slotIdx]);
         if (!scheme) return;
-        var S = XoneK3.LAB_SLOT;
+        var S = myCatnip.LAB_SLOT;
         var isMain = (slotIdx === S.ON);
         var baseName = 'slot' + slotIdx;
 
@@ -687,39 +687,39 @@
             var offSlot   = this._lab.slots[S.OFF];
             var coSlot    = this._lab.slots[S.CO];
             var coOffSlot = this._lab.slots[S.CO_OFF];
-            if (offSlot) offScheme = XoneK3.resolveScheme(offSlot);
+            if (offSlot) offScheme = myCatnip.resolveScheme(offSlot);
             if (coSlot) {
-                coScheme = Object.assign({}, XoneK3.resolveScheme(coSlot));
-                if (coOffSlot) coScheme.offScheme = XoneK3.resolveScheme(coOffSlot);
+                coScheme = Object.assign({}, myCatnip.resolveScheme(coSlot));
+                if (coOffSlot) coScheme.offScheme = myCatnip.resolveScheme(coOffSlot);
             }
         }
 
         _emitSchemeLines(L, baseName, scheme, offScheme, coScheme);
     };
 
-    XoneK3.LabController.prototype._dumpSlot = function(slotIdx) {
+    myCatnip.LabController.prototype._dumpSlot = function(slotIdx) {
         var L = [];
         this._emitSlotDump(slotIdx, L);
         print('\n' + L.join('\n'));
     };
 
-    XoneK3.LabController.prototype._dumpPreview = function() {
+    myCatnip.LabController.prototype._dumpPreview = function() {
         var src = this._lab.previewSource;
         if (typeof src === 'number') { this._dumpSlot(src); return; }
         var scheme;
         if (this._patchActive('colorLab') || src === 'edit') {
             scheme = this._lab.edit;
         } else if (typeof src === 'string') {
-            scheme = XoneK3.resolveScheme(src);
+            scheme = myCatnip.resolveScheme(src);
         }
         if (!scheme) return;
         var L = [];
-        _emitSchemeLines(L, 'NAME', XoneK3.resolveScheme(scheme));
+        _emitSchemeLines(L, 'NAME', myCatnip.resolveScheme(scheme));
         print('\n' + L.join('\n'));
     };
 
-    XoneK3.LabController.prototype._dumpAllSlots = function() {
-        var S = XoneK3.LAB_SLOT;
+    myCatnip.LabController.prototype._dumpAllSlots = function() {
+        var S = myCatnip.LAB_SLOT;
         var L = [];
         var emitted = {};
         var count = 0;
@@ -742,10 +742,10 @@
     // ============================================================
     // OVERRIDES
     // ============================================================
-    XoneK3.LabController.prototype._initExtra = function() {
+    myCatnip.LabController.prototype._initExtra = function() {
         if (this.wbActive === undefined) this.wbActive = true;
 
-        var def = XoneK3.resolveScheme('labDefault');
+        var def = myCatnip.resolveScheme('labDefault');
         if (def) this._lab.slots[0] = this._cloneScheme(def);
 
         var self = this;
@@ -778,35 +778,35 @@
         };
 
         this._labRenderPreview();
-        XoneK3.modePrint('mode = EDIT');
-        XoneK3.modePrintFirst('edit', 'layer = slots, shift+R = load preview into edit');
+        myCatnip.modePrint('mode = EDIT');
+        myCatnip.modePrintFirst('edit', 'layer = slots, shift+R = load preview into edit');
 
         this._refreshAllLeds('lab-init');
     };
 
-    XoneK3.LabController.prototype.shutdown = function() {
+    myCatnip.LabController.prototype.shutdown = function() {
         if (this._shuttingDown) return;
-        if (XoneK3.LAB_DUMP_ON_SHUTDOWN) {
+        if (myCatnip.LAB_DUMP_ON_SHUTDOWN) {
             print('// lab: shutdown dump');
             this._dumpAllSlots();
         }
-        XoneK3.K3Controller.prototype.shutdown.call(this);
+        myCatnip.Controller.prototype.shutdown.call(this);
     };
 
-    XoneK3.LabController.prototype._shutdownExtra = function() {
+    myCatnip.LabController.prototype._shutdownExtra = function() {
         if (this._previewCOConn) { this._previewCOConn.disconnect(); this._previewCOConn = null; }
         this._onBeat = null;
     };
 
-    XoneK3.LabController.prototype._onInput = function(b) {
+    myCatnip.LabController.prototype._onInput = function(b) {
         this._lab._version++;
     };
 
-    XoneK3.LabController.prototype._afterRecompute = function() {
+    myCatnip.LabController.prototype._afterRecompute = function() {
         this._labRenderPreview();
     };
 
-    XoneK3.LabController.prototype._onPatchChange = function(from, to) {
+    myCatnip.LabController.prototype._onPatchChange = function(from, to) {
         if (from === 'colorLab' && to !== 'colorLab') {
             this._lab.previewSource = 'edit';
             this._lab.previewing = false;
@@ -815,30 +815,30 @@
             this._refreshBinding('layer');
         }
         if (to === 'slots') {
-            XoneK3.modePrint('mode = SLOTS (preview=' + this._previewLabel() + ')');
-            XoneK3.modePrintFirst('slots',
+            myCatnip.modePrint('mode = SLOTS (preview=' + this._previewLabel() + ')');
+            myCatnip.modePrintFirst('slots',
                 'grid = preview, R = arm, shift+R = load into edit, shift+L = scroll');
             this._labRenderPreview();
         } else if (to === 'colorLab') {
-            XoneK3.modePrint('mode = EDIT');
+            myCatnip.modePrint('mode = EDIT');
         }
     };
 
-    XoneK3.LabController.prototype._needsBeatClocks = function() {
+    myCatnip.LabController.prototype._needsBeatClocks = function() {
         return this._beatLeds.length > 0 || !!this._onBeat;
     };
 
     // ============================================================
     // LED PAINT HELPERS
     // ============================================================
-    XoneK3.LabController.prototype._paintRGB = function(name, r, g, b, hw) {
+    myCatnip.LabController.prototype._paintRGB = function(name, r, g, b, hw) {
         var bind = this.bindings[name];
         if (!bind || bind.idx < 0) return;
         this.sendLED(bind.idx, r, g, b, hw);
     };
 
-    XoneK3.LabController.prototype._paintLED = function(name, colorSpec, onOrHw) {
-        var entry = XoneK3.resolveColorEntry(colorSpec);
+    myCatnip.LabController.prototype._paintLED = function(name, colorSpec, onOrHw) {
+        var entry = myCatnip.resolveColorEntry(colorSpec);
         if (!entry || !entry.rgb) return;
         var hw;
         if (typeof onOrHw === 'number') {
@@ -847,15 +847,15 @@
             hw = onOrHw
                 ? entry.brightness
                 : ((entry.brightnessOff !== undefined && entry.brightnessOff !== null)
-                    ? entry.brightnessOff : XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF);
+                    ? entry.brightnessOff : myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF);
         } else {
             hw = entry.brightness;
         }
         this._paintRGB(name, entry.rgb[0], entry.rgb[1], entry.rgb[2], hw);
     };
 
-    XoneK3.LabController.prototype._paintCellsSolid = function(cells, colorSpec) {
-        var entry = XoneK3.resolveColorEntry(colorSpec);
+    myCatnip.LabController.prototype._paintCellsSolid = function(cells, colorSpec) {
+        var entry = myCatnip.resolveColorEntry(colorSpec);
         if (!entry || !entry.rgb) return;
         for (var cell in cells) {
             this._paintRGB(cell, entry.rgb[0], entry.rgb[1], entry.rgb[2], entry.brightness);
@@ -865,13 +865,13 @@
     // ============================================================
     // GRID / SLOT / STATE RENDER
     // ============================================================
-    XoneK3.LabController.prototype._labRenderPreview = function() {
+    myCatnip.LabController.prototype._labRenderPreview = function() {
         this._labRenderStateLEDs();
         this._labRenderGrid();
         this._renderPreviewLED();
     };
 
-    XoneK3.LabController.prototype._compiledPreview = function() {
+    myCatnip.LabController.prototype._compiledPreview = function() {
         var v = this._lab._version;
         var src = this._lab.previewSource;
         if (this._compileCache &&
@@ -880,13 +880,13 @@
             return this._compileCache;
         }
         var preview = this._labLEDScheme();
-        var resolved = preview ? XoneK3.resolveScheme(preview) : null;
+        var resolved = preview ? myCatnip.resolveScheme(preview) : null;
         var compiled = resolved ? this._previewCompiled(resolved) : null;
         this._compileCache = { v: v, src: src, resolved: resolved, compiled: compiled };
         return this._compileCache;
     };
 
-    XoneK3.LabController.prototype._labRenderGrid = function() {
+    myCatnip.LabController.prototype._labRenderGrid = function() {
         var onColorLab = this._patchActive('colorLab');
         var onSlots    = this._patchActive('slots');
         if (!onColorLab && !onSlots) return;
@@ -900,7 +900,7 @@
         }
     };
 
-    XoneK3.LabController.prototype._renderSegmentGrid = function(compiled, onColorLab) {
+    myCatnip.LabController.prototype._renderSegmentGrid = function(compiled, onColorLab) {
         var targets = (this.ledTargetGroups && this.ledTargetGroups.calib) || [];
         var claimed = this._claimedCells();
         for (var i = 0; i < targets.length; i++) {
@@ -917,7 +917,7 @@
 
     // Resolve one segment cell's paint decision. Returns
     // { rgb, br } to paint, or null for black.
-    XoneK3.LabController.prototype._segmentCellPaint = function(name, i, compiled, onColorLab) {
+    myCatnip.LabController.prototype._segmentCellPaint = function(name, i, compiled, onColorLab) {
         var applied = this._applied[name];
         if (applied == null || Object.keys(applied).length === 0) return null;
         if (!compiled || i >= compiled.on.length) return null;
@@ -939,7 +939,7 @@
         };
     };
 
-    XoneK3.LabController.prototype._renderMarkerLED = function(compiled) {
+    myCatnip.LabController.prototype._renderMarkerLED = function(compiled) {
         if (!this._markerTarget) return;
         if (!compiled || !compiled.marker) {
             this._paintRGB(this._markerTarget, 0, 0, 0, 0);
@@ -949,16 +949,16 @@
         this._paintRGB(this._markerTarget, m.rgb[0], m.rgb[1], m.rgb[2], m.brightness);
     };
 
-    XoneK3.LabController.prototype._renderSlotLEDs = function() {
+    myCatnip.LabController.prototype._renderSlotLEDs = function() {
         if (!this._patchActive('slots')) return;
-        var S = XoneK3.LAB_SLOT;
-        var cells = this._findCellsByFunc([XoneK3.FUNCS.labSlotPress]);
+        var S = myCatnip.LAB_SLOT;
+        var cells = this._findCellsByFunc([myCatnip.FUNCS.labSlotPress]);
         for (var cell in cells) {
             var idx = parseInt(cells[cell][0], 10);
             if (isNaN(idx)) continue;
             var slot = this._lab.slots[idx];
             if (!slot) { this._paintRGB(cell, 0, 0, 0, 0); continue; }
-            var col = XoneK3.LAB_SLOT_COLOURS[idx];
+            var col = myCatnip.LAB_SLOT_COLOURS[idx];
             if (!col) {
                 col = (idx <= S.SAVE_END) ? [127, 127, 0] : [127, 0, 127];
             }
@@ -968,11 +968,11 @@
         }
     };
 
-    XoneK3.LabController.prototype._labRenderStateLEDs = function() {
+    myCatnip.LabController.prototype._labRenderStateLEDs = function() {
         if (this._patchActive('colorLab')) {
             var beatOn = this._patchActive('colorLabBeat');
             this._paintCellsSolid(
-                this._findCellsByFunc([XoneK3.FUNCS.labBeatEditToggle]),
+                this._findCellsByFunc([myCatnip.FUNCS.labBeatEditToggle]),
                 beatOn ? 'cyan, 60' : 'white, 20');
         }
 
@@ -985,40 +985,40 @@
 
         if (this.modifiers.shift) {
             this._paintCellsSolid(
-                this._findCellsByFunc([XoneK3.FUNCS.labToggleWb]),
+                this._findCellsByFunc([myCatnip.FUNCS.labToggleWb]),
                 this.wbActive ? 'green, 80' : 'red, 80');
             return;
         }
 
         var preview = this._labLEDScheme();
-        var resolved = preview ? XoneK3.resolveScheme(preview) : null;
+        var resolved = preview ? myCatnip.resolveScheme(preview) : null;
         var interp = resolved ? (resolved.interp !== false) : true;
         var calibration = resolved ? (resolved.calibration !== false) : true;
 
         this._paintCellsSolid(
-            this._findCellsByFunc([XoneK3.FUNCS.ledLabToggleCalibration]),
+            this._findCellsByFunc([myCatnip.FUNCS.ledLabToggleCalibration]),
             calibration ? 'green, 80' : 'red, 80');
         this._paintCellsSolid(
-            this._findCellsByFunc([XoneK3.FUNCS.ledLabToggleRatio]),
+            this._findCellsByFunc([myCatnip.FUNCS.ledLabToggleRatio]),
             this._lab.ratioEdit ? 'green, 80' : 'red, 80');
         this._paintCellsSolid(
-            this._findCellsByFunc([XoneK3.FUNCS.ledLabToggleInterp]),
+            this._findCellsByFunc([myCatnip.FUNCS.ledLabToggleInterp]),
             interp ? 'green, 80' : 'red, 80');
     };
 
-    XoneK3.LabController.prototype._renderBeatGrid = function() {
+    myCatnip.LabController.prototype._renderBeatGrid = function() {
         var scheme = this._labLEDScheme();
         if (!scheme) return;
-        scheme = XoneK3.resolveScheme(scheme);
+        scheme = myCatnip.resolveScheme(scheme);
         if (!scheme) return;
         var beat = scheme.beat || {};
 
-        var targetCells = this._findCellsByFunc([XoneK3.FUNCS.labBeatSelect, XoneK3.FUNCS.labBeatClear]);
+        var targetCells = this._findCellsByFunc([myCatnip.FUNCS.labBeatSelect, myCatnip.FUNCS.labBeatClear]);
         for (var cell in targetCells) {
             var level = targetCells[cell][0];
             var sub = (level === 'beat') ? beat : beat[level];
             var entry = sub && sub.color
-                ? XoneK3.resolveColorEntry(sub.color)
+                ? myCatnip.resolveColorEntry(sub.color)
                 : null;
             if (!entry || !entry.rgb) {
                 this._paintLED(cell, 'white', false);
@@ -1028,7 +1028,7 @@
             this._paintRGB(cell, entry.rgb[0], entry.rgb[1], entry.rgb[2], br);
         }
 
-        var toggleCells = this._findCellsByFunc([XoneK3.FUNCS.labBeatToggleEnabled]);
+        var toggleCells = this._findCellsByFunc([myCatnip.FUNCS.labBeatToggleEnabled]);
         var on = !(beat.enabled === false);
         for (var tcell in toggleCells) {
             this._paintRGB(tcell, on ? 0 : 127, on ? 127 : 0, 0, 100);
@@ -1038,12 +1038,12 @@
     // ============================================================
     // PREVIEW LED
     // ============================================================
-    XoneK3.LabController.prototype._previewCompiled = function(resolved) {
+    myCatnip.LabController.prototype._previewCompiled = function(resolved) {
         if (!resolved) return null;
-        if (this._lab.previewSource !== XoneK3.LAB_SLOT.ON) {
-            return XoneK3.compileScheme(resolved);
+        if (this._lab.previewSource !== myCatnip.LAB_SLOT.ON) {
+            return myCatnip.compileScheme(resolved);
         }
-        var S = XoneK3.LAB_SLOT;
+        var S = myCatnip.LAB_SLOT;
         var offSlot   = this._lab.slots[S.OFF];
         var coSlot    = this._lab.slots[S.CO];
         var coOffSlot = this._lab.slots[S.CO_OFF];
@@ -1055,17 +1055,17 @@
                 ? Object.assign({}, coSlot, { offScheme: coOffSlot })
                 : coSlot;
         }
-        return XoneK3.compileScheme(resolved, overrides);
+        return myCatnip.compileScheme(resolved, overrides);
     };
 
-    XoneK3.LabController.prototype._renderBeatStoppedTarget = function(name, resolved) {
+    myCatnip.LabController.prototype._renderBeatStoppedTarget = function(name, resolved) {
         if (!this._isBeatEdit() || !this._lab.beatTarget) return false;
         var bBeat = resolved && resolved.beat;
         if (!bBeat) return false;
         var lvl = this._lab.beatTarget;
         var sub = (lvl === 'beat') ? bBeat : bBeat[lvl];
         if (sub && sub.color) {
-            var e = XoneK3.resolveColorEntry(sub.color);
+            var e = myCatnip.resolveColorEntry(sub.color);
             if (e && e.rgb) {
                 var ebr = (typeof sub.brightness === 'number') ? sub.brightness : e.brightness;
                 this._paintRGB(name, e.rgb[0], e.rgb[1], e.rgb[2], ebr);
@@ -1076,9 +1076,9 @@
         return true;
     };
 
-    XoneK3.LabController.prototype._renderCoMatch = function(name, compiled, previewPos, showOn) {
+    myCatnip.LabController.prototype._renderCoMatch = function(name, compiled, previewPos, showOn) {
         if (!this._labPreviewCO || !this._labPreviewCO.group || !this._labPreviewCO.name) return false;
-        var steer = XoneK3.coMatchSample(
+        var steer = myCatnip.coMatchSample(
             compiled,
             this._labPreviewCO.group,
             this._labPreviewCO.name,
@@ -1086,13 +1086,13 @@
             showOn);
         if (!steer) return false;
         var coEntry = this._sampleRamp(steer.ramp, steer.t, compiled.co, showOn, true);
-        if (!coEntry || coEntry === XoneK3.BEAT_HOLD) return false;
+        if (!coEntry || coEntry === myCatnip.BEAT_HOLD) return false;
         this._paintRGB(name, coEntry.rgb[0], coEntry.rgb[1], coEntry.rgb[2], coEntry.brightness);
         return true;
     };
 
-    XoneK3.LabController.prototype._renderMarkerBand = function(name, compiled, showOn, devDir) {
-        if (!XoneK3.markerHit(compiled, devDir)) return false;
+    myCatnip.LabController.prototype._renderMarkerBand = function(name, compiled, showOn, devDir) {
+        if (!myCatnip.markerHit(compiled, devDir)) return false;
         var mbr = showOn
             ? compiled.marker.brightness
             : (typeof compiled.marker.brightnessOff === 'number'
@@ -1102,15 +1102,15 @@
         return true;
     };
 
-    XoneK3.LabController.prototype._renderPreviewRamp = function(name, compiled, previewPos, showOn) {
+    myCatnip.LabController.prototype._renderPreviewRamp = function(name, compiled, previewPos, showOn) {
         var ramp = showOn ? compiled.on : compiled.off;
         var entry = this._sampleRamp(ramp, previewPos, compiled, showOn, false);
-        if (entry === XoneK3.BEAT_HOLD) return;
+        if (entry === myCatnip.BEAT_HOLD) return;
         if (!entry) { this._paintRGB(name, 0, 0, 0, 0); return; }
         this._paintRGB(name, entry.rgb[0], entry.rgb[1], entry.rgb[2], entry.brightness);
     };
 
-    XoneK3.LabController.prototype._renderPreviewLED = function() {
+    myCatnip.LabController.prototype._renderPreviewLED = function() {
         var name = this._labPreviewTarget;
         if (!name) return;
 
@@ -1122,7 +1122,7 @@
         try {
             this._renderPreviewLedBody(name);
         } catch (e) {
-            XoneK3._warnOnce('labPreviewThrow:' + (e && e.message ? e.message : 'unknown'),
+            myCatnip._warnOnce('labPreviewThrow:' + (e && e.message ? e.message : 'unknown'),
                 'lab preview render threw: ' +
                 (e && e.message ? e.message : e) +
                 ' — preview LED painted black');
@@ -1130,7 +1130,7 @@
         }
     };
 
-    XoneK3.LabController.prototype._renderPreviewLedBody = function(name) {
+    myCatnip.LabController.prototype._renderPreviewLedBody = function(name) {
         var c = this._compiledPreview();
         var resolved = c.resolved;
         var compiled = c.compiled;
@@ -1159,7 +1159,7 @@
         this._previewFrame(name, compiled, previewPos, isOn);
     };
 
-    XoneK3.LabController.prototype._previewFrame = function(name, compiled, previewPos, isOn) {
+    myCatnip.LabController.prototype._previewFrame = function(name, compiled, previewPos, isOn) {
         if (this._renderCoMatch(name, compiled, previewPos, isOn)) return;
         var devDir = previewPos * 2 - 1;
         if (this._renderMarkerBand(name, compiled, isOn, devDir)) return;
@@ -1169,7 +1169,7 @@
     // ============================================================
     // SCALAR FIELD EDITORS
     // ============================================================
-    XoneK3._makeFieldEditor = function(field, opts) {
+    myCatnip._makeFieldEditor = function(field, opts) {
         var min = opts.min, max = opts.max, def = opts.def;
         var step = opts.step || 1;
         var absScale = opts.absScale;
@@ -1187,89 +1187,89 @@
                     next = cur + (v === 1 ? 1 : -1) * step;
                 }
                 scheme[field] = Math.max(min, Math.min(max, next));
-                XoneK3.debugPrint(dbg, { v: scheme[field] });
+                myCatnip.debugPrint(dbg, { v: scheme[field] });
                 return true;
             });
         };
     };
 
-    XoneK3._makeCtrlEditor = function(field, opts) {
+    myCatnip._makeCtrlEditor = function(field, opts) {
         var min = opts.min, max = opts.max;
         var defStep = opts.step || 0.02;
         var dbg = opts.debug;
         return function(args, ch, c, v, s) {
             var ctrl = this._ctrl;
             var dir = (v === 1) ? 1 : -1;
-            var step = XoneK3.parseNum(args[0]);
+            var step = myCatnip.parseNum(args[0]);
             if (isNaN(step)) step = defStep;
             ctrl[field] = Math.max(min, Math.min(max, ctrl[field] + dir * step));
-            XoneK3.debugPrint(dbg, { v: ctrl[field].toFixed(2) });
+            myCatnip.debugPrint(dbg, { v: ctrl[field].toFixed(2) });
             ctrl._labRenderPreview();
             ctrl._refreshAllLeds('lab-ctrl-edit');
         };
     };
 
-    XoneK3.FUNCS.ledLabCurve = XoneK3._makeFieldEditor('curve',
+    myCatnip.FUNCS.ledLabCurve = myCatnip._makeFieldEditor('curve',
         { min: -0.95, max: 0.95, def: 0, step: 0.025,
           absScale: 1.9, absOffset: -0.95, debug: 'labCurve' });
-    XoneK3.FUNCS.ledLabBrightness = XoneK3._makeFieldEditor('brightness',
+    myCatnip.FUNCS.ledLabBrightness = myCatnip._makeFieldEditor('brightness',
         { min: 0, max: 127, def: 127, step: 1, absScale: 127, debug: 'labBrightness' });
-    XoneK3.FUNCS.ledLabSchemePosition = XoneK3._makeFieldEditor('schemePosition',
+    myCatnip.FUNCS.ledLabSchemePosition = myCatnip._makeFieldEditor('schemePosition',
         { min: 0, max: 127, def: 63.5, step: 2, absScale: 127, debug: 'labSchemePos' });
-    XoneK3.FUNCS.ledLabMarkerPosition = XoneK3._makeFieldEditor('markerPosition',
+    myCatnip.FUNCS.ledLabMarkerPosition = myCatnip._makeFieldEditor('markerPosition',
         { min: 0, max: 127, def: 63.5, step: 1, absScale: 127, debug: 'labMarkerPos' });
-    XoneK3.FUNCS.ledLabMarkerWidth = XoneK3._makeFieldEditor('markerWidth',
+    myCatnip.FUNCS.ledLabMarkerWidth = myCatnip._makeFieldEditor('markerWidth',
         { min: 0, max: 127, def: 0, step: 1, debug: 'labMarkerWidth' });
-    XoneK3.FUNCS.ledLabBrightnessScale = XoneK3._makeFieldEditor('brightnessScale',
+    myCatnip.FUNCS.ledLabBrightnessScale = myCatnip._makeFieldEditor('brightnessScale',
         { min: 0.1, max: 3, def: 1, step: 0.05, debug: 'labBrightScale' });
 
-    XoneK3.FUNCS.ledLabHk  = XoneK3._makeCtrlEditor('hkBoost',
+    myCatnip.FUNCS.ledLabHk  = myCatnip._makeCtrlEditor('hkBoost',
         { min: 0,   max: 2,   step: 0.02, debug: 'labHk' });
-    XoneK3.FUNCS.ledLabLum = XoneK3._makeCtrlEditor('lumGamma',
+    myCatnip.FUNCS.ledLabLum = myCatnip._makeCtrlEditor('lumGamma',
         { min: 0.1, max: 2,   step: 0.02, debug: 'labLum' });
 
     // ============================================================
     // SIMPLE FUNCS
     // ============================================================
-    XoneK3.FUNCS.labSlotPress = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labSlotPress = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var idx = parseInt(args[0], 10);
         if (isNaN(idx) || idx < 0 || idx > 15) return;
         this._ctrl._selectSlot(idx);
     };
-    XoneK3.FUNCS.labArmSave = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labArmSave = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         this._ctrl._toggleSaveArm();
     };
-    XoneK3.FUNCS.labEditReturn = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labEditReturn = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         this._ctrl._editReturn();
     };
-    XoneK3.FUNCS.labEditThis = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labEditThis = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         this._ctrl._editThis();
     };
-    XoneK3.FUNCS.labLoadPreview = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labLoadPreview = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         this._ctrl._loadPreview();
     };
-    XoneK3.FUNCS.labTogglePreview = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labTogglePreview = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         this._ctrl._lab.previewOn = !this._ctrl._lab.previewOn;
-        XoneK3.debugPrint(this._ctrl._lab.previewOn ? 'labPreviewOn' : 'labPreviewOff');
+        myCatnip.debugPrint(this._ctrl._lab.previewOn ? 'labPreviewOn' : 'labPreviewOff');
         this._ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.labSchemeScroll = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labSchemeScroll = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         var names;
-        if (Array.isArray(XoneK3.SCHEME_REGISTRY)) {
-            names = XoneK3.SCHEME_REGISTRY.slice();
+        if (Array.isArray(myCatnip.SCHEME_REGISTRY)) {
+            names = myCatnip.SCHEME_REGISTRY.slice();
         } else {
-            var all = Object.keys(XoneK3.SCHEMES);
+            var all = Object.keys(myCatnip.SCHEMES);
             names = [];
             for (var i = 0; i < all.length; i++) {
-                var sc = XoneK3.SCHEMES[all[i]];
+                var sc = myCatnip.SCHEMES[all[i]];
                 if (sc && sc.colors) names.push(all[i]);
             }
         }
@@ -1280,21 +1280,21 @@
         var next = (cur + dir + names.length) % names.length;
         var name = names[next];
         ctrl._lab.schemeName = name;
-        XoneK3.debugPrint('labScroll', { name: name });
+        myCatnip.debugPrint('labScroll', { name: name });
         ctrl._setPreview(name, name);
     };
 
-    XoneK3.FUNCS.labToggleWb = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labToggleWb = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         if (ctrl.wbActive === undefined) ctrl.wbActive = true;
         ctrl.wbActive = !ctrl.wbActive;
-        XoneK3.debugPrint(ctrl.wbActive ? 'labWbOn' : 'labWbOff');
+        myCatnip.debugPrint(ctrl.wbActive ? 'labWbOn' : 'labWbOff');
         ctrl._labRenderPreview();
         ctrl._refreshAllLeds('lab-wb');
     };
 
-    XoneK3.FUNCS.ledSelectTarget = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledSelectTarget = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
@@ -1344,7 +1344,7 @@
             }
 
             ctrl._lab.selectedSegment = 0;
-            XoneK3.debugPrint('labDeleteSeg', { i: idx });
+            myCatnip.debugPrint('labDeleteSeg', { i: idx });
             ctrl._labRenderPreview();
             return;
         }
@@ -1354,11 +1354,11 @@
         _extendTo(scheme, idx);
         _setColorSet(scheme, idx, true);
         ctrl._lab.selectedSegment = idx;
-        XoneK3.debugPrint('labSegment', { i: idx });
+        myCatnip.debugPrint('labSegment', { i: idx });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledSelectMarker = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledSelectMarker = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
@@ -1366,24 +1366,24 @@
         if (ctrl.modifiers.shift) {
             scheme.markerColor = null;
             scheme.markerWidth = 0;
-            XoneK3.debugPrint('labMarkerClear');
+            myCatnip.debugPrint('labMarkerClear');
             ctrl._labRenderPreview();
             return;
         }
         ctrl._lab.selectedSegment = -1;
-        XoneK3.debugPrint('labMarker');
+        myCatnip.debugPrint('labMarker');
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledRGB = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledRGB = function(args, ch, c, v, s) {
         this._ctrl._editColorField(args[0], 'step', (v === 1) ? 1 : -1);
     };
-    XoneK3.FUNCS.ledFader = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledFader = function(args, ch, c, v, s) {
         var abs = Math.max(0, Math.min(127, Math.round(this._normalized * 127)));
         this._ctrl._editColorField(args[0], 'abs', abs);
     };
 
-    XoneK3.FUNCS.ledRGBShow = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledRGBShow = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._editableScheme();
@@ -1400,7 +1400,7 @@
         }
     };
 
-    XoneK3.FUNCS.ledFillGaps = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledFillGaps = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
@@ -1410,7 +1410,7 @@
         // painted. colorSet blacks anchor; gap blacks don't.
         var anchors = [];
         for (var i = 0; i < scheme.colors.length; i++) {
-            var r = XoneK3.resolveColorEntry(scheme.colors[i], defaultBr);
+            var r = myCatnip.resolveColorEntry(scheme.colors[i], defaultBr);
             if (!r || !r.rgb) continue;
             if (!_isColorSet(scheme, i)) continue;
             anchors.push({ pos: i, rgb: r.rgb, br: r.brightness });
@@ -1438,13 +1438,13 @@
                 _setColorSet(scheme, idx, true);
             }
         }
-        XoneK3.debugPrint('labFillGaps', { n: anchors.length });
+        myCatnip.debugPrint('labFillGaps', { n: anchors.length });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledLabRatio = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabRatio = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
-        if (!ctrl._lab.ratioEdit) { XoneK3.debugPrint('labRatioOff'); return; }
+        if (!ctrl._lab.ratioEdit) { myCatnip.debugPrint('labRatioOff'); return; }
         var scheme = ctrl._commitPreview();
         if (!scheme) return;
         var segCount = (scheme.colors || []).length;
@@ -1457,52 +1457,52 @@
         if (!scheme.ratio) scheme.ratio = [];
         while (scheme.ratio.length <= idx) scheme.ratio.push(1);
         if (this.type === 'knob' || this.type === 'fader') {
-            scheme.ratio[idx] = Math.pow(2, (this._normalized * 2 - 1) * XoneK3.RATIO_GAIN);
+            scheme.ratio[idx] = Math.pow(2, (this._normalized * 2 - 1) * myCatnip.RATIO_GAIN);
         } else {
             var dir = (v === 1) ? 1 : -1;
             scheme.ratio[idx] = Math.max(0.1, Math.min(10, (scheme.ratio[idx] || 1) + dir * 0.1));
         }
-        XoneK3.debugPrint('labRatio', { i: idx, v: scheme.ratio[idx].toFixed(2) });
+        myCatnip.debugPrint('labRatio', { i: idx, v: scheme.ratio[idx].toFixed(2) });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledLabToggleInterp = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabToggleInterp = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview(); if (!scheme) return;
         scheme.interp = !(scheme.interp !== false);
-        XoneK3.debugPrint(scheme.interp ? 'labInterpOn' : 'labInterpOff');
+        myCatnip.debugPrint(scheme.interp ? 'labInterpOn' : 'labInterpOff');
         ctrl._labRenderPreview();
     };
-    XoneK3.FUNCS.ledLabToggleCalibration = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabToggleCalibration = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview(); if (!scheme) return;
         scheme.calibration = !(scheme.calibration !== false);
-        XoneK3.debugPrint(scheme.calibration ? 'labCalibOn' : 'labCalibOff');
+        myCatnip.debugPrint(scheme.calibration ? 'labCalibOn' : 'labCalibOff');
         ctrl._labRenderPreview();
     };
-    XoneK3.FUNCS.ledLabToggleRatio = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabToggleRatio = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview(); if (!scheme) return;
         ctrl._lab.ratioEdit = !ctrl._lab.ratioEdit;
         if (!ctrl._lab.ratioEdit) scheme.ratio = null;
-        XoneK3.debugPrint(ctrl._lab.ratioEdit ? 'labRatioOn' : 'labRatioOff');
+        myCatnip.debugPrint(ctrl._lab.ratioEdit ? 'labRatioOn' : 'labRatioOff');
         ctrl._labRenderPreview();
     };
-    XoneK3.FUNCS.ledLabReset = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabReset = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var field = args[0]; if (!field) return;
         var val = parseFloat(args[1]); if (isNaN(val)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview(); if (!scheme) return;
         scheme[field] = val;
-        XoneK3.debugPrint('labReset', { field: field, v: val });
+        myCatnip.debugPrint('labReset', { field: field, v: val });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledLabPreview = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabPreview = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         if (this.type === 'knob' || this.type === 'fader') {
             ctrl._lab.previewPos = Math.max(0, Math.min(1, this._normalized));
@@ -1513,7 +1513,7 @@
         ctrl._lab.previewKnown = true;
         ctrl._labRenderPreview();
     };
-    XoneK3.FUNCS.ledLabPreviewWithCO = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledLabPreviewWithCO = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         var phys;
         if (this.type === 'knob' || this.type === 'fader') {
@@ -1528,20 +1528,20 @@
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.ledDumpScheme = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.ledDumpScheme = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
-        XoneK3.debugPrint('labDump', { from: ctrl._previewLabel() });
+        myCatnip.debugPrint('labDump', { from: ctrl._previewLabel() });
         ctrl._dumpPreview();
     };
 
-    XoneK3.FUNCS.labBeatEditToggle = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatEditToggle = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         if (ctrl._patchActive('colorLabBeat')) {
             ctrl._lab.beatTarget = null;
             ctrl.removePatch('colorLabBeat');
-            XoneK3.debugPrint('overlayOff', { name: 'colorLabBeat' });
+            myCatnip.debugPrint('overlayOff', { name: 'colorLabBeat' });
             return;
         }
         if (!ctrl._patchActive('colorLab')) return;
@@ -1549,19 +1549,19 @@
         if (!scheme) return;
         if (!scheme.beat) scheme.beat = { enabled: true };
         ctrl.addPatch('colorLabBeat');
-        XoneK3.debugPrint('overlayOn', { name: 'colorLabBeat' });
+        myCatnip.debugPrint('overlayOn', { name: 'colorLabBeat' });
     };
 
-    XoneK3.FUNCS.labBeatSelect = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatSelect = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var level = args[0];
         if (!level) return;
         this._ctrl._lab.beatTarget = level;
-        XoneK3.debugPrint('labBeatSelect', { level: level });
+        myCatnip.debugPrint('labBeatSelect', { level: level });
         this._ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.labBeatClear = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatClear = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var level = args[0];
         if (!level) return;
@@ -1575,11 +1575,11 @@
             delete scheme.beat[level];
         }
         ctrl._lab.beatTarget = null;
-        XoneK3.debugPrint('labBeatClear', { level: level });
+        myCatnip.debugPrint('labBeatClear', { level: level });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.labBeatToggleEnabled = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatToggleEnabled = function(args, ch, c, v, s) {
         if (!this._ctrl._isPress(v, s)) return;
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
@@ -1587,12 +1587,12 @@
         if (!scheme.beat) scheme.beat = { enabled: true };
         var cur = (scheme.beat.enabled === false) ? false : true;
         scheme.beat.enabled = !cur;
-        XoneK3.debugPrint('labBeatEnabled', { v: !cur });
+        myCatnip.debugPrint('labBeatEnabled', { v: !cur });
         ctrl._labRenderPreview();
         ctrl._refreshAllLeds('lab-beat');
     };
 
-    XoneK3.FUNCS.labBeatBarBeats = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatBarBeats = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
         if (!scheme) return;
@@ -1601,11 +1601,11 @@
         var dir = (v === 1) ? 1 : -1;
         var next = Math.max(1, Math.min(32, cur + dir));
         scheme.beat.barBeats = next;
-        XoneK3.debugPrint('labBeatBar', { v: next });
+        myCatnip.debugPrint('labBeatBar', { v: next });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.labBeatPhraseBars = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatPhraseBars = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
         if (!scheme) return;
@@ -1614,11 +1614,11 @@
         var dir = (v === 1) ? 1 : -1;
         var next = Math.max(1, Math.min(32, cur + dir));
         scheme.beat.phraseBars = next;
-        XoneK3.debugPrint('labBeatPhrase', { v: next });
+        myCatnip.debugPrint('labBeatPhrase', { v: next });
         ctrl._labRenderPreview();
     };
 
-    XoneK3.FUNCS.labBeatPrePhraseBeats = function(args, ch, c, v, s) {
+    myCatnip.FUNCS.labBeatPrePhraseBeats = function(args, ch, c, v, s) {
         var ctrl = this._ctrl;
         var scheme = ctrl._commitPreview();
         if (!scheme) return;
@@ -1630,7 +1630,7 @@
         var dir = (v === 1) ? 1 : -1;
         var next = Math.max(0, Math.min(maxPre, cur + dir));
         scheme.beat.prePhraseBeats = next;
-        XoneK3.debugPrint('labBeatPre', { v: next });
+        myCatnip.debugPrint('labBeatPre', { v: next });
         ctrl._labRenderPreview();
     };
 
@@ -1713,7 +1713,7 @@
     ];
 
     function _emitSchemeFields(L, scheme, indent) {
-        var D = XoneK3.SCHEME_DEFAULTS;
+        var D = myCatnip.SCHEME_DEFAULTS;
         function push(x) { L.push(indent + x); }
         push('colors: [');
         var colors = scheme.colors || [];
@@ -1757,13 +1757,13 @@
         var flat = Object.assign({}, scheme);
         if (offOverride !== undefined) flat.offScheme = offOverride;
         if (coOverride !== undefined)  flat.coScheme  = coOverride;
-        L.push('XoneK3.SCHEMES.' + name + ' = {');
+        L.push('myCatnip.SCHEMES.' + name + ' = {');
         _emitSchemeFields(L, flat, '    ');
         L.push('};');
         L.push('');
     }
 
-    XoneK3._dump = {
+    myCatnip._dump = {
         schemeLines:  _emitSchemeLines,
         schemeFields: _emitSchemeFields,
         schemeField:  _emitSchemeField,
@@ -1771,14 +1771,14 @@
         fmtColorEntry:_fmtDumpColorEntry,
         fmtBeatLines: _fmtDumpBeatLines
     };
-    XoneK3._emitSchemeLines = _emitSchemeLines;
+    myCatnip._emitSchemeLines = _emitSchemeLines;
 
-    XoneK3.LAB_PAINTER_FUNCS = [
-        XoneK3.FUNCS.labBeatSelect,
-        XoneK3.FUNCS.labBeatClear,
-        XoneK3.FUNCS.labBeatToggleEnabled,
-        XoneK3.FUNCS.labBeatEditToggle,
-        XoneK3.FUNCS.labSlotPress
+    myCatnip.LAB_PAINTER_FUNCS = [
+        myCatnip.FUNCS.labBeatSelect,
+        myCatnip.FUNCS.labBeatClear,
+        myCatnip.FUNCS.labBeatToggleEnabled,
+        myCatnip.FUNCS.labBeatEditToggle,
+        myCatnip.FUNCS.labSlotPress
     ];
 
     // Boot seed for slot 0 (the "on" slot). Black by design — the
@@ -1786,5 +1786,5 @@
     // slot 0 needs to exist so it can be saved over without a
     // create step first. Lab-scoped: registered here so lib-schemes
     // stays engine-only.
-    XoneK3.SCHEMES.labDefault = { colors: [[0, 0, 0]] };
+    myCatnip.SCHEMES.labDefault = { colors: [[0, 0, 0]] };
 })();

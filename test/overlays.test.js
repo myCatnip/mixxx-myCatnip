@@ -4,7 +4,7 @@ var H = require('./helpers');
 
 function callFunc(c, name, args, v) {
     var bl = {_ctrl: c};
-    XoneK3.FUNCS[name].call(bl, args || [], 0, 0,
+    myCatnip.FUNCS[name].call(bl, args || [], 0, 0,
                             (v === undefined) ? 127 : v, 0x90);
 }
 

@@ -140,44 +140,44 @@ test('_isBeatOffPhase: playing + pulse → position-derived', function(t) {
 });
 
 test('_isBeatOffPhase: playing + solid → always on-phase', function(t) {
-    var orig = XoneK3.BEAT_PLAYING_MODE;
-    XoneK3.BEAT_PLAYING_MODE = 'solid';
+    var orig = myCatnip.BEAT_PLAYING_MODE;
+    myCatnip.BEAT_PLAYING_MODE = 'solid';
     var c = H.ctrl();
     var b = c.bindings.press0;
     c._decks[2].hasBeat = true;
     c._decks[2].playing = true;
     c._decks[2].active  = false;
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), false);
-    XoneK3.BEAT_PLAYING_MODE = orig;
+    myCatnip.BEAT_PLAYING_MODE = orig;
 });
 
 test('_isBeatOffPhase: playing + off → always off-phase', function(t) {
-    var orig = XoneK3.BEAT_PLAYING_MODE;
-    XoneK3.BEAT_PLAYING_MODE = 'off';
+    var orig = myCatnip.BEAT_PLAYING_MODE;
+    myCatnip.BEAT_PLAYING_MODE = 'off';
     var c = H.ctrl();
     var b = c.bindings.press0;
     c._decks[2].hasBeat = true;
     c._decks[2].playing = true;
     c._decks[2].active  = true;
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), true);
-    XoneK3.BEAT_PLAYING_MODE = orig;
+    myCatnip.BEAT_PLAYING_MODE = orig;
 });
 
 test('_isBeatOffPhase: paused + solid → on-phase', function(t) {
-    var orig = XoneK3.BEAT_PAUSED_MODE;
-    XoneK3.BEAT_PAUSED_MODE = 'solid';
+    var orig = myCatnip.BEAT_PAUSED_MODE;
+    myCatnip.BEAT_PAUSED_MODE = 'solid';
     var c = H.ctrl();
     var b = c.bindings.press0;
     c._decks[2].hasBeat = true;
     c._decks[2].playing = false;
     c._decks[2].active  = false;
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), false);
-    XoneK3.BEAT_PAUSED_MODE = orig;
+    myCatnip.BEAT_PAUSED_MODE = orig;
 });
 
 test('_isBeatOffPhase: paused + pulse → position-derived', function(t) {
-    var orig = XoneK3.BEAT_PAUSED_MODE;
-    XoneK3.BEAT_PAUSED_MODE = 'pulse';
+    var orig = myCatnip.BEAT_PAUSED_MODE;
+    myCatnip.BEAT_PAUSED_MODE = 'pulse';
     var c = H.ctrl();
     var b = c.bindings.press0;
     c._decks[2].hasBeat = true;
@@ -186,19 +186,19 @@ test('_isBeatOffPhase: paused + pulse → position-derived', function(t) {
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), true, 'second half → off-phase');
     c._decks[2].active = true;
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), false, 'first half → on-phase');
-    XoneK3.BEAT_PAUSED_MODE = orig;
+    myCatnip.BEAT_PAUSED_MODE = orig;
 });
 
 test('_isBeatOffPhase: paused + off → always off-phase', function(t) {
-    var orig = XoneK3.BEAT_PAUSED_MODE;
-    XoneK3.BEAT_PAUSED_MODE = 'off';
+    var orig = myCatnip.BEAT_PAUSED_MODE;
+    myCatnip.BEAT_PAUSED_MODE = 'off';
     var c = H.ctrl();
     var b = c.bindings.press0;
     c._decks[2].hasBeat = true;
     c._decks[2].playing = false;
     c._decks[2].active  = true;
     t.eq(b._isBeatOffPhase({beat: {deck: 2}}), true);
-    XoneK3.BEAT_PAUSED_MODE = orig;
+    myCatnip.BEAT_PAUSED_MODE = orig;
 });
 
 test('countdownScheme: paused with track loaded shows beat colour', function(t) {
@@ -214,7 +214,7 @@ test('countdownScheme: paused with track loaded shows beat colour', function(t) 
     // track_loaded must set hasBeat on its own — no jog needed.
     H.fireCO('[Channel1]', 'track_loaded', 1);
 
-    var c = XoneK3.controllers[0];
+    var c = myCatnip.controllers[0];
     t.eq(c._decks[1].hasBeat, true,
          'track_loaded must set hasBeat without a playposition tick');
 
@@ -250,7 +250,7 @@ test('pausing at off-phase with solid mode lights the LED', function(t) {
     H.setCO('[Channel1]', 'track_loaded',        1);
     H.fireCO('[Channel1]', 'track_loaded', 1);
 
-    var c = XoneK3.controllers[0];
+    var c = myCatnip.controllers[0];
 
     // Playing, off-phase: pulse mode → off-ramp, base colour black.
     H.setCO('[Channel1]', 'play_indicator', 1);
@@ -274,7 +274,7 @@ test('pausing at off-phase with solid mode lights the LED', function(t) {
 });
 
 test('_openBeatClocks re-reads play_indicator', function(t) {
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     var c = H.ctrl();
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl',
@@ -292,9 +292,9 @@ test('_openBeatClocks re-reads play_indicator', function(t) {
 });
 
 test('_onPlayIndicator: refreshes beat LEDs on every transition', function(t) {
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     H.bootCat();
-    var c = XoneK3.controllers[0];
+    var c = myCatnip.controllers[0];
 
     // Bind a beat LED on channel 1 with a real outKey.
     c._applyBinding('button0_0', {

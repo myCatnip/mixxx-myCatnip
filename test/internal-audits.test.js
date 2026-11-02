@@ -67,47 +67,47 @@ test('_validateBindings: runs once per controller', function(t) {
 // ── _auditSnapshotFields ──────────────────────────────────
 
 test('_auditSnapshotFields: clean state → no warnings', function(t) {
-    XoneK3._debugPrintsOn = true;
+    myCatnip._debugPrintsOn = true;
     _printLog.length = 0;
-    XoneK3._auditSnapshotFields();
-    XoneK3._debugPrintsOn = false;
+    myCatnip._auditSnapshotFields();
+    myCatnip._debugPrintsOn = false;
     t.eq(_printLog.length, 0);
 });
 
 test('_auditSnapshotFields: unclassified field warns', function(t) {
-    var orig = XoneK3._bindingDefaults;
-    XoneK3._bindingDefaults = function() {
+    var orig = myCatnip._bindingDefaults;
+    myCatnip._bindingDefaults = function() {
         var d = orig();
         d._testNewField = null;
         return d;
     };
-    XoneK3._debugPrintsOn = true;
+    myCatnip._debugPrintsOn = true;
     _printLog.length = 0;
-    XoneK3._auditSnapshotFields();
-    XoneK3._debugPrintsOn = false;
-    XoneK3._bindingDefaults = orig;
+    myCatnip._auditSnapshotFields();
+    myCatnip._debugPrintsOn = false;
+    myCatnip._bindingDefaults = orig;
     t.contains(_printLog.join('\n'),
         'reset-able Binding field "_testNewField" not classified');
 });
 
 test('_auditSnapshotFields: silent when debug off', function(t) {
-    var orig = XoneK3._bindingDefaults;
-    XoneK3._bindingDefaults = function() {
+    var orig = myCatnip._bindingDefaults;
+    myCatnip._bindingDefaults = function() {
         var d = orig();
         d._testNewField = null;
         return d;
     };
     _printLog.length = 0;
-    XoneK3._auditSnapshotFields();
-    XoneK3._bindingDefaults = orig;
+    myCatnip._auditSnapshotFields();
+    myCatnip._bindingDefaults = orig;
     t.eq(_printLog.length, 0);
 });
 
 test('_auditSnapshotFields: ignored field does not warn', function(t) {
-    XoneK3._debugPrintsOn = true;
+    myCatnip._debugPrintsOn = true;
     _printLog.length = 0;
-    XoneK3._auditSnapshotFields();
-    XoneK3._debugPrintsOn = false;
+    myCatnip._auditSnapshotFields();
+    myCatnip._debugPrintsOn = false;
     t.notOk(_printLog.join('\n').indexOf('_shutdownHoldTimer') !== -1);
 });
 
@@ -220,30 +220,30 @@ test('_buildCsFromStateClosure: co opens a connection', function(t) {
 // ── CAT.fxScheme memoization ──────────────────────────────
 
 test('fxScheme: memoized by THEME value', function(t) {
-    var orig = XoneK3.THEME.fx[1];
-    var a = XoneK3.CAT.fxScheme(1);
-    var b = XoneK3.CAT.fxScheme(1);
+    var orig = myCatnip.THEME.fx[1];
+    var a = myCatnip.CAT.fxScheme(1);
+    var b = myCatnip.CAT.fxScheme(1);
     t.eq(a, b);
-    XoneK3.THEME.fx[1] = 'red';
-    var c2 = XoneK3.CAT.fxScheme(1);
+    myCatnip.THEME.fx[1] = 'red';
+    var c2 = myCatnip.CAT.fxScheme(1);
     t.neq(a, c2);
-    XoneK3.THEME.fx[1] = orig;
+    myCatnip.THEME.fx[1] = orig;
 });
 
 test('fxScheme: distinct THEME values → distinct objects', function(t) {
-    var orig2 = XoneK3.THEME.fx[2];
-    var orig4 = XoneK3.THEME.fx[4];
-    XoneK3.THEME.fx[2] = 'cyan';
-    XoneK3.THEME.fx[4] = 'magenta';
-    var a = XoneK3.CAT.fxScheme(2);
-    var b = XoneK3.CAT.fxScheme(4);
+    var orig2 = myCatnip.THEME.fx[2];
+    var orig4 = myCatnip.THEME.fx[4];
+    myCatnip.THEME.fx[2] = 'cyan';
+    myCatnip.THEME.fx[4] = 'magenta';
+    var a = myCatnip.CAT.fxScheme(2);
+    var b = myCatnip.CAT.fxScheme(4);
     t.neq(a, b);
-    XoneK3.THEME.fx[2] = orig2;
-    XoneK3.THEME.fx[4] = orig4;
+    myCatnip.THEME.fx[2] = orig2;
+    myCatnip.THEME.fx[4] = orig4;
 });
 
 test('fxScheme: same scheme object returned across calls', function(t) {
-    var a = XoneK3.CAT.fxScheme(3);
-    var b = XoneK3.CAT.fxScheme(3);
+    var a = myCatnip.CAT.fxScheme(3);
+    var b = myCatnip.CAT.fxScheme(3);
     t.eq(a, b);
 });

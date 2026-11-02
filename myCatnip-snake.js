@@ -1,3 +1,5 @@
+// myCatnip-snake.js — Xone K3 snake easter egg.
+//
 // Entry:   CHORD (shift + layer) press2 — the chord is a launcher,
 //          it exits on entry and snake runs standalone.
 // Start:   stationary until SHIFT is pressed (amber LED on shift
@@ -22,7 +24,7 @@
 //   row 0 (bottom): grid row 3          idx 24 25 26 27
 //
 // Snake starts at (3, 0) — directly above shift — heading up.
-// Loads AFTER xone-k3-cat.js. Modifies CAT.CHORD and CAT_LAYERS.
+// Loads AFTER myCatnip-cat.js. Modifies CAT.CHORD and CAT_LAYERS.
 //
 // Modifier-system interaction
 // ---------------------------
@@ -40,22 +42,22 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: xone-k3-snake.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: myCatnip-snake.js — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-snake.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-snake.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-snake.js',
+    myCatnip._requireLoad('myCatnip-snake.js',
         ['CAT', 'CAT_LAYERS', 'FUNCS', 'resolveColorEntry']);
 
-    var F   = XoneK3.FUNCS;
-    var CAT = XoneK3.CAT;
+    var F   = myCatnip.FUNCS;
+    var CAT = myCatnip.CAT;
 
     // ============================================================
     // PLAYFIELD — every LED except layer (28) and shift (29).
     // ============================================================
-    XoneK3.SNAKE_PLAYFIELD = [
+    myCatnip.SNAKE_PLAYFIELD = [
         [24, 25, 26, 27],
         [20, 21, 22, 23],
         [16, 17, 18, 19],
@@ -66,12 +68,12 @@
         [30, 31, 32, 33]
     ];
 
-    XoneK3.SNAKE_TICK_START_MS = 500;
-    XoneK3.SNAKE_TICK_STEP_MS  = 5;
-    XoneK3.SNAKE_TICK_MIN_MS   = 400;
+    myCatnip.SNAKE_TICK_START_MS = 500;
+    myCatnip.SNAKE_TICK_STEP_MS  = 5;
+    myCatnip.SNAKE_TICK_MIN_MS   = 400;
 
-    XoneK3.SNAKE_WRAP_X = true;
-    XoneK3.SNAKE_WRAP_Y = true;
+    myCatnip.SNAKE_WRAP_X = true;
+    myCatnip.SNAKE_WRAP_Y = true;
 
     var STATUS_LAYER = 28;
     var STATUS_SHIFT = 29;
@@ -116,7 +118,7 @@
     }
 
     function paintAllRed(ctrl) {
-        var field = XoneK3.SNAKE_PLAYFIELD;
+        var field = myCatnip.SNAKE_PLAYFIELD;
         for (var y = 0; y < field.length; y++) {
             for (var x = 0; x < field[y].length; x++) {
                 paintCell(ctrl, field[y][x], C_DEAD);
@@ -126,7 +128,7 @@
     }
 
     function paintAllGreen(ctrl) {
-        var field = XoneK3.SNAKE_PLAYFIELD;
+        var field = myCatnip.SNAKE_PLAYFIELD;
         for (var y = 0; y < field.length; y++) {
             for (var x = 0; x < field[y].length; x++) {
                 paintCell(ctrl, field[y][x], C_SNAKE_HEAD);
@@ -138,7 +140,7 @@
     function paintGame(ctrl) {
         var s = ctrl._snake;
         if (!s) return;
-        var field = XoneK3.SNAKE_PLAYFIELD;
+        var field = myCatnip.SNAKE_PLAYFIELD;
         var H = field.length, W = field[0].length;
         var i, seg, key, kind, entry;
 
@@ -195,7 +197,7 @@
     // ============================================================
     function spawnFood(ctrl) {
         var s = ctrl._snake;
-        var field = XoneK3.SNAKE_PLAYFIELD;
+        var field = myCatnip.SNAKE_PLAYFIELD;
         var H = field.length, W = field[0].length;
         var occupied = {};
         for (var i = 0; i < s.snake.length; i++) {
@@ -230,18 +232,18 @@
         var s = ctrl._snake;
         if (!s || s.dead || !s.started) return;
 
-        var field = XoneK3.SNAKE_PLAYFIELD;
+        var field = myCatnip.SNAKE_PLAYFIELD;
         var H = field.length, W = field[0].length;
         var head = s.snake[0];
         var nx = head.x + s.dir.dx;
         var ny = head.y + s.dir.dy;
 
         if (nx < 0 || nx >= W) {
-            if (XoneK3.SNAKE_WRAP_X) nx = ((nx % W) + W) % W;
+            if (myCatnip.SNAKE_WRAP_X) nx = ((nx % W) + W) % W;
             else { die(ctrl); return; }
         }
         if (ny < 0 || ny >= H) {
-            if (XoneK3.SNAKE_WRAP_Y) ny = ((ny % H) + H) % H;
+            if (myCatnip.SNAKE_WRAP_Y) ny = ((ny % H) + H) % H;
             else { die(ctrl); return; }
         }
 
@@ -260,8 +262,8 @@
                 paintAllGreen(ctrl);
                 return;
             }
-            s.speed = Math.max(XoneK3.SNAKE_TICK_MIN_MS,
-                               s.speed - XoneK3.SNAKE_TICK_STEP_MS);
+            s.speed = Math.max(myCatnip.SNAKE_TICK_MIN_MS,
+                               s.speed - myCatnip.SNAKE_TICK_STEP_MS);
             if (s.timer) engine.stopTimer(s.timer);
             s.timer = engine.beginTimer(s.speed, function() { tick(ctrl); }, false);
         } else {
@@ -283,7 +285,7 @@
             snake:      [{ x: 3, y: 0 }],
             dir:        { dx: 0, dy: 1 },
             food:       null,
-            speed:      XoneK3.SNAKE_TICK_START_MS,
+            speed:      myCatnip.SNAKE_TICK_START_MS,
             timer:      null,
             paintTimer: null,
             dead:       false,
@@ -457,7 +459,7 @@
     // ============================================================
     // INSTALL
     // ============================================================
-    XoneK3.CAT_LAYERS.snake = SNAKE_OVERLAY;
+    myCatnip.CAT_LAYERS.snake = SNAKE_OVERLAY;
 
     CAT.CHORD.press2 = {
         func: F.toggleSnake,

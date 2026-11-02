@@ -94,39 +94,39 @@ test('_onInput: fires even for noLED cells', function(t) {
 // ── TIME_SIG setter / clearer ─────────────────────────────
 
 test('setTimeSig: updates TIME_SIG', function(t) {
-    XoneK3.setTimeSig(3, 4);
-    t.eq(XoneK3.TIME_SIG.barBeats, 3);
-    t.eq(XoneK3.TIME_SIG.phraseBars, 4);
+    myCatnip.setTimeSig(3, 4);
+    t.eq(myCatnip.TIME_SIG.barBeats, 3);
+    t.eq(myCatnip.TIME_SIG.phraseBars, 4);
 });
 
 test('setTimeSig: invalid args ignored', function(t) {
-    XoneK3.TIME_SIG = null;
-    XoneK3.setTimeSig(0, 4);
-    t.eq(XoneK3.TIME_SIG, null);
-    XoneK3.setTimeSig(4, -1);
-    t.eq(XoneK3.TIME_SIG, null);
+    myCatnip.TIME_SIG = null;
+    myCatnip.setTimeSig(0, 4);
+    t.eq(myCatnip.TIME_SIG, null);
+    myCatnip.setTimeSig(4, -1);
+    t.eq(myCatnip.TIME_SIG, null);
 });
 
 test('clearTimeSig: nulls TIME_SIG', function(t) {
-    XoneK3.setTimeSig(3, 4);
-    XoneK3.clearTimeSig();
-    t.eq(XoneK3.TIME_SIG, null);
+    myCatnip.setTimeSig(3, 4);
+    myCatnip.clearTimeSig();
+    t.eq(myCatnip.TIME_SIG, null);
 });
 
-test('setTimeSig: iterates XoneK3.controllers', function(t) {
+test('setTimeSig: iterates myCatnip.controllers', function(t) {
     var c = H.bootCat();
     var called = false;
     c._refreshAllLeds = function() { called = true; };
-    XoneK3.setTimeSig(3, 4);
+    myCatnip.setTimeSig(3, 4);
     t.ok(called);
 });
 
-test('clearTimeSig: iterates XoneK3.controllers', function(t) {
+test('clearTimeSig: iterates myCatnip.controllers', function(t) {
     var c = H.bootCat();
-    XoneK3.setTimeSig(3, 4);
+    myCatnip.setTimeSig(3, 4);
     var called = false;
     c._refreshAllLeds = function() { called = true; };
-    XoneK3.clearTimeSig();
+    myCatnip.clearTimeSig();
     t.ok(called);
 });
 
@@ -279,11 +279,11 @@ test('co-match cache: not seeded on button bind', function(t) {
 
 test('co-match cache: coMatchSample falls back to live read when undefined', function(t) {
     engine.setParameter('[Channel1]', 'pregain', 0.4);
-    var compiled = XoneK3.compileScheme({
+    var compiled = myCatnip.compileScheme({
         colors: [[127, 0, 0]],
         coScheme: 'coMatch'
     });
-    var steer = XoneK3.coMatchSample(compiled, '[Channel1]', 'pregain',
+    var steer = myCatnip.coMatchSample(compiled, '[Channel1]', 'pregain',
                                       0.8, true, undefined);
     t.ok(steer, 'live read fallback returned a steer');
 });

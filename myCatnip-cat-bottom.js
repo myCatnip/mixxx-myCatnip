@@ -1,4 +1,4 @@
-// xone-k3-cat-bottom.js — Cat's cue / loop layers, their shift
+// myCatnip-cat-bottom.js — Cat's cue / loop layers, their shift
 // companions, and the two layer-scoped overlays.
 //
 // CUE and LOOP are siblings — no inheritance between them.
@@ -20,18 +20,18 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-cat-bottom.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-cat-bottom.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat-bottom.js',
+    myCatnip._requireLoad('myCatnip-cat-bottom.js',
         ['FUNCS', 'builders', 'CAT']);
 
-    var F = XoneK3.FUNCS;
-    var B = XoneK3.builders;
-    var CAT = XoneK3.CAT;
+    var F = myCatnip.FUNCS;
+    var B = myCatnip.builders;
+    var CAT = myCatnip.CAT;
 
     // ============================================================
     // SHARED CELL FACTORIES

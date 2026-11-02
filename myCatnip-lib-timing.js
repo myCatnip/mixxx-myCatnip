@@ -1,9 +1,9 @@
-// xone-k3-lib-timing.js — timing constants and the Pacing queue
+// myCatnip-lib-timing.js — timing constants and the Pacing queue
 // used for rate-limited output (LED sysex, future transports).
 //
 // Loaded after lib-core.js, before lib-schemes.js. Hardware
 // descriptors may override any entry via `hw.pacing = {...}`; the
-// merge is done by XoneK3.applyPacing(), called from bootCat and
+// merge is done by myCatnip.applyPacing(), called from bootCat and
 // _bootWith.
 //
 // Why these live together: every constant here is measured against
@@ -15,19 +15,19 @@
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-timing.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-timing.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-timing.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-timing.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-timing.js', []);
+myCatnip._requireLoad('myCatnip-lib-timing.js', []);
 
 (function() {
     // ============================================================
     // TIMING
     // ============================================================
-    XoneK3.TIMING = {
+    myCatnip.TIMING = {
         // Output pacing. Canonical name is pacingDefaultThrottleMs;
         // sysexThrottleMs is a getter/setter alias installed below
         // for backward compatibility with existing hw.pacing
@@ -61,7 +61,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // storage (sysexThrottleMs). The accessor is installed on the
     // TIMING object itself so Object.assign / hw.pacing overrides
     // that write either name Just Work.
-    Object.defineProperty(XoneK3.TIMING, 'pacingDefaultThrottleMs', {
+    Object.defineProperty(myCatnip.TIMING, 'pacingDefaultThrottleMs', {
         get: function() { return this.sysexThrottleMs; },
         set: function(v) { this.sysexThrottleMs = v; },
         enumerable: true,
@@ -76,7 +76,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // Both throttle keys are captured as plain values (10, 10).
     // applyPacing's reset loop writes both; whichever it visits
     // last, the alias makes them agree.
-    XoneK3._TIMING_DEFAULTS = Object.assign({}, XoneK3.TIMING);
+    myCatnip._TIMING_DEFAULTS = Object.assign({}, myCatnip.TIMING);
 
     // Test-only override hook. When set, applyPacing merges these
     // values into TIMING at highest priority (after defaults and
@@ -86,37 +86,37 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // _TIMING_DEFAULTS, which would otherwise clobber the test's
     // 0-throttle TIMING write. Production code never touches this;
     // see test/run.js resetGlobals.
-    XoneK3._pacingTestOverride = null;
+    myCatnip._pacingTestOverride = null;
 
     // Compat re-exports for existing read sites. Framework code
-    // continues to read XoneK3.SYSEX_THROTTLE_MS etc. unchanged.
+    // continues to read myCatnip.SYSEX_THROTTLE_MS etc. unchanged.
     // A future cleanup pass can migrate reads to
-    // XoneK3.TIMING.pacingDefaultThrottleMs and delete
-    // XoneK3.SYSEX_THROTTLE_MS.
-    XoneK3.PACING_DEFAULT_THROTTLE_MS = XoneK3.TIMING.pacingDefaultThrottleMs;
-    XoneK3.SYSEX_THROTTLE_MS          = XoneK3.TIMING.sysexThrottleMs;
-    XoneK3.BEAT_REPAINT_THROTTLE_MS   = XoneK3.TIMING.beatRepaintThrottleMs;
-    XoneK3.PULSE_CO_MS                = XoneK3.TIMING.pulseCoMs;
-    XoneK3.BEATJUMP_GAP_MS            = XoneK3.TIMING.beatjumpGapMs;
-    XoneK3.BEAT_STALL_MS              = XoneK3.TIMING.beatStallMs;
-    XoneK3.META_SETTLE_MS             = XoneK3.TIMING.metaSettleMs;
-    XoneK3.BOOT_SETTLE_MS             = XoneK3.TIMING.bootSettleMs;
-    XoneK3.BOOT_MAX_ATTEMPTS          = XoneK3.TIMING.bootMaxAttempts;
-    XoneK3.CO_MATCH_EPSILON           = XoneK3.TIMING.coMatchEpsilon;
-    XoneK3.TAKEOVER_EPSILON           = XoneK3.TIMING.takeoverEpsilon;
+    // myCatnip.TIMING.pacingDefaultThrottleMs and delete
+    // myCatnip.SYSEX_THROTTLE_MS.
+    myCatnip.PACING_DEFAULT_THROTTLE_MS = myCatnip.TIMING.pacingDefaultThrottleMs;
+    myCatnip.SYSEX_THROTTLE_MS          = myCatnip.TIMING.sysexThrottleMs;
+    myCatnip.BEAT_REPAINT_THROTTLE_MS   = myCatnip.TIMING.beatRepaintThrottleMs;
+    myCatnip.PULSE_CO_MS                = myCatnip.TIMING.pulseCoMs;
+    myCatnip.BEATJUMP_GAP_MS            = myCatnip.TIMING.beatjumpGapMs;
+    myCatnip.BEAT_STALL_MS              = myCatnip.TIMING.beatStallMs;
+    myCatnip.META_SETTLE_MS             = myCatnip.TIMING.metaSettleMs;
+    myCatnip.BOOT_SETTLE_MS             = myCatnip.TIMING.bootSettleMs;
+    myCatnip.BOOT_MAX_ATTEMPTS          = myCatnip.TIMING.bootMaxAttempts;
+    myCatnip.CO_MATCH_EPSILON           = myCatnip.TIMING.coMatchEpsilon;
+    myCatnip.TAKEOVER_EPSILON           = myCatnip.TIMING.takeoverEpsilon;
 
     function _refreshAliases() {
-        XoneK3.PACING_DEFAULT_THROTTLE_MS = XoneK3.TIMING.pacingDefaultThrottleMs;
-        XoneK3.SYSEX_THROTTLE_MS          = XoneK3.TIMING.sysexThrottleMs;
-        XoneK3.BEAT_REPAINT_THROTTLE_MS   = XoneK3.TIMING.beatRepaintThrottleMs;
-        XoneK3.PULSE_CO_MS                = XoneK3.TIMING.pulseCoMs;
-        XoneK3.BEATJUMP_GAP_MS            = XoneK3.TIMING.beatjumpGapMs;
-        XoneK3.BEAT_STALL_MS              = XoneK3.TIMING.beatStallMs;
-        XoneK3.META_SETTLE_MS             = XoneK3.TIMING.metaSettleMs;
-        XoneK3.BOOT_SETTLE_MS             = XoneK3.TIMING.bootSettleMs;
-        XoneK3.BOOT_MAX_ATTEMPTS          = XoneK3.TIMING.bootMaxAttempts;
-        XoneK3.CO_MATCH_EPSILON           = XoneK3.TIMING.coMatchEpsilon;
-        XoneK3.TAKEOVER_EPSILON           = XoneK3.TIMING.takeoverEpsilon;
+        myCatnip.PACING_DEFAULT_THROTTLE_MS = myCatnip.TIMING.pacingDefaultThrottleMs;
+        myCatnip.SYSEX_THROTTLE_MS          = myCatnip.TIMING.sysexThrottleMs;
+        myCatnip.BEAT_REPAINT_THROTTLE_MS   = myCatnip.TIMING.beatRepaintThrottleMs;
+        myCatnip.PULSE_CO_MS                = myCatnip.TIMING.pulseCoMs;
+        myCatnip.BEATJUMP_GAP_MS            = myCatnip.TIMING.beatjumpGapMs;
+        myCatnip.BEAT_STALL_MS              = myCatnip.TIMING.beatStallMs;
+        myCatnip.META_SETTLE_MS             = myCatnip.TIMING.metaSettleMs;
+        myCatnip.BOOT_SETTLE_MS             = myCatnip.TIMING.bootSettleMs;
+        myCatnip.BOOT_MAX_ATTEMPTS          = myCatnip.TIMING.bootMaxAttempts;
+        myCatnip.CO_MATCH_EPSILON           = myCatnip.TIMING.coMatchEpsilon;
+        myCatnip.TAKEOVER_EPSILON           = myCatnip.TIMING.takeoverEpsilon;
     }
 
     // Merge a hardware's pacing overrides. Order of precedence:
@@ -128,36 +128,36 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // invariant post-merge — a bad override warns once and
     // restores both epsilons, rather than let deviation LEDs
     // silently misreport "matched" when control isn't live.
-    XoneK3.applyPacing = function(overrides) {
+    myCatnip.applyPacing = function(overrides) {
         // 1. Reset from defaults
-        var D = XoneK3._TIMING_DEFAULTS;
+        var D = myCatnip._TIMING_DEFAULTS;
         for (var dk in D) {
-            if (D.hasOwnProperty(dk)) XoneK3.TIMING[dk] = D[dk];
+            if (D.hasOwnProperty(dk)) myCatnip.TIMING[dk] = D[dk];
         }
         // 2. Hardware overrides
         if (overrides) {
             for (var k in overrides) {
                 if (!overrides.hasOwnProperty(k)) continue;
-                if (XoneK3.TIMING[k] === undefined) continue;
-                XoneK3.TIMING[k] = overrides[k];
+                if (myCatnip.TIMING[k] === undefined) continue;
+                myCatnip.TIMING[k] = overrides[k];
             }
         }
         // 3. Test override (highest priority)
-        var T = XoneK3._pacingTestOverride;
+        var T = myCatnip._pacingTestOverride;
         if (T) {
             for (var tk in T) {
                 if (!T.hasOwnProperty(tk)) continue;
-                if (XoneK3.TIMING[tk] === undefined) continue;
-                XoneK3.TIMING[tk] = T[tk];
+                if (myCatnip.TIMING[tk] === undefined) continue;
+                myCatnip.TIMING[tk] = T[tk];
             }
         }
         // 4. Epsilon invariant
-        if (XoneK3.TIMING.takeoverEpsilon <= XoneK3.TIMING.coMatchEpsilon) {
-            XoneK3._warnOnce('pacingEpsInvariant',
+        if (myCatnip.TIMING.takeoverEpsilon <= myCatnip.TIMING.coMatchEpsilon) {
+            myCatnip._warnOnce('pacingEpsInvariant',
                 'TIMING.takeoverEpsilon must exceed TIMING.coMatchEpsilon — ' +
                 'invariant broken after pacing override; restoring framework defaults');
-            XoneK3.TIMING.coMatchEpsilon = XoneK3._TIMING_DEFAULTS.coMatchEpsilon;
-            XoneK3.TIMING.takeoverEpsilon = XoneK3._TIMING_DEFAULTS.takeoverEpsilon;
+            myCatnip.TIMING.coMatchEpsilon = myCatnip._TIMING_DEFAULTS.coMatchEpsilon;
+            myCatnip.TIMING.takeoverEpsilon = myCatnip._TIMING_DEFAULTS.takeoverEpsilon;
         }
         // 5. Refresh compat aliases
         _refreshAliases();
@@ -183,7 +183,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     //   per-frame cache slot for the dropped key, so a future
     //   render with the same payload re-enqueues instead of
     //   hitting a stale cache and silently losing the frame.
-    XoneK3.Pacing = function(name, throttleMs, sendFn) {
+    myCatnip.Pacing = function(name, throttleMs, sendFn) {
         this.name = name;
         this.throttleMs = throttleMs;
         this.sendFn = sendFn;
@@ -193,7 +193,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
         this.onDrop = null;
     };
 
-    XoneK3.Pacing.prototype = {
+    myCatnip.Pacing.prototype = {
         enqueue: function(key, payload) {
             if (this.map[key] !== undefined) {
                 this.map[key] = payload;
@@ -201,7 +201,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
             }
             this.queue.push(key);
             this.map[key] = payload;
-            if (this.queue.length > XoneK3.TIMING.pacingMaxQueue) {
+            if (this.queue.length > myCatnip.TIMING.pacingMaxQueue) {
                 var dropped = this.queue.shift();
                 delete this.map[dropped];
                 if (this.onDrop) this.onDrop(dropped);

@@ -1,32 +1,32 @@
-// xone-k3-lib-schemes.js — scheme engine: palette lookup, Mixxx
+// myCatnip-lib-schemes.js — scheme engine: palette lookup, Mixxx
 // colour dispatch, colour-spec parsing, compile / sample pipeline.
 //
 // Loaded by every preset, before any preset's binding config.
 // Preset-specific schemes, THEME, and QFX_CHAIN_LIST live in
-// the preset files — see xone-k3-cat.js.
+// the preset files — see myCatnip-cat.js.
 //
 // Palette and Mixxx-colour tables live on the hardware descriptor
-// (XoneK3.HW_K3.PALETTE, XoneK3.HW_K3.MIXXX_COLORS). The
+// (myCatnip.HW_K3.PALETTE, myCatnip.HW_K3.MIXXX_COLORS). The
 // framework hooks resolveNamedColour / mapMixxxColor are
 // overridden by the descriptor at module load; this file only
 // declares consumers.
 //
 // Transfer-curve data (measured [hw, luminance] pairs per
-// hardware) lives on XoneK3.HW_K3.LED_TRANSFERS; the normaliser
-// _buildTransferRGB lives in xone-k3-lib-core.js. Neither is
+// hardware) lives on myCatnip.HW_K3.LED_TRANSFERS; the normaliser
+// _buildTransferRGB lives in myCatnip-lib-core.js. Neither is
 // duplicated here.
 
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
 
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-lib-schemes.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-lib-schemes.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-lib-schemes.js',
+    myCatnip._requireLoad('myCatnip-lib-schemes.js',
         ['CURVE_GAIN', 'DEFAULT_RGB_BRIGHTNESS',
          'DEFAULT_RGB_BRIGHTNESS_OFF', 'DEFAULT_CO_SCHEME',
          'CO_MATCH_EPSILON', 'RATIO_GAIN',
@@ -43,13 +43,13 @@
     //
     // Framework hook defaults (return null + warn once) live in
     // lib-core.js. HW_K3.PALETTE and HW_K3.MIXXX_COLORS live in
-    // xone-k3-hw-k3.js, which overrides resolveNamedColour /
+    // myCatnip-hw-k3.js, which overrides resolveNamedColour /
     // mapMixxxColor at module load.
 
     // ============================================================
     // COLOUR RESOLVER
     // ============================================================
-    // Palette lookups dispatch through XoneK3.resolveNamedColour.
+    // Palette lookups dispatch through myCatnip.resolveNamedColour.
     // No copy registry — a copy was only ever a boot-time snapshot,
     // and _parseNamedEntry runs at compile time anyway.
 
@@ -110,7 +110,7 @@
 
     function _parseNamedEntry(parts, DEF) {
         var first = (typeof parts[0] === 'string') ? parts[0].toLowerCase() : parts[0];
-        var rgbNamed = XoneK3.resolveNamedColour(first);
+        var rgbNamed = myCatnip.resolveNamedColour(first);
         if (!rgbNamed) return null;
         return {
             rgb: rgbNamed.slice(),
@@ -119,11 +119,11 @@
         };
     }
 
-    XoneK3.resolveColorEntry = function(entry, defaultBr) {
+    myCatnip.resolveColorEntry = function(entry, defaultBr) {
         if (entry === undefined || entry === null) return null;
         var DEF = (typeof defaultBr === 'number')
             ? Math.max(0, Math.min(127, defaultBr))
-            : XoneK3.DEFAULT_RGB_BRIGHTNESS;
+            : myCatnip.DEFAULT_RGB_BRIGHTNESS;
 
         var parts = _normalizeColorParts(entry);
         if (!parts || parts.length === 0 || parts[0] === '') return null;
@@ -143,11 +143,11 @@
     // engine's default co-steering ramp, referenced by
     // SCHEME_DEFAULTS.coScheme and used by any deviation LED
     // whose knob and CO disagree.
-    XoneK3.SCHEMES = {};
-    XoneK3._schemeCache = {};
-    XoneK3._compiledCache = {};
+    myCatnip.SCHEMES = {};
+    myCatnip._schemeCache = {};
+    myCatnip._compiledCache = {};
 
-    XoneK3.SCHEME_DEFAULTS = {
+    myCatnip.SCHEME_DEFAULTS = {
         colors: null,
         ratio: null,
         curve: 0,
@@ -165,26 +165,26 @@
         beat: null
     };
 
-    XoneK3.resolveScheme = function(ref) {
-        if (typeof ref === 'string' && XoneK3._schemeCache[ref]) {
-            return XoneK3._schemeCache[ref];
+    myCatnip.resolveScheme = function(ref) {
+        if (typeof ref === 'string' && myCatnip._schemeCache[ref]) {
+            return myCatnip._schemeCache[ref];
         }
 
         var raw;
         if (typeof ref === 'string') {
-            raw = XoneK3.SCHEMES[ref];
+            raw = myCatnip.SCHEMES[ref];
             if (!raw) return null;
         } else if (ref && typeof ref === 'object' && !Array.isArray(ref)) {
             var refKey = JSON.stringify(ref).slice(0, 60);
             if (ref.patch) {
-                XoneK3._warnOnce('schemePatch:' + refKey,
+                myCatnip._warnOnce('schemePatch:' + refKey,
                     'scheme patch syntax removed — pass a plain scheme ' +
                     'object, or build one via composeScheme in config. Got: ' +
                     JSON.stringify(ref).slice(0, 120));
                 return null;
             }
             if (!ref.colors && Object.keys(ref).length > 0) {
-                XoneK3._warnOnce('schemeNoColors:' + refKey,
+                myCatnip._warnOnce('schemeNoColors:' + refKey,
                     'scheme object has no colors — partials are no longer ' +
                     'supported. Got: ' + JSON.stringify(ref).slice(0, 120));
                 return null;
@@ -194,15 +194,15 @@
             return null;
         }
 
-        var out = Object.assign({}, XoneK3.SCHEME_DEFAULTS, raw);
-        if (typeof ref === 'string') XoneK3._schemeCache[ref] = out;
+        var out = Object.assign({}, myCatnip.SCHEME_DEFAULTS, raw);
+        if (typeof ref === 'string') myCatnip._schemeCache[ref] = out;
         return out;
     };
 
     // ============================================================
     // SEGMENTS — colour stops to weighted ranges
     // ============================================================
-    XoneK3._buildSegments = function(colors, ratio, brightness) {
+    myCatnip._buildSegments = function(colors, ratio, brightness) {
         if (!Array.isArray(colors) || colors.length === 0) return null;
         var resolved = [];
         for (var i = 0; i < colors.length; i++) {
@@ -211,9 +211,9 @@
                 colorSpec = e.color;
                 if (e.ratio !== undefined) ratioSpec = e.ratio;
             }
-            var c = XoneK3.resolveColorEntry(colorSpec, brightness);
+            var c = myCatnip.resolveColorEntry(colorSpec, brightness);
             if (!c) {
-                XoneK3._warnOnce('segUnresolved:' + String(colorSpec),
+                myCatnip._warnOnce('segUnresolved:' + String(colorSpec),
                     '_buildSegments: could not resolve colour spec ' +
                     JSON.stringify(colorSpec).slice(0, 60) +
                     ' — segment skipped. Check spelling or palette name.');
@@ -244,16 +244,16 @@
     // Unity at k=0, t=0, and t=1.
     function _warp(t, k) {
         if (k === 0 || t <= 0 || t >= 1) return t;
-        var e = Math.pow(2, -k * XoneK3.CURVE_GAIN);
+        var e = Math.pow(2, -k * myCatnip.CURVE_GAIN);
         if (t < 0.5) {
             return 0.5 * Math.pow(t / 0.5, e);
         }
         var u = (t - 0.5) / 0.5;
         return 0.5 + 0.5 * (1 - Math.pow(1 - u, e));
     }
-    XoneK3._warp = _warp;
+    myCatnip._warp = _warp;
 
-    XoneK3.sampleT = function(compiled, t) {
+    myCatnip.sampleT = function(compiled, t) {
         var m = compiled.tmap;
         if (!m) return t;
         // Shift the input axis first, clamp, then warp. This makes
@@ -272,7 +272,7 @@
         return t;
     };
 
-    XoneK3._computeTmap = function(raw) {
+    myCatnip._computeTmap = function(raw) {
         return {
             position: (raw.schemePosition - 63.5) / 127,
             curve: raw.curve || 0
@@ -284,8 +284,8 @@
     // when a scheme has no explicit offScheme. Boundaries matter
     // — a scheme that re-shapes its off-ramp would break
     // sample-position alignment with the on-ramp otherwise.
-    XoneK3._generateOff = function(segs) {
-        var offBr = XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF, out = [];
+    myCatnip._generateOff = function(segs) {
+        var offBr = myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF, out = [];
         for (var i = 0; i < segs.length; i++) {
             var c = segs[i].color;
             out.push({ start: segs[i].start, end: segs[i].end,
@@ -309,36 +309,36 @@
     // return null before the cache write), matching the previous
     // behaviour.
 
-    XoneK3._compileFullScheme = function(raw, overrides, seen) {
+    myCatnip._compileFullScheme = function(raw, overrides, seen) {
         if (overrides) raw = Object.assign({}, raw, overrides);
 
-        var onSegs = XoneK3._buildSegments(raw.colors, raw.ratio, raw.brightness);
+        var onSegs = myCatnip._buildSegments(raw.colors, raw.ratio, raw.brightness);
         if (!onSegs) return null;
 
         var offSegs = null;
         if (raw.offScheme) {
-            var offC = XoneK3.compileScheme(raw.offScheme, undefined, seen);
+            var offC = myCatnip.compileScheme(raw.offScheme, undefined, seen);
             if (offC) offSegs = offC.on;
         }
-        if (!offSegs) offSegs = XoneK3._generateOff(onSegs);
+        if (!offSegs) offSegs = myCatnip._generateOff(onSegs);
 
         var coCompiled = null;
         if (raw.coScheme !== null && raw.coScheme !== false) {
-            var coName = raw.coScheme || XoneK3.DEFAULT_CO_SCHEME;
-            if (coName) coCompiled = XoneK3.compileScheme(coName, undefined, seen);
+            var coName = raw.coScheme || myCatnip.DEFAULT_CO_SCHEME;
+            if (coName) coCompiled = myCatnip.compileScheme(coName, undefined, seen);
         }
 
         var marker = raw.markerColor
-            ? XoneK3.resolveColorEntry(raw.markerColor, raw.brightness)
+            ? myCatnip.resolveColorEntry(raw.markerColor, raw.brightness)
             : null;
         if (marker &&
             (marker.brightnessOff === undefined || marker.brightnessOff === null)) {
-            marker.brightnessOff = XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF;
+            marker.brightnessOff = myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF;
         }
 
         return {
             on: onSegs, off: offSegs, co: coCompiled, marker: marker,
-            tmap: XoneK3._computeTmap(raw),
+            tmap: myCatnip._computeTmap(raw),
             markerPosition: (typeof raw.markerPosition === 'number') ? raw.markerPosition : 63.5,
             markerWidth:    (typeof raw.markerWidth    === 'number') ? raw.markerWidth    : 0,
             interp:         raw.interp !== false,
@@ -349,11 +349,11 @@
         };
     };
 
-    XoneK3._compileSingleColor = function(ref) {
-        var entry = XoneK3.resolveColorEntry(ref);
+    myCatnip._compileSingleColor = function(ref) {
+        var entry = myCatnip.resolveColorEntry(ref);
         if (!entry) return null;
         var offBr = (typeof entry.brightnessOff === 'number')
-            ? entry.brightnessOff : XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF;
+            ? entry.brightnessOff : myCatnip.DEFAULT_RGB_BRIGHTNESS_OFF;
         return {
             on:  [{ start: 0, end: 1, color: entry }],
             off: [{ start: 0, end: 1,
@@ -366,9 +366,9 @@
         };
     };
 
-    XoneK3.compileScheme = function(ref, overrides, seen) {
+    myCatnip.compileScheme = function(ref, overrides, seen) {
         var cacheable = (typeof ref === 'string') && !overrides;
-        if (cacheable && XoneK3._compiledCache[ref]) return XoneK3._compiledCache[ref];
+        if (cacheable && myCatnip._compiledCache[ref]) return myCatnip._compiledCache[ref];
 
         // Cycle detection. A scheme that names itself (directly or
         // through a chain) in offScheme / coScheme would otherwise
@@ -380,7 +380,7 @@
         seen = seen || new Set();
         if (seen.has(ref)) {
             if (typeof ref === 'string') {
-                XoneK3._warnOnce('schemeCycle:' + ref,
+                myCatnip._warnOnce('schemeCycle:' + ref,
                     'scheme "' + ref + '" references itself in its ' +
                     'offScheme / coScheme chain — cycle broken, the ' +
                     'referencing field renders as null');
@@ -389,29 +389,29 @@
         }
         seen.add(ref);
 
-        var raw = XoneK3.resolveScheme(ref);
+        var raw = myCatnip.resolveScheme(ref);
         var compiled;
         if (raw && raw.colors && raw.colors.length > 0) {
-            compiled = XoneK3._compileFullScheme(raw, overrides, seen);
+            compiled = myCatnip._compileFullScheme(raw, overrides, seen);
         } else {
-            compiled = XoneK3._compileSingleColor(ref);
+            compiled = myCatnip._compileSingleColor(ref);
         }
 
         seen.delete(ref);
-        if (cacheable && compiled) XoneK3._compiledCache[ref] = compiled;
+        if (cacheable && compiled) myCatnip._compiledCache[ref] = compiled;
         return compiled;
     };
 
     // ============================================================
     // SAMPLING
     // ============================================================
-    XoneK3.markerHit = function(compiled, devDir) {
+    myCatnip.markerHit = function(compiled, devDir) {
         var at = (compiled.markerPosition / 127) * 2 - 1;
         var half = (compiled.markerWidth || 0) / 127;
         return half > 0 && !!compiled.marker && Math.abs(devDir - at) <= half;
     };
 
-    XoneK3.scaleTarget = function(target, scale) {
+    myCatnip.scaleTarget = function(target, scale) {
         if (target === null) return null;
         if (typeof scale !== 'number' || scale === 1) return target;
         return target * scale;
@@ -435,7 +435,7 @@
         for (var i = 0; i < segs.length; i++) {
             var c = segs[i].color;
             if (!c || c.rgb === null) {
-                XoneK3._warnOnce('sampleSegsMixxx',
+                myCatnip._warnOnce('sampleSegsMixxx',
                     'sampling a scheme containing a `mixxx` colour stop — ' +
                     '`mixxx` is only supported on static single-colour LEDs. ' +
                     'The stop is skipped during sampling.');
@@ -481,7 +481,7 @@
         for (var j = 0; j < segs.length; j++) {
             var c = segs[j].color;
             if (!c || c.rgb === null) {
-                XoneK3._warnOnce('sampleSegsMixxx',
+                myCatnip._warnOnce('sampleSegsMixxx',
                     'sampling a scheme containing a `mixxx` colour stop — ' +
                     '`mixxx` is only supported on static single-colour LEDs. ' +
                     'The stop is skipped during sampling.');
@@ -515,7 +515,7 @@
         };
     }
 
-    XoneK3.sampleSegs = function(segs, t, interp) {
+    myCatnip.sampleSegs = function(segs, t, interp) {
         if (!segs || segs.length === 0) return null;
         if (t < 0) t = 0;
         if (t > 1) t = 1;
@@ -538,7 +538,7 @@
     //
     // Caller feeds the return through _sampleRamp / _sendSampled
     // with skipBeat=true — co-match bypasses the beat cascade.
-    XoneK3.coMatchSample = function(compiled, group, key, physical, isOn, cachedCoVal) {
+    myCatnip.coMatchSample = function(compiled, group, key, physical, isOn, cachedCoVal) {
         if (!compiled || !compiled.co) return null;
         if (!group || !key) return null;
         var coVal = (typeof cachedCoVal === 'number')
@@ -547,7 +547,7 @@
         var dev = physical - coVal;
         if (dev < -1) dev = -1;
         if (dev > 1)  dev = 1;
-        if (Math.abs(dev) <= XoneK3.CO_MATCH_EPSILON) return null;
+        if (Math.abs(dev) <= myCatnip.CO_MATCH_EPSILON) return null;
         return {
             ramp: isOn ? compiled.co.on : compiled.co.off,
             t: (dev + 1) / 2
@@ -561,7 +561,7 @@
     // knob disagrees with its bound CO. Referenced by
     // SCHEME_DEFAULTS.coScheme. Override per-scheme with
     // coScheme: 'name' or coScheme: null to disable.
-    XoneK3.SCHEMES.coMatch = {
+    myCatnip.SCHEMES.coMatch = {
         colors: [
             [100, 55, 55],
             [100, 69, 69],

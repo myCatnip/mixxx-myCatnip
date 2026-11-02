@@ -12,10 +12,10 @@ function makeCtrl() {
 // ── tunables + state ───────────────────────────────────────────
 
 test('boot settle: tunables defined', function(t) {
-    t.eq(typeof XoneK3.BOOT_SETTLE_MS, 'number');
-    t.eq(typeof XoneK3.BOOT_MAX_ATTEMPTS, 'number');
-    t.ok(XoneK3.BOOT_SETTLE_MS > 0);
-    t.ok(XoneK3.BOOT_MAX_ATTEMPTS > 0);
+    t.eq(typeof myCatnip.BOOT_SETTLE_MS, 'number');
+    t.eq(typeof myCatnip.BOOT_MAX_ATTEMPTS, 'number');
+    t.ok(myCatnip.BOOT_SETTLE_MS > 0);
+    t.ok(myCatnip.BOOT_MAX_ATTEMPTS > 0);
 });
 
 test('boot settle: constructor inits per-channel state', function(t) {
@@ -73,7 +73,7 @@ test('boot settle: max attempts cap stops rescheduling', function(t) {
     var c = makeCtrl();
     c._bootSettling[1] = true;
     c._bootSettledAt[1] = Date.now();
-    c._bootAttempt[1] = XoneK3.BOOT_MAX_ATTEMPTS;
+    c._bootAttempt[1] = myCatnip.BOOT_MAX_ATTEMPTS;
 
     c._checkBootChannel(1);
 
@@ -85,11 +85,11 @@ test('boot settle: cap hit warns once per channel', function(t) {
     var c = makeCtrl();
     c._bootSettling[1] = true;
     c._bootSettledAt[1] = Date.now();
-    c._bootAttempt[1] = XoneK3.BOOT_MAX_ATTEMPTS;
+    c._bootAttempt[1] = myCatnip.BOOT_MAX_ATTEMPTS;
 
     c._checkBootChannel(1);
 
-    t.ok(XoneK3._warned['bootSettle:1']);
+    t.ok(myCatnip._warned['bootSettle:1']);
     t.eq(c._bootSettling[1], false);
     t.eq(c._bootAttempt[1], 0);
 });
@@ -165,7 +165,7 @@ function(t) {
     engine._set('[Channel1]', 'track_samples', 1000);
     engine._set('[Channel1]', 'track_loaded', 1);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
-    engine._set('[Channel1]', 'hotcue_9_color', XoneK3.PHRASE_MARKER_COLORS[0]);
+    engine._set('[Channel1]', 'hotcue_9_color', myCatnip.PHRASE_MARKER_COLORS[0]);
     engine._set('[Channel1]', 'playposition', 0.6);
 
     // Force the state that would result if clocks were closed:
@@ -199,82 +199,82 @@ function(t) {
 // ── N1: _phraseHotcueSlots memoization ────────────────────────
 
 function freshSlotsCache() {
-    XoneK3._phraseHotcueSlotsCache = null;
-    XoneK3._phraseHotcueSlotsCacheSrc = null;
+    myCatnip._phraseHotcueSlotsCache = null;
+    myCatnip._phraseHotcueSlotsCacheSrc = null;
 }
 
 test('_phraseHotcueSlots: caches by array identity', function(t) {
     freshSlotsCache();
-    var a = XoneK3._phraseHotcueSlots();
-    var b = XoneK3._phraseHotcueSlots();
+    var a = myCatnip._phraseHotcueSlots();
+    var b = myCatnip._phraseHotcueSlots();
     t.eq(a, b, 'same reference on second call');
 });
 
 test('_phraseHotcueSlots: invalidates when array replaced', function(t) {
-    var origSlots = XoneK3.PHRASE_HOTCUE_SLOTS;
+    var origSlots = myCatnip.PHRASE_HOTCUE_SLOTS;
     freshSlotsCache();
-    var a = XoneK3._phraseHotcueSlots();
+    var a = myCatnip._phraseHotcueSlots();
 
-    XoneK3.PHRASE_HOTCUE_SLOTS = [1, 2, 3, 4];
-    var b = XoneK3._phraseHotcueSlots();
+    myCatnip.PHRASE_HOTCUE_SLOTS = [1, 2, 3, 4];
+    var b = myCatnip._phraseHotcueSlots();
     t.neq(a, b, 'new reference after array replaced');
     t.eq(b.length, 4);
 
-    XoneK3.PHRASE_HOTCUE_SLOTS = origSlots;
+    myCatnip.PHRASE_HOTCUE_SLOTS = origSlots;
     freshSlotsCache();
 });
 
 // ── _validatePhraseHotcueSlots ────────────────────────────────
 
 test('_validatePhraseHotcueSlots: warns on non-array', function(t) {
-    var orig = XoneK3.PHRASE_HOTCUE_SLOTS;
-    XoneK3.PHRASE_HOTCUE_SLOTS = 'bad';
+    var orig = myCatnip.PHRASE_HOTCUE_SLOTS;
+    myCatnip.PHRASE_HOTCUE_SLOTS = 'bad';
     var c = H.ctrl();
     c._validateBindings();
-    t.ok(XoneK3._warned['phraseSlotsShape']);
-    XoneK3.PHRASE_HOTCUE_SLOTS = orig;
+    t.ok(myCatnip._warned['phraseSlotsShape']);
+    myCatnip.PHRASE_HOTCUE_SLOTS = orig;
 });
 
 test('_validatePhraseHotcueSlots: warns on out-of-range', function(t) {
-    var orig = XoneK3.PHRASE_HOTCUE_SLOTS;
-    XoneK3.PHRASE_HOTCUE_SLOTS = [0, 99];
+    var orig = myCatnip.PHRASE_HOTCUE_SLOTS;
+    myCatnip.PHRASE_HOTCUE_SLOTS = [0, 99];
     var c = H.ctrl();
     c._validateBindings();
-    t.ok(XoneK3._warned['phraseSlotRange:0']);
-    t.ok(XoneK3._warned['phraseSlotRange:99']);
-    XoneK3.PHRASE_HOTCUE_SLOTS = orig;
+    t.ok(myCatnip._warned['phraseSlotRange:0']);
+    t.ok(myCatnip._warned['phraseSlotRange:99']);
+    myCatnip.PHRASE_HOTCUE_SLOTS = orig;
 });
 
 test('_validatePhraseHotcueSlots: warns on duplicate', function(t) {
-    var orig = XoneK3.PHRASE_HOTCUE_SLOTS;
-    XoneK3.PHRASE_HOTCUE_SLOTS = [9, 9, 10];
+    var orig = myCatnip.PHRASE_HOTCUE_SLOTS;
+    myCatnip.PHRASE_HOTCUE_SLOTS = [9, 9, 10];
     var c = H.ctrl();
     c._validateBindings();
-    t.ok(XoneK3._warned['phraseSlotDup:9']);
-    XoneK3.PHRASE_HOTCUE_SLOTS = orig;
+    t.ok(myCatnip._warned['phraseSlotDup:9']);
+    myCatnip.PHRASE_HOTCUE_SLOTS = orig;
 });
 
 test('_validatePhraseHotcueSlots: warns on non-integer', function(t) {
-    var orig = XoneK3.PHRASE_HOTCUE_SLOTS;
-    XoneK3.PHRASE_HOTCUE_SLOTS = [9.5];
+    var orig = myCatnip.PHRASE_HOTCUE_SLOTS;
+    myCatnip.PHRASE_HOTCUE_SLOTS = [9.5];
     var c = H.ctrl();
     c._validateBindings();
-    t.ok(XoneK3._warned['phraseSlotRange:9.5']);
-    XoneK3.PHRASE_HOTCUE_SLOTS = orig;
+    t.ok(myCatnip._warned['phraseSlotRange:9.5']);
+    myCatnip.PHRASE_HOTCUE_SLOTS = orig;
 });
 
 test('_phraseHotcueSlots: rejects non-integer slots', function(t) {
-    var orig = XoneK3.PHRASE_HOTCUE_SLOTS;
-    XoneK3._phraseHotcueSlotsCache = null;
-    XoneK3._phraseHotcueSlotsCacheSrc = null;
-    XoneK3.PHRASE_HOTCUE_SLOTS = [9.5, 10, 11];
+    var orig = myCatnip.PHRASE_HOTCUE_SLOTS;
+    myCatnip._phraseHotcueSlotsCache = null;
+    myCatnip._phraseHotcueSlotsCacheSrc = null;
+    myCatnip.PHRASE_HOTCUE_SLOTS = [9.5, 10, 11];
 
-    var slots = XoneK3._phraseHotcueSlots();
+    var slots = myCatnip._phraseHotcueSlots();
     t.eq(slots.length, 2, '9.5 rejected');
     t.contains(slots, 10);
     t.contains(slots, 11);
 
-    XoneK3.PHRASE_HOTCUE_SLOTS = orig;
-    XoneK3._phraseHotcueSlotsCache = null;
-    XoneK3._phraseHotcueSlotsCacheSrc = null;
+    myCatnip.PHRASE_HOTCUE_SLOTS = orig;
+    myCatnip._phraseHotcueSlotsCache = null;
+    myCatnip._phraseHotcueSlotsCacheSrc = null;
 });

@@ -5,6 +5,53 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] — Namespace and filename rename
+
+Breaking for framework extenders. Preset loading (Cat, Kitten, oneK3,
+oneK3 miniFX, colorLab) is unaffected — the `.midi.xml` `<key>` bindings
+and `<file filename>` entries are updated in lockstep with the source,
+so user-visible behaviour is identical to v1.2.0. **No behavioural
+change from v1.2.0.**
+
+### Changed — Framework namespace
+
+- `XoneK3` → `myCatnip` in every `.js` and `.midi.xml`.
+- `XoneK3.K3Controller` → `myCatnip.Controller`. No `K3Controller`
+  alias.
+- `XoneK3.LabController` → `myCatnip.LabController`. Extends
+  `myCatnip.Controller`.
+- `_requireLoad` prereq key `'K3Controller'` → `'Controller'`.
+- XML `<key>XoneK3.init</key>` / `<key>XoneK3.shutdown</key>` →
+  `<key>myCatnip.init</key>` / `<key>myCatnip.shutdown</key>`.
+- XML `functionprefix="XoneK3"` → `functionprefix="myCatnip"`.
+
+### Changed — Filenames
+
+- `xone-k3-*.js` → `myCatnip-*.js` (24 files, git mv).
+- `xone-k3-*.midi.xml` → `myCatnip-*.midi.xml` (5 files, git mv).
+- `<file filename="...">` references in every `.midi.xml` updated.
+- `_requireLoad(...)` filename strings and error-message headers
+  updated.
+
+### Not changed
+
+- `HW_K3` object name.
+- `'XONE:K3'` controller IDs in `<controller id="...">`.
+- `'Xone K3'` strings in print/error prefixes.
+- Scheme names, preset names, `[k3]` print prefix, `_warnOnce` keys.
+
+### Migration
+
+- **Preset users:** no action.
+- **Custom presets:** `sed -i 's/xone-k3-/myCatnip-/g; s/XoneK3/myCatnip/g; s/\.K3Controller/.Controller/g' your-preset.js your-preset.midi.xml`
+
+### Deferred to v2.1.0
+
+- `HW_FAKE` test hardware.
+- `HARDWARE.md`.
+    
+---
+
 ## [1.2.0] — Boundary hardening
 
 Backwards-compatible. Existing presets, tests, and saved layouts load

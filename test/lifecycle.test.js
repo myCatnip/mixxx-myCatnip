@@ -150,7 +150,7 @@ test('_refreshBinding: throwing _refresh does not propagate', function(t) {
     // refresh path; a binding is free to throw here.
     c.bindings.button0_0._refresh = function() { throw new Error('boom'); };
 
-    XoneK3._warned = {};
+    myCatnip._warned = {};
     _printLog.length = 0;
     var threw = false;
     try { c._refreshBinding('button0_0'); }

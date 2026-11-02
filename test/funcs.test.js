@@ -13,7 +13,7 @@ var H = require('./helpers');
 test('k3Select: sets selectedDeckA', function(t) {
     var c = H.ctrl();
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['deck', 'A', 3]
+        func: myCatnip.FUNCS.k3Select, args: ['deck', 'A', 3]
     });
     H.press(c, 'press0');
     t.eq(c.selectedDeckA, 3);
@@ -22,7 +22,7 @@ test('k3Select: sets selectedDeckA', function(t) {
 test('k3Select: sets selectedFxA', function(t) {
     var c = H.ctrl();
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['fx', 'A', 2]
+        func: myCatnip.FUNCS.k3Select, args: ['fx', 'A', 2]
     });
     H.press(c, 'press0');
     t.eq(c.selectedFxA, 2);
@@ -32,7 +32,7 @@ test('k3Select: with modifiers.loadArm loads track', function(t) {
     var c = H.ctrl();
     c.modifiers.loadArm = true;
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['deck', 'A', 3]
+        func: myCatnip.FUNCS.k3Select, args: ['deck', 'A', 3]
     });
     H.press(c, 'press0');
     t.eq(engine.getValue('[Channel3]', 'LoadSelectedTrack'), 1);
@@ -42,7 +42,7 @@ test('k3Select: NaN arg is ignored', function(t) {
     var c = H.ctrl();
     c.selectedDeckA = 2;
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['deck', 'A']
+        func: myCatnip.FUNCS.k3Select, args: ['deck', 'A']
     });
     H.press(c, 'press0');
     t.eq(c.selectedDeckA, 2);
@@ -52,7 +52,7 @@ test('k3SelectActive: uses activeFx slot', function(t) {
     var c = H.ctrl();
     c.activeFx = 'B';
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3SelectActive, args: ['fx', 3]
+        func: myCatnip.FUNCS.k3SelectActive, args: ['fx', 3]
     });
     H.press(c, 'press0');
     t.eq(c.selectedFxB, 3);
@@ -62,7 +62,7 @@ test('k3SelectActive: with modifiers.loadArm loads track', function(t) {
     var c = H.ctrl();
     c.modifiers.loadArm = true;
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3SelectActive, args: ['deck', 2]
+        func: myCatnip.FUNCS.k3SelectActive, args: ['deck', 2]
     });
     H.press(c, 'press0');
     t.eq(engine.getValue('[Channel2]', 'LoadSelectedTrack'), 1);
@@ -74,7 +74,7 @@ test('setActiveFxTo: A', function(t) {
     var c = H.ctrl();
     c.activeFx = 'B';
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.setActiveFxTo, args: ['A']
+        func: myCatnip.FUNCS.setActiveFxTo, args: ['A']
     });
     H.press(c, 'press0');
     t.eq(c.activeFx, 'A');
@@ -84,7 +84,7 @@ test('setActiveFxTo: B', function(t) {
     var c = H.ctrl();
     c.activeFx = 'A';
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.setActiveFxTo, args: ['B']
+        func: myCatnip.FUNCS.setActiveFxTo, args: ['B']
     });
     H.press(c, 'press0');
     t.eq(c.activeFx, 'B');
@@ -92,7 +92,7 @@ test('setActiveFxTo: B', function(t) {
 
 test('toggleActiveFx: flips A ↔ B', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press0', {func: XoneK3.FUNCS.toggleActiveFx});
+    c._applyBinding('press0', {func: myCatnip.FUNCS.toggleActiveFx});
     H.press(c, 'press0');
     t.eq(c.activeFx, 'B');
     H.release(c, 'press0');
@@ -102,7 +102,7 @@ test('toggleActiveFx: flips A ↔ B', function(t) {
 
 test('toggleActiveDeck: flips A ↔ B', function(t) {
     var c = H.ctrl();
-    c._applyBinding('press0', {func: XoneK3.FUNCS.toggleActiveDeck});
+    c._applyBinding('press0', {func: myCatnip.FUNCS.toggleActiveDeck});
     H.press(c, 'press0');
     t.eq(c.activeDeck, 'B');
 });
@@ -128,7 +128,7 @@ test('encPregainStep: CW adds step', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'pregain', 0.5);
     c._applyBinding('encoder0', {
-        func: XoneK3.FUNCS.encPregainStep, args: [0.1],
+        func: myCatnip.FUNCS.encPregainStep, args: [0.1],
         group: '[Channel1]', inKey: 'pregain'
     });
     H.send(c, 'encoder0', 1);
@@ -139,7 +139,7 @@ test('encPregainStep: CCW subtracts', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'pregain', 0.5);
     c._applyBinding('encoder0', {
-        func: XoneK3.FUNCS.encPregainStep, args: [0.1],
+        func: myCatnip.FUNCS.encPregainStep, args: [0.1],
         group: '[Channel1]', inKey: 'pregain'
     });
     H.send(c, 'encoder0', 127);
@@ -152,7 +152,7 @@ test('encQuickFxCycle: CW advances loaded_chain_preset', function(t) {
     var c = H.ctrl();
     engine._set('[QuickEffectRack1_[Channel1]]', 'loaded_chain_preset', 0);
     c._applyBinding('encoder1', {
-        func: XoneK3.FUNCS.encQuickFxCycle,
+        func: myCatnip.FUNCS.encQuickFxCycle,
         group: '[QuickEffectRack1_[Channel1]]'
     });
     H.send(c, 'encoder1', 1);
@@ -163,12 +163,12 @@ test('encQuickFxCycle: CCW decrements and wraps at index 0', function(t) {
     var c = H.ctrl();
     engine._set('[QuickEffectRack1_[Channel1]]', 'loaded_chain_preset', 0);
     c._applyBinding('encoder1', {
-        func: XoneK3.FUNCS.encQuickFxCycle,
+        func: myCatnip.FUNCS.encQuickFxCycle,
         group: '[QuickEffectRack1_[Channel1]]'
     });
     H.send(c, 'encoder1', 127);
     t.eq(engine.getValue('[QuickEffectRack1_[Channel1]]', 'loaded_chain_preset'),
-         XoneK3.QFX_CHAIN_LIST.length - 1);
+         myCatnip.QFX_CHAIN_LIST.length - 1);
 });
 
 // ── encKeyShift ────────────────────────────────────────────
@@ -177,7 +177,7 @@ test('encKeyShift: CW +1 semitone', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'pitch_adjust', 0);
     c._applyBinding('encoder3', {
-        func: XoneK3.FUNCS.encKeyShift, group: '[Channel1]'
+        func: myCatnip.FUNCS.encKeyShift, group: '[Channel1]'
     });
     H.send(c, 'encoder3', 1);
     t.eq(engine.getValue('[Channel1]', 'pitch_adjust'), 1);
@@ -187,7 +187,7 @@ test('encKeyShift: CCW -1', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'pitch_adjust', 0);
     c._applyBinding('encoder3', {
-        func: XoneK3.FUNCS.encKeyShift, group: '[Channel1]'
+        func: myCatnip.FUNCS.encKeyShift, group: '[Channel1]'
     });
     H.send(c, 'encoder3', 127);
     t.eq(engine.getValue('[Channel1]', 'pitch_adjust'), -1);
@@ -198,7 +198,7 @@ test('encKeyShift: CCW -1', function(t) {
 test('encKeySyncReset: CW fires sync_key', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoder2', {
-        func: XoneK3.FUNCS.encKeySyncReset, group: '[Channel1]'
+        func: myCatnip.FUNCS.encKeySyncReset, group: '[Channel1]'
     });
     H.send(c, 'encoder2', 1);
     t.eq(engine.getValue('[Channel1]', 'sync_key'), 1);
@@ -207,7 +207,7 @@ test('encKeySyncReset: CW fires sync_key', function(t) {
 test('encKeySyncReset: CCW fires reset_key', function(t) {
     var c = H.ctrl();
     c._applyBinding('encoder2', {
-        func: XoneK3.FUNCS.encKeySyncReset, group: '[Channel1]'
+        func: myCatnip.FUNCS.encKeySyncReset, group: '[Channel1]'
     });
     H.send(c, 'encoder2', 127);
     t.eq(engine.getValue('[Channel1]', 'reset_key'), 1);
@@ -219,7 +219,7 @@ test('encStepParam: CW adds step to parameter', function(t) {
     var c = H.ctrl();
     engine.setParameter('[Master]', 'gain', 0.5);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encStepParam, args: ['[Master]', 'gain', 0.05]
+        func: myCatnip.FUNCS.encStepParam, args: ['[Master]', 'gain', 0.05]
     });
     H.send(c, 'encoderL', 1);
     t.approx(engine.getParameter('[Master]', 'gain'), 0.55, 1e-9);
@@ -229,7 +229,7 @@ test('encStepParam: clamps to [0,1]', function(t) {
     var c = H.ctrl();
     engine.setParameter('[Master]', 'gain', 0.98);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encStepParam, args: ['[Master]', 'gain', 0.05]
+        func: myCatnip.FUNCS.encStepParam, args: ['[Master]', 'gain', 0.05]
     });
     H.send(c, 'encoderL', 1);
     t.eq(engine.getParameter('[Master]', 'gain'), 1);
@@ -237,7 +237,7 @@ test('encStepParam: clamps to [0,1]', function(t) {
 
 test('encStepParam: missing args no-op', function(t) {
     var c = H.ctrl();
-    c._applyBinding('encoderL', {func: XoneK3.FUNCS.encStepParam, args: []});
+    c._applyBinding('encoderL', {func: myCatnip.FUNCS.encStepParam, args: []});
     H.send(c, 'encoderL', 1);
 });
 
@@ -245,14 +245,14 @@ test('encStepParam: missing args no-op', function(t) {
 
 test('encPlaylistNav: CW selects next', function(t) {
     var c = H.ctrl();
-    c._applyBinding('encoderR', {func: XoneK3.FUNCS.encPlaylistNav});
+    c._applyBinding('encoderR', {func: myCatnip.FUNCS.encPlaylistNav});
     H.send(c, 'encoderR', 1);
     t.eq(engine.getValue('[Playlist]', 'SelectNextTrack'), 1);
 });
 
 test('encPlaylistNav: CCW selects prev', function(t) {
     var c = H.ctrl();
-    c._applyBinding('encoderR', {func: XoneK3.FUNCS.encPlaylistNav});
+    c._applyBinding('encoderR', {func: myCatnip.FUNCS.encPlaylistNav});
     H.send(c, 'encoderR', 127);
     t.eq(engine.getValue('[Playlist]', 'SelectPrevTrack'), 1);
 });
@@ -263,7 +263,7 @@ test('encLoopMove: writes loop_anchor 1 for in', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_anchor', 0);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encLoopMove, args: ['in', 0.01],
+        func: myCatnip.FUNCS.encLoopMove, args: ['in', 0.01],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     H.send(c, 'encoderL', 1);
@@ -274,7 +274,7 @@ test('encLoopMove: writes loop_anchor 0 for out', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_anchor', 1);
     c._applyBinding('encoderR', {
-        func: XoneK3.FUNCS.encLoopMove, args: ['out', 0.01],
+        func: myCatnip.FUNCS.encLoopMove, args: ['out', 0.01],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     H.send(c, 'encoderR', 1);
@@ -293,7 +293,7 @@ test('encBeatjump: CW → beatjump_forward pulse (in loop)', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_enabled', 1);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     H.send(c, 'encoderL', 1);
     t.eq(engine.getValue('[Channel1]', 'beatjump_forward'), 1);
@@ -305,7 +305,7 @@ test('encBeatjump: CCW → beatjump_backward pulse (in loop)', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_enabled', 1);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     H.send(c, 'encoderL', 127);
     t.eq(engine.getValue('[Channel1]', 'beatjump_backward'), 1);
@@ -315,7 +315,7 @@ test('encBeatjump: no-op outside a loop (CW)', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_enabled', 0);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     H.send(c, 'encoderL', 1);
     t.eq(engine.getValue('[Channel1]', 'beatjump_forward'), 0,
@@ -326,7 +326,7 @@ test('encBeatjump: no-op outside a loop (CCW)', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_enabled', 0);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBeatjump, group: '[Channel1]'
+        func: myCatnip.FUNCS.encBeatjump, group: '[Channel1]'
     });
     H.send(c, 'encoderL', 127);
     t.eq(engine.getValue('[Channel1]', 'beatjump_backward'), 0,
@@ -339,7 +339,7 @@ test('encBeatjumpStepScale: CW doubles', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'beatjump_size', 1);
     c._applyBinding('encoderR', {
-        func: XoneK3.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
+        func: myCatnip.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
         group: '[Channel1]'
     });
     H.send(c, 'encoderR', 1);
@@ -350,7 +350,7 @@ test('encBeatjumpStepScale: CCW halves', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'beatjump_size', 1);
     c._applyBinding('encoderR', {
-        func: XoneK3.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
+        func: myCatnip.FUNCS.encBeatjumpStepScale, args: ['1/32', 16],
         group: '[Channel1]'
     });
     H.send(c, 'encoderR', 127);
@@ -367,7 +367,7 @@ function pairCtrl() {
         },
         patches: { base: {
             shift: { type: 'push' },
-            pressL: { type: 'push', func: XoneK3.FUNCS.bpmPress }
+            pressL: { type: 'push', func: myCatnip.FUNCS.bpmPress }
         } },
         initialPatches: ['base']
     });
@@ -377,7 +377,7 @@ test('encBpmOrHeadMix: unheld → BPM step', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'bpm', 120);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBpmOrHeadMix, args: [0.1, 0.05],
+        func: myCatnip.FUNCS.encBpmOrHeadMix, args: [0.1, 0.05],
         group: '[Channel1]', inKey: 'bpm'
     });
     H.send(c, 'encoderL', 1);
@@ -390,7 +390,7 @@ test('encBpmOrHeadMix: held → headMix step, sets turn flag', function(t) {
     c._bpmHeldTurned = false;
     engine._set('[Master]', 'headMix', 0.5);
     c._applyBinding('encoderL', {
-        func: XoneK3.FUNCS.encBpmOrHeadMix, args: [0.1, 0.05],
+        func: myCatnip.FUNCS.encBpmOrHeadMix, args: [0.1, 0.05],
         group: '[Channel1]', inKey: 'bpm'
     });
     H.send(c, 'encoderL', 1);
@@ -473,7 +473,7 @@ test('bpmPress: shift released before pressL → no toggle', function(t) {
 test('pressSetValue: writes value', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.pressSetValue, args: ['1/4'],
+        func: myCatnip.FUNCS.pressSetValue, args: ['1/4'],
         group: '[Channel1]', inKey: 'beatloop_size'
     });
     H.press(c, 'grid0_2');
@@ -485,7 +485,7 @@ test('pressSetValue: writes value', function(t) {
 test('beatjumpButton: pulses the given CO', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_0', {
-        func: XoneK3.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
+        func: myCatnip.FUNCS.beatjumpButton, args: ['beatjump_1_backward'],
         group: '[Channel1]'
     });
     H.press(c, 'grid0_0');
@@ -500,7 +500,7 @@ test('reloopToggleResetAnchor: anchor 0 + reloop pulse', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_anchor', 1);
     c._applyBinding('pressL', {
-        func: XoneK3.FUNCS.reloopToggleResetAnchor, group: '[Channel1]'
+        func: myCatnip.FUNCS.reloopToggleResetAnchor, group: '[Channel1]'
     });
     H.press(c, 'pressL');
     t.eq(engine.getValue('[Channel1]', 'loop_anchor'), 0);
@@ -513,7 +513,7 @@ test('beatloopActivateResetAnchor: anchor 0 + activate pulse', function(t) {
     var c = H.ctrl();
     engine._set('[Channel1]', 'loop_anchor', 1);
     c._applyBinding('pressR', {
-        func: XoneK3.FUNCS.beatloopActivateResetAnchor, group: '[Channel1]'
+        func: myCatnip.FUNCS.beatloopActivateResetAnchor, group: '[Channel1]'
     });
     H.press(c, 'pressR');
     t.eq(engine.getValue('[Channel1]', 'loop_anchor'), 0);
@@ -523,53 +523,53 @@ test('beatloopActivateResetAnchor: anchor 0 + activate pulse', function(t) {
 // ── hotcueSetPhraseColor ────────────────────────────────────
 
 test('hotcueSetPhraseColor: creates hotcue with first phrase color', function(t) {
-    var orig = XoneK3.PHRASE_MARKER_COLORS;
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08, 0x0044FF];
+    var orig = myCatnip.PHRASE_MARKER_COLORS;
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08, 0x0044FF];
     var c = H.ctrl();
     engine._set('[Channel1]', 'hotcue_9_status', 0);
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.hotcueSetPhraseColor, args: [9],
+        func: myCatnip.FUNCS.hotcueSetPhraseColor, args: [9],
         group: '[Channel1]', inKey: 'hotcue_9_activate'
     });
     H.press(c, 'grid0_2');
     t.eq(engine.getValue('[Channel1]', 'hotcue_9_activate'), 1);
     t.eq(engine.getValue('[Channel1]', 'hotcue_9_color'), 0xC50A08);
-    XoneK3.PHRASE_MARKER_COLORS = orig;
+    myCatnip.PHRASE_MARKER_COLORS = orig;
 });
 
 test('hotcueSetPhraseColor: leaves existing hotcue color alone', function(t) {
-    var orig = XoneK3.PHRASE_MARKER_COLORS;
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    var orig = myCatnip.PHRASE_MARKER_COLORS;
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     var c = H.ctrl();
     engine._set('[Channel1]', 'hotcue_9_status', 1);
     engine._set('[Channel1]', 'hotcue_9_color', 0xFF8000);
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.hotcueSetPhraseColor, args: [9],
+        func: myCatnip.FUNCS.hotcueSetPhraseColor, args: [9],
         group: '[Channel1]', inKey: 'hotcue_9_activate'
     });
     H.press(c, 'grid0_2');
     t.eq(engine.getValue('[Channel1]', 'hotcue_9_color'), 0xFF8000);
-    XoneK3.PHRASE_MARKER_COLORS = orig;
+    myCatnip.PHRASE_MARKER_COLORS = orig;
 });
 
 test('hotcueSetPhraseColor: no color write when marker list empty', function(t) {
-    var orig = XoneK3.PHRASE_MARKER_COLORS;
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    var orig = myCatnip.PHRASE_MARKER_COLORS;
+    myCatnip.PHRASE_MARKER_COLORS = [];
     var c = H.ctrl();
     engine._set('[Channel1]', 'hotcue_9_status', 0);
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.hotcueSetPhraseColor, args: [9],
+        func: myCatnip.FUNCS.hotcueSetPhraseColor, args: [9],
         group: '[Channel1]', inKey: 'hotcue_9_activate'
     });
     H.press(c, 'grid0_2');
     t.eq(engine.getValue('[Channel1]', 'hotcue_9_color'), 0);
-    XoneK3.PHRASE_MARKER_COLORS = orig;
+    myCatnip.PHRASE_MARKER_COLORS = orig;
 });
 
 test('hotcueSetPhraseColor: release writes 0', function(t) {
     var c = H.ctrl();
     c._applyBinding('grid0_2', {
-        func: XoneK3.FUNCS.hotcueSetPhraseColor, args: [9],
+        func: myCatnip.FUNCS.hotcueSetPhraseColor, args: [9],
         group: '[Channel1]', inKey: 'hotcue_9_activate'
     });
     H.release(c, 'grid0_2');
@@ -585,7 +585,7 @@ test('toggleLayerOverlay: cue layer toggles args[0]', function(t) {
     }});
     c.activePatches = ['cue'];
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.toggleLayerOverlay, args: ['ovCue', 'ovLoop']
+        func: myCatnip.FUNCS.toggleLayerOverlay, args: ['ovCue', 'ovLoop']
     });
     H.press(c, 'press0');
     t.contains(c.activePatches, 'ovCue');
@@ -599,7 +599,7 @@ test('toggleLayerOverlay: loop layer toggles args[1]', function(t) {
     }});
     c.activePatches = ['loop'];
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.toggleLayerOverlay, args: ['ovCue', 'ovLoop']
+        func: myCatnip.FUNCS.toggleLayerOverlay, args: ['ovCue', 'ovLoop']
     });
     H.press(c, 'press0');
     t.contains(c.activePatches, 'ovLoop');
@@ -612,7 +612,7 @@ test('toggleLayerOverlay: second press toggles off', function(t) {
     }});
     c.activePatches = ['cue', 'ovCue'];
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
+        func: myCatnip.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
     });
     H.press(c, 'press0');
     t.notOk(c.activePatches.indexOf('ovCue') !== -1);
@@ -624,7 +624,7 @@ test('toggleLayerOverlay: no-op outside cue / loop', function(t) {
     }});
     c.activePatches = [];
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
+        func: myCatnip.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
     });
     H.press(c, 'press0');
     t.notOk(c.activePatches.indexOf('ovCue') !== -1);
@@ -636,7 +636,7 @@ test('toggleLayerOverlay: release event no-op', function(t) {
     }});
     c.activePatches = ['cue'];
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
+        func: myCatnip.FUNCS.toggleLayerOverlay, args: ['ovCue', null]
     });
     H.release(c, 'press0');
     t.notOk(c.activePatches.indexOf('ovCue') !== -1);
@@ -653,7 +653,7 @@ function(t) {
         },
         patches: { base: {
             shift: { type: 'push' },
-            pressL: { type: 'push', func: XoneK3.FUNCS.bpmPress }
+            pressL: { type: 'push', func: myCatnip.FUNCS.bpmPress }
         } },
         initialPatches: ['base']
     });
@@ -673,7 +673,7 @@ function(t) {
 test('bounce: v>0 during active transaction does not restart shutdown timer',
 function(t) {
     var c = H.ctrl();
-    c._applyBinding('press3', { type: 'push', func: XoneK3.FUNCS.shutdownHold });
+    c._applyBinding('press3', { type: 'push', func: myCatnip.FUNCS.shutdownHold });
     H.press(c, 'press3');
     var first = c.bindings.press3._shutdownHoldTimer;
     t.ok(first, 'timer armed on first press');
@@ -773,7 +773,7 @@ test('k3Select: load-arm + out-of-range channel does not write', function(t) {
     var c = H.ctrl();
     c.modifiers.loadArm = true;
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['deck', 'A', 5]
+        func: myCatnip.FUNCS.k3Select, args: ['deck', 'A', 5]
     });
     H.press(c, 'press0');
     t.eq(engine.getValue('[Channel5]', 'LoadSelectedTrack'), 0);
@@ -784,7 +784,7 @@ test('k3Select: load-arm + valid channel loads track', function(t) {
     var c = H.ctrl();
     c.modifiers.loadArm = true;
     c._applyBinding('press0', {
-        func: XoneK3.FUNCS.k3Select, args: ['deck', 'A', 2]
+        func: myCatnip.FUNCS.k3Select, args: ['deck', 'A', 2]
     });
     H.press(c, 'press0');
     t.eq(engine.getValue('[Channel2]', 'LoadSelectedTrack'), 1);
@@ -793,15 +793,15 @@ test('k3Select: load-arm + valid channel loads track', function(t) {
 // ── encQuickFxCycle empty list ──────────────────────────────
 
 test('encQuickFxCycle: empty list does not write NaN', function(t) {
-    var orig = XoneK3.QFX_CHAIN_LIST;
-    XoneK3.QFX_CHAIN_LIST = [];
+    var orig = myCatnip.QFX_CHAIN_LIST;
+    myCatnip.QFX_CHAIN_LIST = [];
     var c = H.ctrl();
     c._applyBinding('encoder1', {
-        func: XoneK3.FUNCS.encQuickFxCycle,
+        func: myCatnip.FUNCS.encQuickFxCycle,
         group: '[QuickEffectRack1_[Channel1]]'
     });
     H.send(c, 'encoder1', 1);
     var v = engine.getValue('[QuickEffectRack1_[Channel1]]', 'loaded_chain_preset');
     t.ok(!isNaN(v), 'must not write NaN, got ' + v);
-    XoneK3.QFX_CHAIN_LIST = orig;
+    myCatnip.QFX_CHAIN_LIST = orig;
 });

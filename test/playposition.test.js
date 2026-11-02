@@ -92,7 +92,7 @@ test('_onPlayposition: throttle gate blocks rapid ticks', function(t) {
     // resetGlobals sets BEAT_REPAINT_THROTTLE_MS = 0 so most tests
     // skip the throttle. Enable it for this test only — resetGlobals
     // restores 0 for the next test.
-    XoneK3.BEAT_REPAINT_THROTTLE_MS = 30;
+    myCatnip.BEAT_REPAINT_THROTTLE_MS = 30;
     c._decks[1].lastPositionSync = Date.now();  // fresh throttle
     c._decks[1].active = true;
 

@@ -206,20 +206,20 @@ test('_beatF: fractional part floors via Math.floor', function(t) {
 test('_deriveOriginFromPosition: marker at-or-before sets origin', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
     c._seedHotcueCache(1);
     c._deriveOriginFromPosition(1, 0.5);
     // Marker at 0.5 → beat 300; playhead at 0.5 → floor 300.
     t.eq(c._phraseOrigin[1], 300);
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: marker only ahead sets origin to first marker beat', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
     c._seedHotcueCache(1);
@@ -227,26 +227,26 @@ test('_deriveOriginFromPosition: marker only ahead sets origin to first marker b
     // lands on the marker beat so the pattern extends backwards.
     c._deriveOriginFromPosition(1, 0.2);
     t.eq(c._phraseOrigin[1], 300);
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: no matching markers → origin 0', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xFFFFFF);  // not a marker
     engine._set('[Channel1]', 'hotcue_9_position', 500);
     c._seedHotcueCache(1);
     c._phraseOrigin[1] = 42;
     c._deriveOriginFromPosition(1, 0.5);
     t.eq(c._phraseOrigin[1], 0);   // no matching marker → file start
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: reads cache only, not live COs', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
 
     // Populate the cache with marker at position 0.5.
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
@@ -263,13 +263,13 @@ test('_deriveOriginFromPosition: reads cache only, not live COs', function(t) {
     t.eq(c._phraseOrigin[1], 300,
          'derivation reads cache (0.5), not live CO (0.1)');
 
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: frozen in loop mode', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'hotcue_9_color',    0xC50A08);
     engine._set('[Channel1]', 'hotcue_9_position', 500);
     c._decks[1].displaySource     = 'loop';
@@ -277,24 +277,24 @@ test('_deriveOriginFromPosition: frozen in loop mode', function(t) {
     c._phraseOrigin[1] = 42;
     c._deriveOriginFromPosition(1, 0.5);
     t.eq(c._phraseOrigin[1], 42);  // unchanged while looping
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: no metadata no-op', function(t) {
     var c = H.ctrl();
     c._loadedState[1] = true;   // loaded, but samples = 0
-    XoneK3.PHRASE_MARKER_COLORS = [0xC50A08];
+    myCatnip.PHRASE_MARKER_COLORS = [0xC50A08];
     engine._set('[Channel1]', 'track_samples', 0);   // no metadata
     c._phraseOrigin[1] = 5;
     c._deriveOriginFromPosition(1, 0.5);
     t.eq(c._phraseOrigin[1], 5);
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
 });
 
 test('_deriveOriginFromPosition: empty marker list short-circuits', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
-    XoneK3.PHRASE_MARKER_COLORS = [];
+    myCatnip.PHRASE_MARKER_COLORS = [];
     c._phraseOrigin[1] = 42;
     c._deriveOriginFromPosition(1, 0.5);
     t.eq(c._phraseOrigin[1], 42);
@@ -464,8 +464,8 @@ test('_needsBeatClocks: false with no beat LEDs', function(t) {
 });
 
 test('_syncBeatClocks: opens clocks when beat LED attached', function(t) {
-    XoneK3.PHRASE_MARKER_COLORS = [];
-    XoneK3.SCHEMES.tBeat = {colors: [[127,0,0]], beat: {color: 'blue'}};
+    myCatnip.PHRASE_MARKER_COLORS = [];
+    myCatnip.SCHEMES.tBeat = {colors: [[127,0,0]], beat: {color: 'blue'}};
     var c = H.ctrl();
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl',
@@ -476,8 +476,8 @@ test('_syncBeatClocks: opens clocks when beat LED attached', function(t) {
 });
 
 test('_syncBeatClocks: closes clocks when beat LED removed', function(t) {
-    XoneK3.PHRASE_MARKER_COLORS = [];
-    XoneK3.SCHEMES.tBeat = {colors: [[127,0,0]], beat: {color: 'blue'}};
+    myCatnip.PHRASE_MARKER_COLORS = [];
+    myCatnip.SCHEMES.tBeat = {colors: [[127,0,0]], beat: {color: 'blue'}};
     var c = H.ctrl();
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl',
@@ -512,7 +512,7 @@ test('cycleDisplaySource: no loop clock → stays track', function(t) {
     var c = H.ctrl();
     setupTrack(c, 1);
     c._applyBinding('grid2_0', {
-        func: XoneK3.FUNCS.cycleDisplaySource, group: '[Channel1]'
+        func: myCatnip.FUNCS.cycleDisplaySource, group: '[Channel1]'
     });
     c._decks[1].displaySource = 'track';
     H.press(c, 'grid2_0');
@@ -525,7 +525,7 @@ test('cycleDisplaySource: track → loop when loop clock running', function(t) {
     c._decks[1].loopClock.running = true;
     c._decks[1].displaySource = 'track';
     c._applyBinding('grid2_0', {
-        func: XoneK3.FUNCS.cycleDisplaySource, group: '[Channel1]'
+        func: myCatnip.FUNCS.cycleDisplaySource, group: '[Channel1]'
     });
     H.press(c, 'grid2_0');
     t.eq(c._decks[1].displaySource, 'loop');
@@ -537,7 +537,7 @@ test('cycleDisplaySource: loop → track', function(t) {
     c._decks[1].loopClock.running = true;
     c._decks[1].displaySource = 'loop';
     c._applyBinding('grid2_0', {
-        func: XoneK3.FUNCS.cycleDisplaySource, group: '[Channel1]'
+        func: myCatnip.FUNCS.cycleDisplaySource, group: '[Channel1]'
     });
     H.press(c, 'grid2_0');
     t.eq(c._decks[1].displaySource, 'track');

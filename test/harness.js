@@ -11,7 +11,7 @@
 //   cat-overlays → cat → lab
 //
 // colorlab.js is not loaded — no test needs it, and it overrides
-// XoneK3.init.
+// myCatnip.init.
 
 'use strict';
 
@@ -43,36 +43,36 @@ module.exports.load = function() {
 
     var dir = path.resolve(__dirname, '..');
     var files = [
-        'xone-k3-lib-core.js',
-        'xone-k3-lib-timing.js',
-        'xone-k3-lib-schemes.js',
-        'xone-k3-lib-binding.js',
-        'xone-k3-hw-k3.js',           
-        'xone-k3-lib-controller.js',
-        'xone-k3-lib-controller-colour.js',
-        'xone-k3-lib-controller-beat.js',
-        'xone-k3-lib-controller-render.js',
-        'xone-k3-lib-controller-boot.js',
-        'xone-k3-lib-funcs.js',
-        'xone-k3-lib-inspect.js',
+        'myCatnip-lib-core.js',
+        'myCatnip-lib-timing.js',
+        'myCatnip-lib-schemes.js',
+        'myCatnip-lib-binding.js',
+        'myCatnip-hw-k3.js',
+        'myCatnip-lib-controller.js',
+        'myCatnip-lib-controller-colour.js',
+        'myCatnip-lib-controller-beat.js',
+        'myCatnip-lib-controller-render.js',
+        'myCatnip-lib-controller-boot.js',
+        'myCatnip-lib-funcs.js',
+        'myCatnip-lib-inspect.js',
 
         // Cat config
-        'xone-k3-cat-schemes.js',
-        'xone-k3-cat-fx.js',
-        'xone-k3-cat-top.js',
-        'xone-k3-cat-bottom.js',
-        'xone-k3-cat-overlays.js',
-        'xone-k3-cat.js',
+        'myCatnip-cat-schemes.js',
+        'myCatnip-cat-fx.js',
+        'myCatnip-cat-top.js',
+        'myCatnip-cat-bottom.js',
+        'myCatnip-cat-overlays.js',
+        'myCatnip-cat.js',
 
         // Lab runtime
-        'xone-k3-lab.js'
+        'myCatnip-lab.js'
     ];
     for (var i = 0; i < files.length; i++) {
         var src = fs.readFileSync(path.join(dir, files[i]), 'utf8');
         vm.runInContext(src, sandbox, { filename: files[i] });
     }
 
-    sandbox.XoneK3.HW_K3.LED_TRANSFERS.linearTest = {
+    sandbox.myCatnip.HW_K3.LED_TRANSFERS.linearTest = {
         r: [[0, 0], [127, 1]],
         g: [[0, 0], [127, 1]],
         b: [[0, 0], [127, 1]]

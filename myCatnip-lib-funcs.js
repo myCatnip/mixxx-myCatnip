@@ -1,4 +1,4 @@
-// xone-k3-lib-funcs.js — builders + XoneK3.FUNCS.
+// myCatnip-lib-funcs.js — builders + myCatnip.FUNCS.
 //
 // Loaded by every preset, after lib-core and lib-schemes.
 // Beatjump gating and the loop-touch stamping convention are
@@ -16,13 +16,13 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: xone-k3-lib-funcs.js — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: myCatnip-lib-funcs.js — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-lib-funcs.js',
+    myCatnip._requireLoad('myCatnip-lib-funcs.js',
         ['SCHEMES', 'SCHEME_DEFAULTS', '_funcId', '_warnOnce']);
 
     // ============================================================
@@ -57,12 +57,12 @@
     // ============================================================
     // CONFIG BUILDERS
     // ============================================================
-    XoneK3.builders = {};
+    myCatnip.builders = {};
 
-    XoneK3.builders._fxCs = function(opts) {
+    myCatnip.builders._fxCs = function(opts) {
         var cs = {
             knob: opts.knob,
-            scheme: XoneK3.builders.composeScheme(opts, undefined)
+            scheme: myCatnip.builders.composeScheme(opts, undefined)
         };
         if (opts.schemeFromState !== undefined) {
             cs.schemeFromState = opts.schemeFromState;
@@ -72,14 +72,14 @@
 
     var EQ_BANDS = { high: 3, mid: 2, low: 1 };
 
-    XoneK3.builders.composeScheme = function(opts, base) {
+    myCatnip.builders.composeScheme = function(opts, base) {
         if (!opts) return base;
         var ref = (opts.scheme !== undefined) ? opts.scheme : base;
         if (ref === undefined || ref === null) return null;
 
         var markerPosition = opts.markerPosition;
         if (markerPosition === undefined && opts.marker !== undefined) {
-            markerPosition = XoneK3.builders.marker(opts.marker);
+            markerPosition = myCatnip.builders.marker(opts.marker);
         }
 
         var hasOverride =
@@ -103,7 +103,7 @@
                     var v = capturedRef.call(this);
                     if ((v === undefined || v === null) && !warnedNull) {
                         warnedNull = true;
-                        XoneK3._warnOnce('composeSchemeFnNull:' + XoneK3._funcId(capturedRef),
+                        myCatnip._warnOnce('composeSchemeFnNull:' + myCatnip._funcId(capturedRef),
                             'composeScheme: scheme function returned ' +
                             (v === null ? 'null' : 'undefined') +
                             ' — LED will stay dark until it returns a usable ref');
@@ -118,7 +118,7 @@
                 if (inner === undefined || inner === null) {
                     if (!warnedNull) {
                         warnedNull = true;
-                        XoneK3._warnOnce('composeSchemeFnNull:' + XoneK3._funcId(capturedRef),
+                        myCatnip._warnOnce('composeSchemeFnNull:' + myCatnip._funcId(capturedRef),
                             'composeScheme: scheme function returned ' +
                             (inner === null ? 'null' : 'undefined') +
                             ' — LED will stay dark until it returns a usable ref');
@@ -127,7 +127,7 @@
                 }
                 if (inner === lastInner) return lastComposed;
                 lastInner = inner;
-                lastComposed = XoneK3.builders.composeScheme(
+                lastComposed = myCatnip.builders.composeScheme(
                     Object.assign({}, capturedOpts, { scheme: inner }),
                     capturedBase);
                 return lastComposed;
@@ -138,16 +138,16 @@
 
         var resolved;
         if (typeof ref === 'string') {
-            var reg = XoneK3.SCHEMES[ref];
+            var reg = myCatnip.SCHEMES[ref];
             if (!reg) {
-                XoneK3._warnOnce('composeSchemeMissing:' + ref,
+                myCatnip._warnOnce('composeSchemeMissing:' + ref,
                     'composeScheme: scheme "' + ref + '" not found');
                 return null;
             }
             resolved = Object.assign({}, reg);
         } else if (typeof ref === 'object' && !Array.isArray(ref)) {
             if (ref.patch) {
-                XoneK3._warnOnce('composeSchemePatch:' + JSON.stringify(ref).slice(0, 60),
+                myCatnip._warnOnce('composeSchemePatch:' + JSON.stringify(ref).slice(0, 60),
                     'composeScheme: scheme patches are no longer supported — ' +
                     'pass a plain scheme object or a name plus inline overrides. ' +
                     'Got: ' + JSON.stringify(ref).slice(0, 120));
@@ -179,7 +179,7 @@
         return resolved;
     };
 
-    XoneK3.builders.marker = function(v) {
+    myCatnip.builders.marker = function(v) {
         if (v === undefined) return undefined;
         if (v === 'low')  return 0;
         if (v === 'mid')  return 63.5;
@@ -187,37 +187,37 @@
         return v;
     };
 
-    XoneK3.builders.ledTrackButton = function(knob, scheme, state, marker, schemePosition) {
+    myCatnip.builders.ledTrackButton = function(knob, scheme, state, marker, schemePosition) {
         var opts = { scheme: scheme };
         if (marker !== undefined) opts.marker = marker;
         if (schemePosition !== undefined) opts.schemePosition = schemePosition;
-        var cs = { knob: knob, scheme: XoneK3.builders.composeScheme(opts) };
+        var cs = { knob: knob, scheme: myCatnip.builders.composeScheme(opts) };
         if (state === 'on') cs.on = true;
         return { colorScheme: cs };
     };
 
-    XoneK3.builders.eqKnob = function(deck, band) {
+    myCatnip.builders.eqKnob = function(deck, band) {
         return {
             group: '[EqualizerRack1_' + deck + '_Effect1]',
             inKey: 'parameter' + EQ_BANDS[band]
         };
     };
 
-    XoneK3.builders.fxUnitKnob = function(unit, key) {
+    myCatnip.builders.fxUnitKnob = function(unit, key) {
         return {
             group: '[EffectRack1_EffectUnit' + unit + ']',
             inKey: key
         };
     };
 
-    XoneK3.builders.fxKnob = function(unit, effect, param) {
+    myCatnip.builders.fxKnob = function(unit, effect, param) {
         return {
             group: '[EffectRack1_EffectUnit' + unit + '_Effect' + effect + ']',
             inKey: (param === 'meta') ? 'meta' : ('parameter' + param)
         };
     };
 
-    XoneK3.builders.fxEnabled = function(unit, effect, opts) {
+    myCatnip.builders.fxEnabled = function(unit, effect, opts) {
         opts = opts || {};
         if (opts.scheme === undefined && opts.schemeFromState === undefined) {
             print('[k3] fxEnabled unit=' + unit + ' effect=' + effect +
@@ -226,11 +226,11 @@
         return {
             group: '[EffectRack1_EffectUnit' + unit + '_Effect' + effect + ']',
             inKey: 'enabled', outKey: 'enabled',
-            colorScheme: XoneK3.builders._fxCs(opts)
+            colorScheme: myCatnip.builders._fxCs(opts)
         };
     };
 
-    XoneK3.builders.fxButton = function(unit, effect, param, opts) {
+    myCatnip.builders.fxButton = function(unit, effect, param, opts) {
         opts = opts || {};
         if (opts.scheme === undefined && opts.schemeFromState === undefined) {
             print('[k3] fxButton unit=' + unit + ' effect=' + effect +
@@ -240,11 +240,11 @@
         return {
             group: '[EffectRack1_EffectUnit' + unit + '_Effect' + effect + ']',
             inKey: key, outKey: key,
-            colorScheme: XoneK3.builders._fxCs(opts)
+            colorScheme: myCatnip.builders._fxCs(opts)
         };
     };
 
-    XoneK3.builders.fxHeadphone = function(unit, opts) {
+    myCatnip.builders.fxHeadphone = function(unit, opts) {
         opts = opts || {};
         if (opts.scheme === undefined && opts.schemeFromState === undefined) {
             print('[k3] fxHeadphone unit=' + unit +
@@ -254,11 +254,11 @@
             group: '[EffectRack1_EffectUnit' + unit + ']',
             inKey: 'group_[Headphone]_enable',
             outKey: 'group_[Headphone]_enable',
-            colorScheme: XoneK3.builders._fxCs(opts)
+            colorScheme: myCatnip.builders._fxCs(opts)
         };
     };
 
-    XoneK3.builders.fxGroupEnable = function(unit, deck, opts) {
+    myCatnip.builders.fxGroupEnable = function(unit, deck, opts) {
         opts = opts || {};
         if (opts.scheme === undefined && opts.schemeFromState === undefined) {
             print('[k3] fxGroupEnable unit=' + unit + ' deck=' + deck +
@@ -268,18 +268,18 @@
         return {
             group: '[EffectRack1_EffectUnit' + unit + ']',
             inKey: key, outKey: key,
-            colorScheme: XoneK3.builders._fxCs(opts)
+            colorScheme: myCatnip.builders._fxCs(opts)
         };
     };
 
-    XoneK3.builders.fxMix = function(unit) {
+    myCatnip.builders.fxMix = function(unit) {
         return {
             group: '[EffectRack1_EffectUnit' + unit + ']',
             inKey: 'mix'
         };
     };
 
-    XoneK3.builders.qfxKnob = function(deck) {
+    myCatnip.builders.qfxKnob = function(deck) {
         return {
             group: '[QuickEffectRack1_' + deck + ']',
             inKey: 'super1'
@@ -289,7 +289,7 @@
     // ============================================================
     // FUNCS
     // ============================================================
-    XoneK3.FUNCS = {
+    myCatnip.FUNCS = {
         // ----------------------------------------------------------
         // Select / focus
         // ----------------------------------------------------------
@@ -359,12 +359,12 @@
                     var idx = patches.indexOf(name);
                     if (idx !== -1) patches.splice(idx, 1);
                 });
-                XoneK3.debugPrint('overlayOff', { name: name });
+                myCatnip.debugPrint('overlayOff', { name: name });
                 return;
             }
             var siblings = Array.isArray(args[1]) ? args[1] : [];
             _addOverlayWithSiblingClear(ctrl, name, siblings);
-            XoneK3.debugPrint('overlayOn', { name: name });
+            myCatnip.debugPrint('overlayOn', { name: name });
         },
         layerExitOverlay: function(args, ch, c, v, s) {
             if (!this._ctrl._isPress(v, s)) return;
@@ -400,7 +400,7 @@
                 engine.setValue(this.group, 'hotcue_' + n + '_activate', 0);
                 return;
             }
-            var markers = XoneK3.PHRASE_MARKER_COLORS;
+            var markers = myCatnip.PHRASE_MARKER_COLORS;
             var color = (Array.isArray(markers) && markers.length > 0)
                 ? markers[0] : null;
             var wasSet = engine.getValue(this.group, 'hotcue_' + n + '_status') > 0;
@@ -446,7 +446,7 @@
         // ----------------------------------------------------------
         encPregainStep: function(args, ch, c, v, s) {
             var dir = (v === 1) ? 1 : -1;
-            var step = XoneK3.parseNum(args[0]); if (isNaN(step)) step = 0.025;
+            var step = myCatnip.parseNum(args[0]); if (isNaN(step)) step = 0.025;
             engine.setValue(this.group, this.inKey,
                             engine.getValue(this.group, this.inKey) + dir * step);
         },
@@ -461,8 +461,8 @@
         // the encoder during the hold.
         encBpmOrHeadMix: function(args, ch, c, v, s) {
             var dir = (v === 1) ? 1 : -1;
-            var bpmStep = XoneK3.parseNum(args[0]); if (isNaN(bpmStep)) bpmStep = 0.1;
-            var mixStep = XoneK3.parseNum(args[1]); if (isNaN(mixStep)) mixStep = 0.05;
+            var bpmStep = myCatnip.parseNum(args[0]); if (isNaN(bpmStep)) bpmStep = 0.1;
+            var mixStep = myCatnip.parseNum(args[1]); if (isNaN(mixStep)) mixStep = 0.05;
             if (this._ctrl.modifiers.bpmPressHeld) {
                 this._ctrl._bpmHeldTurned = true;
                 engine.setValue('[Master]', 'headMix',
@@ -511,7 +511,7 @@
         },
         encQuickFxCycle: function(args, ch, c, v, s) {
             var grp = this.group;
-            var len = XoneK3.QFX_CHAIN_LIST.length;
+            var len = myCatnip.QFX_CHAIN_LIST.length;
             if (len === 0) return;
             var cur = Math.floor(engine.getValue(grp, 'loaded_chain_preset'));
             if (cur < 0) cur = 0;                       // -1 = unsaved preset
@@ -537,7 +537,7 @@
             var group = args[0], key = args[1];
             if (!group || !key) return;
             var dir = (v === 1) ? 1 : -1;
-            var step = XoneK3.parseNum(args[2]); if (isNaN(step)) step = 0.02;
+            var step = myCatnip.parseNum(args[2]); if (isNaN(step)) step = 0.02;
             var cur = engine.getParameter(group, key);
             engine.setParameter(group, key, Math.max(0, Math.min(1, cur + dir * step)));
         },
@@ -583,7 +583,7 @@
         // the opposite side stays put via loop_anchor.
         encLoopMove: function(args, ch, c, v, s) {
             var inSide = (args[0] === 'in');
-            var step = XoneK3.parseNum(args[1]); if (isNaN(step)) step = 0.010;
+            var step = myCatnip.parseNum(args[1]); if (isNaN(step)) step = 0.010;
             var dir = (v === 1) ? -1 : 1;
             var sign = inSide ? 1 : -1;
             var wantAnchor = inSide ? 1 : 0;
@@ -599,12 +599,12 @@
         // ----------------------------------------------------------
         pressSetValue: function(args, ch, c, v, s) {
             if (!this._ctrl._isPress(v, s)) return;
-            engine.setValue(this.group, this.inKey, XoneK3.parseNum(args[0]));
+            engine.setValue(this.group, this.inKey, myCatnip.parseNum(args[0]));
             if (this.inKey === 'beatloop_size') this._ctrl._touchLoop(this.group);
         },
         encBeatjumpStepScale: function(args, ch, c, v, s) {
-            var min = XoneK3.parseNum(args[0]); if (isNaN(min)) min = XoneK3.BEATJUMP_MIN;
-            var max = XoneK3.parseNum(args[1]); if (isNaN(max)) max = XoneK3.BEATJUMP_MAX;
+            var min = myCatnip.parseNum(args[0]); if (isNaN(min)) min = myCatnip.BEATJUMP_MIN;
+            var max = myCatnip.parseNum(args[1]); if (isNaN(max)) max = myCatnip.BEATJUMP_MAX;
             var forward = (v === 1) ? -1 : 1;
             var cur = engine.getValue(this.group, 'beatjump_size');
             if (forward > 0) { if (cur <= min) return; engine.setValue(this.group, 'beatjump_size_halve', 1); }

@@ -1,4 +1,4 @@
-// xone-k3-cat-top.js — Cat's three top-half base patches and the
+// myCatnip-cat-top.js — Cat's three top-half base patches and the
 // single shared shift companion.
 //
 //   TOP_SHARED        focus mode base
@@ -19,18 +19,18 @@
 'use strict';
 
 (function() {
-    if (typeof XoneK3 === 'undefined') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip === 'undefined') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    if (typeof XoneK3._requireLoad !== 'function') {
-        throw new Error('Xone K3: <filename> — xone-k3-lib-core.js must load first');
+    if (typeof myCatnip._requireLoad !== 'function') {
+        throw new Error('Xone K3: <filename> — myCatnip-lib-core.js must load first');
     }
-    XoneK3._requireLoad('xone-k3-cat-top.js',
+    myCatnip._requireLoad('myCatnip-cat-top.js',
         ['FUNCS', 'builders', 'CAT']);
 
-    var F = XoneK3.FUNCS;
-    var B = XoneK3.builders;
-    var CAT = XoneK3.CAT;
+    var F = myCatnip.FUNCS;
+    var B = myCatnip.builders;
+    var CAT = myCatnip.CAT;
 
     var QFX = '[QuickEffectRack1_$DECK_ACTIVE$]';
 
@@ -105,11 +105,11 @@
             outKey: 'enabled',
             colorScheme: {
                 knob:   'knob1_2',
-                scheme: XoneK3.QFX_CHAIN_LIST[0],
+                scheme: myCatnip.QFX_CHAIN_LIST[0],
                 schemeFromState: {
                     co:    'loaded_chain_preset',
                     group: QFX,
-                    list:  XoneK3.QFX_CHAIN_LIST
+                    list:  myCatnip.QFX_CHAIN_LIST
                 }
             }
         },
@@ -144,11 +144,11 @@
             outKey: 'enabled',
             colorScheme: {
                 knob:   'knob1_2',
-                scheme: XoneK3.QFX_CHAIN_LIST[0],
+                scheme: myCatnip.QFX_CHAIN_LIST[0],
                 schemeFromState: {
                     co:    'loaded_chain_preset',
                     group: '[QuickEffectRack1_$DECK_A$]',
-                    list:  XoneK3.QFX_CHAIN_LIST
+                    list:  myCatnip.QFX_CHAIN_LIST
                 }
             }
         },
@@ -160,11 +160,11 @@
             outKey: 'enabled',
             colorScheme: {
                 knob:   'knob2_2',
-                scheme: XoneK3.QFX_CHAIN_LIST[0],
+                scheme: myCatnip.QFX_CHAIN_LIST[0],
                 schemeFromState: {
                     co:    'loaded_chain_preset',
                     group: '[QuickEffectRack1_$DECK_B$]',
-                    list:  XoneK3.QFX_CHAIN_LIST
+                    list:  myCatnip.QFX_CHAIN_LIST
                 }
             }
         },

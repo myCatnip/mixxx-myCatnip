@@ -8,8 +8,8 @@ var H = require('./helpers');
 
 test('bootCat: registers one controller', function(t) {
     H.bootCat();
-    t.eq(XoneK3.controllers.length, 1);
-    t.eq(XoneK3.controllers[0].label, 'test-cat');
+    t.eq(myCatnip.controllers.length, 1);
+    t.eq(myCatnip.controllers[0].label, 'test-cat');
 });
 
 test('bootCat: initialPatches honoured', function(t) {
@@ -131,24 +131,24 @@ test('halt: shuts down every controller, clears array', function(t) {
          wbActive: false, wbGain: [1,1,1],
          channelPerceptual: [1,1,1], hkBoost: 0, lumGamma: 1}
     ]);
-    XoneK3.halt();
-    t.eq(XoneK3.controllers.length, 0);
+    myCatnip.halt();
+    t.eq(myCatnip.controllers.length, 0);
 });
 
 // ── boot reset of per-process state ─────────────────────────
 
 test('boot resets _warned', function(t) {
-    XoneK3._warned['pretend'] = true;
+    myCatnip._warned['pretend'] = true;
     H.bootCat();
-    t.notOk(XoneK3._warned['pretend']);
+    t.notOk(myCatnip._warned['pretend']);
 });
 
 test('boot resets _schemeCache / _compiledCache', function(t) {
-    XoneK3._schemeCache['junk'] = 1;
-    XoneK3._compiledCache['junk'] = 1;
+    myCatnip._schemeCache['junk'] = 1;
+    myCatnip._compiledCache['junk'] = 1;
     H.bootCat();
-    t.notOk(XoneK3._schemeCache['junk']);
-    t.notOk(XoneK3._compiledCache['junk']);
+    t.notOk(myCatnip._schemeCache['junk']);
+    t.notOk(myCatnip._compiledCache['junk']);
 });
 
 // ── all LEDs blanked at boot ────────────────────────────────

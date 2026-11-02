@@ -112,13 +112,13 @@ test('_calibratedHw: distinct args → new entries', function(t) {
 
 test('_flatTarget: null for all-black ramp', function(t) {
     var c = H.ctrl({calibrationMode: 'rms'});
-    var segs = XoneK3._buildSegments([[0,0,0], [0,0,0]], null, 127);
+    var segs = myCatnip._buildSegments([[0,0,0], [0,0,0]], null, 127);
     t.eq(c._flatTarget(segs), null);
 });
 
 test('_flatTarget: null when calibration mode off', function(t) {
     var c = H.ctrl({calibrationMode: 'off'});
-    var segs = XoneK3._buildSegments([[127,0,0], [0,127,0]], null, 127);
+    var segs = myCatnip._buildSegments([[127,0,0], [0,127,0]], null, 127);
     t.eq(c._flatTarget(segs), null);
 });
 
@@ -130,19 +130,19 @@ test('_flatTarget: null for empty / null segs', function(t) {
 
 test('_flatTarget: single stop returns that emission', function(t) {
     var c = H.ctrl({calibrationMode: 'rms'});
-    var segs = XoneK3._buildSegments([[127,0,0]], null, 127);
+    var segs = myCatnip._buildSegments([[127,0,0]], null, 127);
     t.approx(c._flatTarget(segs), 1, 1e-6);
 });
 
 test('_flatTarget: brightness feeds the min', function(t) {
     var c = H.ctrl({calibrationMode: 'rms'});
-    var segs = XoneK3._buildSegments([[127,0,0,80], [0,127,0,20]], null, 127);
+    var segs = myCatnip._buildSegments([[127,0,0,80], [0,127,0,20]], null, 127);
     t.approx(c._flatTarget(segs), 20 / 127, 1e-3);
 });
 
 test('_flatTarget: min of stops', function(t) {
     var c = H.ctrl({calibrationMode: 'rms'});
-    var segs = XoneK3._buildSegments([[127,0,0], [0,127,0]], null, 127);
+    var segs = myCatnip._buildSegments([[127,0,0], [0,127,0]], null, 127);
     t.approx(c._flatTarget(segs), 1, 1e-6);
 });
 
@@ -191,7 +191,7 @@ test('_wbRGB: clamps at 127', function(t) {
 test('_flatTarget: cache capped at 1024', function(t) {
     var c = H.ctrl({ calibrationMode: 'rms' });
     for (var i = 0; i < 1100; i++) {
-        var segs = XoneK3._buildSegments(
+        var segs = myCatnip._buildSegments(
             [[127, 0, i % 128], [0, 127, i % 128]], null, 127);
         c._flatTarget(segs);
     }
@@ -201,8 +201,8 @@ test('_flatTarget: cache capped at 1024', function(t) {
 
 test('_flatTarget: cache id assigned per segs array', function(t) {
     var c = H.ctrl({ calibrationMode: 'rms' });
-    var segs1 = XoneK3._buildSegments([[127,0,0]], null, 127);
-    var segs2 = XoneK3._buildSegments([[0,127,0]], null, 127);
+    var segs1 = myCatnip._buildSegments([[127,0,0]], null, 127);
+    var segs2 = myCatnip._buildSegments([[0,127,0]], null, 127);
     c._flatTarget(segs1);
     c._flatTarget(segs2);
     t.ok(segs1._cacheId !== undefined);

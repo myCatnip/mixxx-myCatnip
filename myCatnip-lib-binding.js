@@ -1,4 +1,4 @@
-// xone-k3-lib-binding.js — Binding primitive, its colour-scheme
+// myCatnip-lib-binding.js — Binding primitive, its colour-scheme
 // render path, the snapshot field list, and the transaction model
 // for physical button presses.
 //
@@ -24,18 +24,18 @@
 // lib-controller.js:_isHeld).
 //
 // _SNAPSHOT_FIELDS / _SNAPSHOT_IGNORED are derived from
-// XoneK3._BINDING_FIELDS in lib-core.js. The transform names
+// myCatnip._BINDING_FIELDS in lib-core.js. The transform names
 // referenced from that table live here.
 
 'use strict';
 
-if (typeof XoneK3 === 'undefined') {
-    throw new Error('Xone K3: xone-k3-lib-binding.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip === 'undefined') {
+    throw new Error('Xone K3: myCatnip-lib-binding.js — myCatnip-lib-core.js must load first');
 }
-if (typeof XoneK3._requireLoad !== 'function') {
-    throw new Error('Xone K3: xone-k3-lib-binding.js — xone-k3-lib-core.js must load first');
+if (typeof myCatnip._requireLoad !== 'function') {
+    throw new Error('Xone K3: myCatnip-lib-binding.js — myCatnip-lib-core.js must load first');
 }
-XoneK3._requireLoad('xone-k3-lib-binding.js',
+myCatnip._requireLoad('myCatnip-lib-binding.js',
     ['_funcId', 'resolve', 'readPath',
      '_tokenFields', 'CO_MATCH_EPSILON', 'BEAT_HOLD', 'applyBeat',
      '_BINDING_FIELDS', '_SNAPSHOT_FIELDS', '_SNAPSHOT_IGNORED']);
@@ -46,9 +46,9 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // ============================================================
     // Every field wiped on _reset (and therefore also set at
     // construction). Add a new reset-able field here AND to
-    // XoneK3._BINDING_FIELDS in lib-core.js (as either snapshot
+    // myCatnip._BINDING_FIELDS in lib-core.js (as either snapshot
     // or ignored) so the boot-time audit stays clean.
-    XoneK3._bindingDefaults = function() {
+    myCatnip._bindingDefaults = function() {
         return {
             group:       undefined,
             inKey:       undefined,
@@ -103,14 +103,14 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // _transaction.active gates the push-mode dispatch path; a
     // binding rebound mid-hold dispatches the press-time func via
     // _dispatchCapturedRelease. See INTERNALS §2.5.
-    XoneK3.Binding = function(name, spec, ctrl) {
+    myCatnip.Binding = function(name, spec, ctrl) {
         this._name = name;
         this._ctrl = ctrl;
         this.midi = spec.midi;
         this.type = spec.type;
         this.idx = spec.idx;
 
-        var d = XoneK3._bindingDefaults();
+        var d = myCatnip._bindingDefaults();
         for (var k in d) {
             if (d.hasOwnProperty(k)) this[k] = d[k];
         }
@@ -157,29 +157,29 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         };
     };
 
-    XoneK3.Binding.prototype._scaleValue = function(v) {
+    myCatnip.Binding.prototype._scaleValue = function(v) {
         if (v > 63) return (v - 1) / 126;
         return v / 128;
     };
 
     // Named predicate so the shutdown gate at each call site reads
     // as intent rather than plumbing. The MIDI-choke-point check
-    // lives in K3Controller.sendLED — this is the render and
+    // lives in Controller.sendLED — this is the render and
     // input-dispatch side.
-    XoneK3.Binding.prototype._isShuttingDown = function() {
+    myCatnip.Binding.prototype._isShuttingDown = function() {
         return this._ctrl._shuttingDown === true;
     };
 
     // Note-on vs CC/note-off discriminator. Self-documents the
     // status-nibble test in wireInputs (hw-k3.js).
-    XoneK3.Binding.prototype._isNoteOn = function() {
+    myCatnip.Binding.prototype._isNoteOn = function() {
         return (this.midi[0] & 0xF0) === 0x90;
     };
 
     // ============================================================
     // TRANSACTION
     // ============================================================
-    XoneK3.Binding.prototype._captureTransaction = function() {
+    myCatnip.Binding.prototype._captureTransaction = function() {
         var t = this._transaction;
         t.active = true;
         t.orphaned = false;
@@ -199,7 +199,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // Funcs may read `this._transaction.orphaned` during dispatch
     // to suppress user-facing side effects when the press was
     // orphaned by a rebind.
-    XoneK3.Binding.prototype._dispatchCapturedRelease = function() {
+    myCatnip.Binding.prototype._dispatchCapturedRelease = function() {
         var t = this._transaction;
         var saved = this._captureCurrentSurface();
 
@@ -211,7 +211,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
                 this._defaultInput(0, undefined);
             }
         } catch (e) {
-            XoneK3._warnOnce('txReleaseThrow:' + this._name,
+            myCatnip._warnOnce('txReleaseThrow:' + this._name,
                 'captured release threw on ' + this._name + ': ' +
                 (e && e.message ? e.message : e));
         } finally {
@@ -225,7 +225,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // Temporarily installing the captured config makes the
     // release see the same surface it saw at press time (func,
     // args, group, inKey, buttonMode).
-    XoneK3.Binding.prototype._captureCurrentSurface = function() {
+    myCatnip.Binding.prototype._captureCurrentSurface = function() {
         return {
             group:      this.group,
             inKey:      this.inKey,
@@ -235,7 +235,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         };
     };
 
-    XoneK3.Binding.prototype._installSurface = function(s) {
+    myCatnip.Binding.prototype._installSurface = function(s) {
         this.group      = s.group;
         this.inKey      = s.inKey;
         this._func      = s.func;
@@ -256,7 +256,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     //   6. Bounce guard → skip if hardware re-fire
     //   7. Dispatch func / default input
     //   8. Cache refresh + observer sweep
-    XoneK3.Binding.prototype.input = function(ch, cc, v, s) {
+    myCatnip.Binding.prototype.input = function(ch, cc, v, s) {
         // Preset reload: Mixxx calls old shutdown (sets _shuttingDown)
         // then immediately wires new handlers. Physical input in that
         // window reaches the outgoing binding, which would write
@@ -306,7 +306,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // then rebound back to toggle would otherwise leave
     // _togglePressActive stuck true and swallow the next press.
     // Session-scoped — survives _reset.
-    XoneK3.Binding.prototype._readPhysicalInput = function(v) {
+    myCatnip.Binding.prototype._readPhysicalInput = function(v) {
         if (this.type === 'knob' || this.type === 'fader') {
             this._normalized = this._scaleValue(v);
         }
@@ -318,7 +318,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // Open a transaction on the first push-mode press. Subsequent
     // v>0 events while the transaction is active are bounces
     // (see _isBounce) and don't re-capture.
-    XoneK3.Binding.prototype._maybeOpenTransaction = function(v, isPush) {
+    myCatnip.Binding.prototype._maybeOpenTransaction = function(v, isPush) {
         if (v > 0 && isPush && !this._transaction.active) {
             this._captureTransaction();
             this._ctrl._onBindingPress(this._name);
@@ -342,7 +342,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // transaction captured by an earlier push-mode press (rebind
     // to toggle mid-hold) must skip here; the real release still
     // dispatches through _dispatchCapturedRelease.
-    XoneK3.Binding.prototype._isBounce = function(v, isPush, wasActive) {
+    myCatnip.Binding.prototype._isBounce = function(v, isPush, wasActive) {
         if (v > 0 && isPush && wasActive) return true;
         if (this.type === 'button' && !isPush) {
             if (v > 0) {
@@ -365,7 +365,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // handler — Mixxx logs it or crashes depending on version,
     // and the observer repaint is skipped so LED state diverges
     // until the next input.
-    XoneK3.Binding.prototype._dispatchInput = function(ch, cc, v, s) {
+    myCatnip.Binding.prototype._dispatchInput = function(ch, cc, v, s) {
         try {
             var dispatchFn   = this._transaction.active
                 ? this._transaction.func
@@ -376,7 +376,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
             if (dispatchFn) dispatchFn.call(this, dispatchArgs, ch, cc, v, s);
             else            this._defaultInput(v, s);
         } catch (e) {
-            XoneK3._warnOnce('inputThrow:' + this._name,
+            myCatnip._warnOnce('inputThrow:' + this._name,
                 'binding func threw on ' + this._name + ': ' +
                 (e && e.message ? e.message : e));
         }
@@ -393,7 +393,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // Read back once per input event, not per render. Soft-
     // takeover rejection reads back the old CO, so co-match
     // shows until takeover is crossed, exactly as before.
-    XoneK3.Binding.prototype._postInputRefresh = function() {
+    myCatnip.Binding.prototype._postInputRefresh = function() {
         if ((this.type === 'knob' || this.type === 'fader') &&
             this.group && this.inKey) {
             try { this._lastCoValue = engine.getParameter(this.group, this.inKey); }
@@ -402,7 +402,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         this._refreshObservers();
     };
 
-    XoneK3.Binding.prototype._defaultInput = function(v, s) {
+    myCatnip.Binding.prototype._defaultInput = function(v, s) {
         if (!this.group || !this.inKey) return;
         if (this.type === 'button') {
             if (this.buttonMode === 'push') {
@@ -417,7 +417,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         }
     };
 
-    XoneK3.Binding.prototype._applyValueCurve = function(n) {
+    myCatnip.Binding.prototype._applyValueCurve = function(n) {
         var c = this._valueCurve;
         if (!c || c === 1) return n;
         if (n <= 0) return 0;
@@ -425,31 +425,31 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return Math.pow(n, c);
     };
 
-    XoneK3.Binding.prototype.addObserver = function(led) {
+    myCatnip.Binding.prototype.addObserver = function(led) {
         if (this._ledObservers.indexOf(led) === -1) this._ledObservers.push(led);
     };
 
-    XoneK3.Binding.prototype.removeObserver = function(led) {
+    myCatnip.Binding.prototype.removeObserver = function(led) {
         var i = this._ledObservers.indexOf(led);
         if (i >= 0) this._ledObservers.splice(i, 1);
     };
 
     // A single throwing observer (bad scheme, transient CO miss)
     // must not starve the rest of the loop.
-    XoneK3.Binding.prototype._refreshObservers = function() {
+    myCatnip.Binding.prototype._refreshObservers = function() {
         for (var i = 0; i < this._ledObservers.length; i++) {
             var obs = this._ledObservers[i];
             try {
                 obs._refresh();
             } catch (e) {
-                XoneK3._warnOnce('obsRefreshThrow:' + obs._name,
+                myCatnip._warnOnce('obsRefreshThrow:' + obs._name,
                     'observer repaint threw on ' + obs._name + ': ' +
                     (e && e.message ? e.message : e));
             }
         }
     };
 
-    XoneK3.Binding.prototype._reset = function() {
+    myCatnip.Binding.prototype._reset = function() {
         this._ctrl._detachBeatLed(this);
 
         if (this._valueConn) { this._valueConn.disconnect(); }
@@ -464,13 +464,13 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
 
         // _transaction is session-scoped — not wiped here. The
         // transaction must survive rebinds.
-        var d = XoneK3._bindingDefaults();
+        var d = myCatnip._bindingDefaults();
         for (var k in d) {
             if (d.hasOwnProperty(k)) this[k] = d[k];
         }
     };
 
-    XoneK3.Binding.prototype._armOwnConn = function() {
+    myCatnip.Binding.prototype._armOwnConn = function() {
         if (this._valueConn) { this._valueConn.disconnect(); this._valueConn = null; }
         if (this.group === undefined || this.inKey === undefined) return;
         var self = this;
@@ -505,9 +505,9 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     };
 
     // Shutdown gate lives at the actual MIDI choke point
-    // (K3Controller.sendLED). Checking here too would be
+    // (Controller.sendLED). Checking here too would be
     // redundant — sendLED would return immediately either way.
-    XoneK3.Binding.prototype._send = function(r, g, b, hw) {
+    myCatnip.Binding.prototype._send = function(r, g, b, hw) {
         if (this.idx < 0) return;
         if (this._noLED) return;
         this._ctrl.sendLED(this.idx, r, g, b, hw);
@@ -516,7 +516,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // ============================================================
     // ON-STATE DISPATCH
     // ============================================================
-    XoneK3.Binding.prototype._isOn = function() {
+    myCatnip.Binding.prototype._isOn = function() {
         if (this._csOn !== null && this._csOn !== undefined) {
             if (this._csOn === true)  return 1;
             if (this._csOn === false) return 0;
@@ -531,7 +531,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return 0;
     };
 
-    XoneK3.Binding.prototype._evalCsOn = function(s) {
+    myCatnip.Binding.prototype._evalCsOn = function(s) {
         if (s.patchActive !== undefined) return this._evalPatchActive(s.patchActive);
 
         var v;
@@ -542,7 +542,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return this._matchOnValue(s, v);
     };
 
-    XoneK3.Binding.prototype._evalPatchActive = function(patchActive) {
+    myCatnip.Binding.prototype._evalPatchActive = function(patchActive) {
         if (!Array.isArray(patchActive)) {
             return this._ctrl._patchActive(patchActive) ? 1 : 0;
         }
@@ -552,20 +552,20 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return 0;
     };
 
-    XoneK3.Binding.prototype._evalOnCoValue = function(s) {
+    myCatnip.Binding.prototype._evalOnCoValue = function(s) {
         if (s.group === undefined) return undefined;
         if (s.cachedValue !== undefined) return s.cachedValue;
         return engine.getValue(s.group, s.co);
     };
 
-    XoneK3.Binding.prototype._evalOnStateValue = function(s) {
-        var v = XoneK3.readPath(this._ctrl, s.state);
+    myCatnip.Binding.prototype._evalOnStateValue = function(s) {
+        var v = myCatnip.readPath(this._ctrl, s.state);
         if (s.equals === undefined && s.contains === undefined) {
             var truthyByConstruction =
                 (typeof v === 'number' && v > 0) ||
                 (typeof v === 'string' && v.length > 0);
             if (truthyByConstruction) {
-                XoneK3._warnOnce('csOnTruthyState:' + this._name,
+                myCatnip._warnOnce('csOnTruthyState:' + this._name,
                     'colorScheme.on.state "' + s.state + '" on ' + this._name +
                     ' resolves to a value (' + JSON.stringify(v) + ')' +
                     ' that is truthy by construction with no equals — the LED' +
@@ -575,7 +575,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return v;
     };
 
-    XoneK3.Binding.prototype._matchOnValue = function(s, v) {
+    myCatnip.Binding.prototype._matchOnValue = function(s, v) {
         if (s.equals !== undefined) return (v === s.equals) ? 1 : 0;
         if (s.contains !== undefined) {
             if (Array.isArray(v)) return (v.indexOf(s.contains) !== -1) ? 1 : 0;
@@ -588,7 +588,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // ============================================================
     // REFRESH / RENDER
     // ============================================================
-    XoneK3.Binding.prototype._refresh = function() {
+    myCatnip.Binding.prototype._refresh = function() {
         if (this.idx < 0) return;
         if (this._noLED) return;
         if (this._isShuttingDown()) return;
@@ -608,7 +608,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
             }
             this._renderOutKey();
         } catch (e) {
-            XoneK3._warnOnce('refreshThrow:' + this._name,
+            myCatnip._warnOnce('refreshThrow:' + this._name,
                 'refresh threw on ' + this._name + ': ' +
                 (e && e.message ? e.message : e));
         }
@@ -617,7 +617,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // Fallback render for bindings with no colorScheme — a plain
     // on/off white from outKey. Called from _refresh when
     // _csActive is false.
-    XoneK3.Binding.prototype._renderOutKey = function() {
+    myCatnip.Binding.prototype._renderOutKey = function() {
         if (!this.group || !this.outKey) return;
         var v = engine.getValue(this.group, this.outKey) > 0;
         this._send(v ? 127 : 0, v ? 127 : 0, v ? 127 : 0, v ? 127 : 0);
@@ -626,7 +626,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // ============================================================
     // COLOUR SEND
     // ============================================================
-    XoneK3.Binding.prototype._sendColor = function(entry, isOn) {
+    myCatnip.Binding.prototype._sendColor = function(entry, isOn) {
         if (!entry) { this._send(0, 0, 0, 0); return; }
         var rgb = entry.rgb, type = entry.type || 'rgb';
         if (type === 'mixxx') {
@@ -641,7 +641,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         this._send(rgb[0], rgb[1], rgb[2], hw);
     };
 
-    XoneK3.Binding.prototype._resolveMixxxColor = function() {
+    myCatnip.Binding.prototype._resolveMixxxColor = function() {
         // The colour CO name is precomputed at bind time
         // (_bindConns), and its value is seeded + kept current by
         // the colour listener. Falls back to a live read only
@@ -653,53 +653,53 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
             try { mx = engine.getValue(this.group, this._hotcueColorCO); }
             catch (e) { return null; }
         }
-        return XoneK3.mapMixxxColor(mx);
+        return myCatnip.mapMixxxColor(mx);
     };
 
-    XoneK3.Binding.prototype._sendSampled = function(ramp, t, compiled, isOn, skipBeat) {
+    myCatnip.Binding.prototype._sendSampled = function(ramp, t, compiled, isOn, skipBeat) {
         var entry = this._ctrl._sampleRamp(ramp, t, compiled, isOn, skipBeat);
-        if (entry === XoneK3.BEAT_HOLD) return;
+        if (entry === myCatnip.BEAT_HOLD) return;
         this._sendColor(entry, isOn);
     };
 
-    XoneK3.Binding.prototype._beatStateFor = function(compiled) {
+    myCatnip.Binding.prototype._beatStateFor = function(compiled) {
         if (!compiled || !compiled.beat) return null;
         var st = this._ctrl._deckStateFor(compiled);
         if (!st || !st.hasBeat) return null;
         return st;
     };
 
-    XoneK3.Binding.prototype._isBeatOffPhase = function(compiled) {
+    myCatnip.Binding.prototype._isBeatOffPhase = function(compiled) {
         var st = this._beatStateFor(compiled);
         if (!st) return false;
-        var mode = st.playing ? XoneK3.BEAT_PLAYING_MODE : XoneK3.BEAT_PAUSED_MODE;
+        var mode = st.playing ? myCatnip.BEAT_PLAYING_MODE : myCatnip.BEAT_PAUSED_MODE;
         if (mode === 'solid') return false;
         if (mode === 'off')   return true;
         return !st.active;
     };
 
-    XoneK3.Binding.prototype._renderStatic = function(scheme, isOn) {
+    myCatnip.Binding.prototype._renderStatic = function(scheme, isOn) {
         var ramp = isOn ? scheme.on : scheme.off;
         if (!ramp || ramp.length === 0) { this._send(0, 0, 0, 0); return; }
         var entry = ramp[0].color;
         entry = this._applyBeatStatic(entry, scheme, isOn);
-        if (entry === XoneK3.BEAT_HOLD) return;
+        if (entry === myCatnip.BEAT_HOLD) return;
         this._sendColor(entry, isOn);
     };
 
-    XoneK3.Binding.prototype._renderCoMatch = function(knob, scheme, isOn, physical) {
+    myCatnip.Binding.prototype._renderCoMatch = function(knob, scheme, isOn, physical) {
         if (!knob.group || !knob.inKey) return false;
-        var steer = XoneK3.coMatchSample(scheme, knob.group, knob.inKey,
+        var steer = myCatnip.coMatchSample(scheme, knob.group, knob.inKey,
                                           physical, isOn, knob._lastCoValue);
         if (!steer) return false;
         this._sendSampled(steer.ramp, steer.t, scheme.co, isOn, true);
         return true;
     };
 
-    XoneK3.Binding.prototype._renderMarker = function(scheme, isOn, devDir) {
-        if (!XoneK3.markerHit(scheme, devDir)) return false;
+    myCatnip.Binding.prototype._renderMarker = function(scheme, isOn, devDir) {
+        if (!myCatnip.markerHit(scheme, devDir)) return false;
         var entry = this._applyBeatStatic(scheme.marker, scheme, isOn);
-        if (entry === XoneK3.BEAT_HOLD) return true;
+        if (entry === myCatnip.BEAT_HOLD) return true;
         this._sendColor(entry, isOn);
         return true;
     };
@@ -709,7 +709,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // no mutation. Hoisted out of the per-render path.
     var BOOT_WHITE_ENTRY = { rgb: [127, 127, 127], brightness: 127, brightnessOff: 127 };
 
-    XoneK3.Binding.prototype._renderDeviation = function(scheme, isOn) {
+    myCatnip.Binding.prototype._renderDeviation = function(scheme, isOn) {
         var knob = this._csKnob;
         if (!knob || knob._normalized === undefined) {
             this._sendColor(BOOT_WHITE_ENTRY, isOn);
@@ -730,7 +730,7 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     // ============================================================
     // SCHEME EVALUATION
     // ============================================================
-    XoneK3.Binding.prototype._evaluateScheme = function() {
+    myCatnip.Binding.prototype._evaluateScheme = function() {
         var scheme = this._csScheme;
         if (this._csSchemeFn) {
             var ref = this._csSchemeFn();
@@ -746,12 +746,12 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         return scheme;
     };
 
-    XoneK3.Binding.prototype._warnIfFreshScheme = function(ref) {
+    myCatnip.Binding.prototype._warnIfFreshScheme = function(ref) {
         // Hoist the warn-once check above the expensive stringify
         // calls. Once warned, the two _stableStringify calls would
         // otherwise run on every render forever for a buggy config.
         var key = 'csSchemeFresh:' + this._name;
-        if (XoneK3._warned[key]) return;
+        if (myCatnip._warned[key]) return;
 
         var memo = this._csSchemeMemo;
         if (ref === null || ref === undefined) return;
@@ -761,14 +761,14 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         // Arrays are valid scheme refs (single-colour ramps). Treat
         // them like objects here — a fresh array each call is the
         // same recompile trap as a fresh object.
-        var a = XoneK3._stableStringify(ref);
-        var b = XoneK3._stableStringify(memo);
+        var a = myCatnip._stableStringify(ref);
+        var b = myCatnip._stableStringify(memo);
         if (a !== b) return;
-        XoneK3._warnOnce(key,
+        myCatnip._warnOnce(key,
             'colorScheme scheme function on ' + this._name +
             ' returns a fresh object/array each call — LED ' +
             'recompiles every render. Wrap with ' +
-            'XoneK3.builders.composeScheme or hoist the value.');
+            'myCatnip.builders.composeScheme or hoist the value.');
     };
 
     // Render pipeline:
@@ -777,14 +777,14 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
     //   3. Bail if scheme is unresolved (with diagnostics)
     //   4. Beat-off-phase gate — deck paused-off blacks the LED
     //   5. Render — deviation (knob) or static (ramp sample)
-    XoneK3.Binding.prototype._refreshColorScheme = function() {
+    myCatnip.Binding.prototype._refreshColorScheme = function() {
         if (this._csFailed) { this._send(0, 0, 0, 0); return; }
 
         var logicalOn = this._isOn();
         var scheme = this._evaluateScheme();
         if (!scheme) {
             if (this._csSchemeFn) {
-                XoneK3._warnOnce('csDarkFromFn:' + this._name,
+                myCatnip._warnOnce('csDarkFromFn:' + this._name,
                     'colorScheme scheme function on ' + this._name +
                     ' returned null/undefined and no base scheme is set — LED stays dark.');
             }
@@ -800,33 +800,33 @@ XoneK3._requireLoad('xone-k3-lib-binding.js',
         else                   this._renderStatic(scheme, isOn);
     };
 
-    XoneK3.Binding.prototype._applyBeatStatic = function(entry, compiled, isOn) {
+    myCatnip.Binding.prototype._applyBeatStatic = function(entry, compiled, isOn) {
         if (!isOn) return entry;
         var st = this._beatStateFor(compiled);
         if (!st) return entry;
-        return XoneK3.applyBeat(entry, compiled.beat, st.count);
+        return myCatnip.applyBeat(entry, compiled.beat, st.count);
     };
 
     // ============================================================
     // SNAPSHOT TRANSFORM
     // ============================================================
-    XoneK3._snapshotTransform = function(transform, v) {
+    myCatnip._snapshotTransform = function(transform, v) {
         if (transform === 'isPot')  return (v === 'knob' || v === 'fader');
         if (transform === 'truthy') return !!v;
         return v;
     };
 
-    XoneK3._auditSnapshotFields = function() {
-        if (!XoneK3._debugPrintsOn) return;
-        var defaults = XoneK3._bindingDefaults();
+    myCatnip._auditSnapshotFields = function() {
+        if (!myCatnip._debugPrintsOn) return;
+        var defaults = myCatnip._bindingDefaults();
         var sources = {};
-        for (var i = 0; i < XoneK3._SNAPSHOT_FIELDS.length; i++) {
-            sources[XoneK3._SNAPSHOT_FIELDS[i][0]] = true;
+        for (var i = 0; i < myCatnip._SNAPSHOT_FIELDS.length; i++) {
+            sources[myCatnip._SNAPSHOT_FIELDS[i][0]] = true;
         }
         for (var k in defaults) {
             if (!defaults.hasOwnProperty(k)) continue;
             if (sources[k]) continue;
-            if (XoneK3._SNAPSHOT_IGNORED.indexOf(k) !== -1) continue;
+            if (myCatnip._SNAPSHOT_IGNORED.indexOf(k) !== -1) continue;
             print('[k3] reset-able Binding field "' + k +
                   '" not classified for _snapshotBinding');
         }

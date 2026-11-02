@@ -102,7 +102,7 @@ test('redundant refresh: warns when called right after a recompute', function(t)
     var c = H.ctrl({ patches: { a: {}, b: {} } });
     c.activePatches = ['a'];
 
-    XoneK3._warned = {};
+    myCatnip._warned = {};
 
     c._batchPatches(function(p) { p.push('b'); });
 
@@ -110,7 +110,7 @@ test('redundant refresh: warns when called right after a recompute', function(t)
     c._refreshAllLeds();
 
     var warned = false;
-    for (var k in XoneK3._warned) {
+    for (var k in myCatnip._warned) {
         if (k.indexOf('redundantRefresh') === 0) { warned = true; break; }
     }
     t.ok(warned,
@@ -121,13 +121,13 @@ test('annotated refresh: no warning with a reason string', function(t) {
     var c = H.ctrl({ patches: { a: {}, b: {} } });
     c.activePatches = ['a'];
 
-    XoneK3._warned = {};
+    myCatnip._warned = {};
 
     c._batchPatches(function(p) { p.push('b'); });
     c._refreshAllLeds('test-reason');
 
     var warned = false;
-    for (var k in XoneK3._warned) {
+    for (var k in myCatnip._warned) {
         if (k.indexOf('redundantRefresh') === 0) { warned = true; break; }
     }
     t.notOk(warned, 'annotated refresh should not warn');
@@ -135,13 +135,13 @@ test('annotated refresh: no warning with a reason string', function(t) {
 
 test('_reapplyByTokens: annotated, no redundant-refresh warning', function(t) {
     var c = H.bootCat();
-    XoneK3._warned = {};
+    myCatnip._warned = {};
 
     // Trigger a token reapply directly.
     c._reapplyByTokens(['$DECK_ACTIVE$']);
 
     var warned = false;
-    for (var k in XoneK3._warned) {
+    for (var k in myCatnip._warned) {
         if (k.indexOf('redundantRefresh') === 0) { warned = true; break; }
     }
     t.notOk(warned,
@@ -152,11 +152,11 @@ test('_reapplyByTokens: annotated, no redundant-refresh warning', function(t) {
 test('_refreshAllLeds: boot-time call does not warn', function(t) {
     // Boot does a lot of recomputes. None of them should trip the
     // warning if all internal callers are correct.
-    XoneK3._warned = {};
+    myCatnip._warned = {};
     H.bootCat();
 
     var warned = false;
-    for (var k in XoneK3._warned) {
+    for (var k in myCatnip._warned) {
         if (k.indexOf('redundantRefresh') === 0) { warned = true; break; }
     }
     t.notOk(warned, 'boot must not produce a redundant-refresh warning');
@@ -171,7 +171,7 @@ test('_recompute: _afterRecompute throw warns, still refreshes', function(t) {
     c._refreshAllLeds = function(why) { refreshed = true; return origRefresh(why); };
     c._afterRecompute = function() { throw new Error('boom'); };
 
-    XoneK3._warned = {};
+    myCatnip._warned = {};
     _printLog.length = 0;
     c.addPatch('b');
 
