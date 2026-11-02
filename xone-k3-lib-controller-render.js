@@ -58,22 +58,35 @@ XoneK3._requireLoad('xone-k3-lib-controller-render.js',
     // RGB path uses 'led'; hardware-specific send functions live in
     // the hardware descriptor and enqueue into ctrl.pacer('led').
     //
-    // Framework owns the pacer map. HW writes payloads; the pacer
-    // calls back into the framework's transport
-    // (midi.sendSysexMsg) at TIMING.sysexThrottleMs per frame.
-    // A hardware whose transport is synchronous (plain MIDI notes,
-    // K2 mode) never actually enqueues — its writeLED sends
-    // directly. So pacers only exist when the hardware uses them.
+    // Framework owns the pacer map. Hardware supplies the transport
+    // (opts.sendFn) and optional per-pacer throttle (opts.throttleMs).
+    // A pacer created without a sendFn warns once and drops payloads
+    // — no transport is silently guessed. The K3 hardware passes its
+    // sysex sender; a plain-MIDI hardware would pass midi.sendShortMsg
+    // or use throttleMs <= 0 to bypass the queue.
     //
     // onDrop clears the cache slot for any frame lost to overflow,
     // so a future render with the same frame re-enqueues instead
     // of hitting a stale cache hit and silently dropping the LED.
-    XoneK3.K3Controller.prototype.pacer = function(name) {
+    XoneK3.K3Controller.prototype.pacer = function(name, opts) {
         if (this._pacers[name]) return this._pacers[name];
+        opts = opts || {};
+
+        var throttleMs = (typeof opts.throttleMs === 'number')
+            ? opts.throttleMs
+            : XoneK3.TIMING.pacingDefaultThrottleMs;
+
+        var sendFn = opts.sendFn;
+        if (typeof sendFn !== 'function') {
+            XoneK3._warnOnce('pacerNoSendFn:' + name + ':' + this.label,
+                'ctrl.pacer("' + name + '") on ' + this.label +
+                ' created without opts.sendFn — payloads will be dropped. ' +
+                'The hardware descriptor should pass a sendFn to ctrl.pacer().');
+            sendFn = function() {};  // no-op; drop payloads
+        }
+
         var self = this;
-        var p = new XoneK3.Pacing(name, XoneK3.TIMING.sysexThrottleMs, function(msg) {
-            midi.sendSysexMsg(msg, msg.length);
-        });
+        var p = new XoneK3.Pacing(name, throttleMs, sendFn);
         p.onDrop = function(idx) { delete self._ledCache[idx]; };
         this._pacers[name] = p;
         return p;

@@ -6,11 +6,17 @@
 //                        calibration data, calibrationMode, wbGain,
 //                        channelPerceptual, hkBoost, lumGamma).
 //                        Preset overrides win.
-//   hw.pacing            TIMING overrides ({ sysexThrottleMs, ... }).
+//   hw.pacing            TIMING overrides ({ pacingDefaultThrottleMs, ... }).
 //                        Empty object = use framework defaults.
 //   hw.LED_TRANSFERS     raw transfer curves for calibration. Shape:
 //                        { name: { r: [[hw,lum],...], g: [...], b: [...] } }
 //                        Framework's _buildTransferRGB normalises.
+//   hw.PALETTE           named-colour RGB table. Consumed by
+//                        XoneK3.resolveNamedColour (overridden
+//                        by the descriptor at module load).
+//   hw.MIXXX_COLORS      Mixxx-colour → RGB table. Consumed by
+//                        XoneK3.mapMixxxColor (overridden by the
+//                        descriptor at module load).
 //
 //   hw.buildBindings(ctrl)               -> { name: Binding, ... }
 //   hw.wireInputs(ctrl)                  -> void
@@ -25,11 +31,12 @@
 // format is the hardware's concern.
 //
 // LED brightness defaults (XoneK3.DEFAULT_RGB_BRIGHTNESS = 110,
-// _OFF = 12) are framework-level and live in lib-core.js — the
-// scheme engine requires them at load time and they're
-// "medium/dim" universals rather than measured hardware
-// calibration. A hardware wanting different defaults can override
-// those globals at its module load; the K3 uses framework values.
+// _OFF = 12) are re-declared at the bottom of this file — same
+// values as the framework defaults in lib-core.js, but explicitly
+// restated so a second hardware descriptor has an obvious place to
+// set its own. A hardware wanting different "medium / dim" levels
+// overrides XoneK3.DEFAULT_RGB_BRIGHTNESS / _OFF at its module
+// load and every consumer downstream picks it up.
 //
 // Loaded after lib-binding.js (buildBindings constructs Binding
 // instances), after lib-timing.js (Pacing / TIMING), before
@@ -53,6 +60,50 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
     var K2_RG_THRESHOLD = 60;
 
     function _clamp7f(x) { return Math.max(0, Math.min(0x7F, x | 0)); }
+
+    // Hoisted send function — the K3 sysex transport. Passed to
+    // ctrl.pacer via opts.sendFn. First call creates the pacer;
+    // subsequent calls return the cached one. Hoisted out of
+    // writeLED so blank() passes the same fn and the pacer's
+    // transport is identical regardless of which entry point
+    // creates it first.
+    function _sendSysex(msg) {
+        midi.sendSysexMsg(msg, msg.length);
+    }
+
+    // Every note the short-message blank sweep touches, laid out
+    // top-to-bottom like the physical K3. Explicit array (rather
+    // than the previous `for 0x0C..0x37` loop) makes the intent
+    // obvious — this is the set of notes K2 mode can leave lit,
+    // and the sweep guarantees a clean slate regardless of what
+    // the previous session put on the wire.
+    //
+    // 44 entries. 0x0D / 0x0E (pressL / pressR) have no LED but
+    // are swept defensively; 0x10..0x17 have no mapped physical
+    // control but are blanked for the same reason (a stale K2
+    // note there should never survive a reboot).
+    var BLANK_NOTES = [
+        // Top row: layer, pressL, pressR, shift
+        0x0C, 0x0D, 0x0E, 0x0F,
+        // Unmapped gap (no physical control; swept defensively)
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        // Grid row 3 (top): grid0_3..grid3_3
+        0x18, 0x19, 0x1A, 0x1B,
+        // Grid row 2: grid0_2..grid3_2
+        0x1C, 0x1D, 0x1E, 0x1F,
+        // Grid row 1: grid0_1..grid3_1
+        0x20, 0x21, 0x22, 0x23,
+        // Grid row 0 (bottom): grid0_0..grid3_0
+        0x24, 0x25, 0x26, 0x27,
+        // Button row 2 (top): button0_2..button3_2
+        0x28, 0x29, 0x2A, 0x2B,
+        // Button row 1: button0_1..button3_1
+        0x2C, 0x2D, 0x2E, 0x2F,
+        // Button row 0 (bottom): button0_0..button3_0
+        0x30, 0x31, 0x32, 0x33,
+        // Encoder press row: press0..press3
+        0x34, 0x35, 0x36, 0x37
+    ];
 
     XoneK3.HW_K3 = {
         name: 'Xone K3',
@@ -81,7 +132,9 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // PACING
         // ============================================================
         // Empty — K3 uses all TIMING defaults. A hardware with a
-        // slower LED bus could set `{ sysexThrottleMs: 20 }` here.
+        // slower LED bus could set `{ pacingDefaultThrottleMs: 20 }`
+        // here. (The older `sysexThrottleMs` key is still accepted
+        // as an alias — see xone-k3-lib-timing.js.)
         pacing: {},
 
         // ============================================================
@@ -115,6 +168,72 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
                     [114, 45800], [120, 47800], [127, 49500]
                 ]
             }
+        },
+
+        // ============================================================
+        // PALETTE — named colour RGB values
+        // ============================================================
+        // Perceived RGB under the measured transfer curve. Consumed
+        // by XoneK3.resolveNamedColour (overridden below at module
+        // load). A different hardware tunes different values.
+        PALETTE: {
+            off:        [0,0,0],
+            red:        [0x7F,0,0],
+            green:      [0,0x7F,0],
+            blue:       [0,0,0x7F],
+            amber:      [0x7F,0x40,0],
+            orange:     [127,22,0],
+            orange_red: [72,5,0],
+            yellow:     [0x7F,0x7F,0],
+            yellow2:    [0x7F,0x7F,0x20],
+            lime:       [0x40,0x7F,0],
+            cyan:       [0,0x7F,0x7F],
+            sky:        [0x20,0x60,0x7F],
+            sky2:       [0x20,0x50,0x7F],
+            purple:     [0x40,0x20,0x7F],
+            magenta:    [0x7F,0,0x7F],
+            pink:       [0x7F,0x30,0x50],
+            white:      [0x7F,0x7F,0x7F],
+            teal:       [0,70,58],
+            teal2:      [13,127,21],
+            teal3:      [0,127,43],
+            teal_fade:  [0x10,0x50,0x10],
+            cool_white: [0x50,0x60,0x7F],
+            dim:        [0x10,0x10,0x10],
+            m_red:      [0x6F, 0x05, 0x00],
+            m_orange:   [0x7F, 0x20, 0x00],
+            m_yellow:   [0x7F, 0x56, 0x00],
+            m_green:    [0x15, 0x57, 0x05],
+            m_celeste:  [0x15, 0x7F, 0x4F],
+            m_blue:     [0x00, 0x0F, 0x7F],
+            m_purple:   [0x4F, 0x00, 0x5F],
+            m_pink:     [0x6F, 0x3F, 0x3F],
+            m_white:    [0x4F, 0x5F, 0x45]
+        },
+
+        // ============================================================
+        // MIXXX_COLORS — Mixxx hotcue-colour → perceived RGB
+        // ============================================================
+        // Consumed by XoneK3.mapMixxxColor (overridden below at
+        // module load). Unknown hexes fall back to a plain halving
+        // of the 8-bit RGB — the K3's perceptual curve makes the
+        // tuned table entries look right, but a straight 8→7 bit
+        // halving is close enough for anything not enumerated.
+        MIXXX_COLORS: {
+            0xC50A08:[0x6F,0x05,0x00],0xFF8000:[0x7F,0x20,0x00],
+            0xF8D200:[0x7F,0x56,0x00],0x32BE44:[0x15,0x67,0x05],
+            0x42D4F4:[0x15,0x7F,0x4F],0x0044FF:[0x00,0x0F,0x7F],
+            0xAF00CC:[0x4F,0x00,0x5F],0xFCA6D7:[0x7F,0x3F,0x3F],
+            0xF2F2FF:[0x60,0x60,0x60],0x000000:[0x00,0x00,0x00],
+            0xFF0000:[0x7F,0x00,0x00],0xFFFF00:[0x7F,0x7F,0x00],
+            0x00FF00:[0x00,0x7F,0x00],0x00FFFF:[0x00,0x7F,0x7F],
+            0x0000FF:[0x00,0x00,0x7F],0xFF00FF:[0x7F,0x00,0x7F],
+            0xFF88FF:[0x7F,0x40,0x7F],0xFFFFFF:[0x7F,0x7F,0x7F],
+            0x000088:[0x00,0x00,0x40],0x008800:[0x00,0x40,0x00],
+            0x008888:[0x00,0x40,0x40],0x228800:[0x10,0x40,0x00],
+            0x880000:[0x40,0x00,0x00],0x882200:[0x40,0x10,0x00],
+            0x888800:[0x40,0x40,0x00],0x888888:[0x40,0x40,0x40],
+            0x88FF00:[0x40,0x7F,0x00],0xFF8800:[0x7F,0x40,0x00]
         },
 
         // ============================================================
@@ -218,11 +337,17 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // shutdown/idx guards. This method decides the transport
         // (K2 note vs sysex), applies white balance on the sysex
         // path, deduplicates via ctrl._ledCache, and enqueues into
-        // the framework's pacer.
+        // the framework's pacer with this hardware's send function.
         //
         // Transport choice is whole-controller: ctrl.sysex. Per-LED
         // K2 override removed — to force K2 mode, set sysex: false
         // in the preset override (or hw.DEFAULTS).
+        //
+        // pacer('led', { sendFn }) — the first call (from either
+        // writeLED or blank) creates the pacer with _sendSysex.
+        // Subsequent calls return the cached instance. A pacer
+        // created without a sendFn would warn-once and drop
+        // payloads; the K3 always supplies one.
         writeLED: function(ctrl, idx, r, g, b, hw) {
             if (!ctrl.sysex) {
                 this.sendK2Note(ctrl.midiChannel, idx, r, g, b, hw);
@@ -242,7 +367,7 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
             ctrl._ledCache[idx] = val;
 
             var msg = this.buildSysExLED(idx, r, g, b, hw);
-            var pacer = ctrl.pacer('led');
+            var pacer = ctrl.pacer('led', { sendFn: _sendSysex });
             pacer.enqueue(idx, msg);
             pacer.start();
         },
@@ -261,14 +386,19 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
         // whole-controller, so the short-msg sweep has already
         // blanked every LED via notes; the sysex sweep is skipped
         // by the early return above.
+        //
+        // The sweep is an explicit 44-note array (BLANK_NOTES,
+        // hoisted above HW_K3) rather than a range loop — clearer
+        // intent, same behaviour. See the array comment for the
+        // physical row layout.
         blank: function(ctrl) {
-            for (var n = 0x0C; n <= 0x37; n++) {
-                midi.sendShortMsg(0x90 + ctrl.midiChannel, n, 0x00);
+            for (var bi = 0; bi < BLANK_NOTES.length; bi++) {
+                midi.sendShortMsg(0x90 + ctrl.midiChannel, BLANK_NOTES[bi], 0x00);
             }
 
             if (ctrl.sysex === false) return;
 
-            var pacer = ctrl.pacer('led');
+            var pacer = ctrl.pacer('led', { sendFn: _sendSysex });
             var zeroVal = 0;
             for (var idx = 0; idx <= 0x21; idx++) {
                 if (ctrl._ledCache[idx] === zeroVal) continue;
@@ -362,4 +492,41 @@ XoneK3._requireLoad('xone-k3-hw-k3.js',
             midi.sendShortMsg(0x90 + ch, pos.base + bucket * pos.step, vel);
         }
     };
+
+    // ============================================================
+    // HARDWARE HOOK OVERRIDES — palette + Mixxx colour
+    // ============================================================
+    // Populate the framework hooks with K3's palette and Mixxx
+    // colour mapping. A second hardware descriptor would override
+    // these the same way — either with its own tables or with a
+    // different strategy entirely (e.g. a monochrome hardware
+    // could map every name to the same greyscale).
+    //
+    // The framework defaults (in lib-core.js) warn once and return
+    // null; overriding here means the K3 never hits those warns.
+    XoneK3.resolveNamedColour = function(name) {
+        return XoneK3.HW_K3.PALETTE[name] || null;
+    };
+
+    XoneK3.mapMixxxColor = function(rgb) {
+        if (!rgb || rgb <= 0) return null;
+        if (XoneK3.HW_K3.MIXXX_COLORS[rgb]) return XoneK3.HW_K3.MIXXX_COLORS[rgb];
+        return [
+            Math.round(((rgb >> 16) & 0xFF) / 2),
+            Math.round(((rgb >> 8)  & 0xFF) / 2),
+            Math.round(( rgb        & 0xFF) / 2)
+        ];
+    };
+
+    // ============================================================
+    // BRIGHTNESS DEFAULTS — hardware-level statement
+    // ============================================================
+    // Same values as the framework defaults in lib-core.js, but
+    // re-declared here so a second hardware descriptor has an
+    // obvious place to set its own. A hardware wanting different
+    // "medium / dim" levels overrides XoneK3.DEFAULT_RGB_BRIGHTNESS
+    // and _OFF at its module load; every consumer downstream picks
+    // it up because resolveColorEntry reads them lazily.
+    XoneK3.DEFAULT_RGB_BRIGHTNESS     = 110;
+    XoneK3.DEFAULT_RGB_BRIGHTNESS_OFF = 12;
 })();

@@ -28,34 +28,54 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // TIMING
     // ============================================================
     XoneK3.TIMING = {
-        // Output pacing
-        sysexThrottleMs:        10,
-        beatRepaintThrottleMs:  30,
-        pacingMaxQueue:        128,
+        // Output pacing. Canonical name is pacingDefaultThrottleMs;
+        // sysexThrottleMs is a getter/setter alias installed below
+        // for backward compatibility with existing hw.pacing
+        // overrides and external tooling.
+        pacingDefaultThrottleMs:  10,
+        sysexThrottleMs:          10,  // mirror, replaced by accessor
+        beatRepaintThrottleMs:    30,
+        pacingMaxQueue:          128,
 
         // Engine pulse width
-        pulseCoMs:              30,
+        pulseCoMs:                30,
 
         // Engine gate windows
-        beatjumpGapMs:         130,
-        beatStallMs:          1500,
-        metaSettleMs:          300,
-        bootSettleMs:          100,
-        bootMaxAttempts:         5,
+        beatjumpGapMs:           130,
+        beatStallMs:            1500,
+        metaSettleMs:            300,
+        bootSettleMs:            100,
+        bootMaxAttempts:           5,
 
         // Epsilon pair. Invariant: takeover must strictly exceed
         // co-match, so LED "matched" always implies control is
         // live. The extra half-band on takeover is a harmless
         // false-negative. If a hardware override breaks this,
         // applyPacing restores both to the defaults.
-        coMatchEpsilon:       1/127,
-        takeoverEpsilon:      2/127,
+        coMatchEpsilon:         1/127,
+        takeoverEpsilon:        2/127,
     };
+
+    // Alias: pacingDefaultThrottleMs ↔ sysexThrottleMs. Read from
+    // either name, write through either name — both hit the same
+    // storage (sysexThrottleMs). The accessor is installed on the
+    // TIMING object itself so Object.assign / hw.pacing overrides
+    // that write either name Just Work.
+    Object.defineProperty(XoneK3.TIMING, 'pacingDefaultThrottleMs', {
+        get: function() { return this.sysexThrottleMs; },
+        set: function(v) { this.sysexThrottleMs = v; },
+        enumerable: true,
+        configurable: true
+    });
 
     // Immutable snapshot of the framework defaults. applyPacing
     // resets TIMING from this before applying overrides — without
     // it, a preset with custom pacing would poison TIMING for any
     // subsequent preset that uses defaults.
+    //
+    // Both throttle keys are captured as plain values (10, 10).
+    // applyPacing's reset loop writes both; whichever it visits
+    // last, the alias makes them agree.
     XoneK3._TIMING_DEFAULTS = Object.assign({}, XoneK3.TIMING);
 
     // Test-only override hook. When set, applyPacing merges these
@@ -70,30 +90,33 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
 
     // Compat re-exports for existing read sites. Framework code
     // continues to read XoneK3.SYSEX_THROTTLE_MS etc. unchanged.
-    // A future cleanup pass can migrate reads to XoneK3.TIMING.*
-    // and delete these aliases.
-    XoneK3.SYSEX_THROTTLE_MS        = XoneK3.TIMING.sysexThrottleMs;
-    XoneK3.BEAT_REPAINT_THROTTLE_MS = XoneK3.TIMING.beatRepaintThrottleMs;
-    XoneK3.PULSE_CO_MS              = XoneK3.TIMING.pulseCoMs;
-    XoneK3.BEATJUMP_GAP_MS          = XoneK3.TIMING.beatjumpGapMs;
-    XoneK3.BEAT_STALL_MS            = XoneK3.TIMING.beatStallMs;
-    XoneK3.META_SETTLE_MS           = XoneK3.TIMING.metaSettleMs;
-    XoneK3.BOOT_SETTLE_MS           = XoneK3.TIMING.bootSettleMs;
-    XoneK3.BOOT_MAX_ATTEMPTS        = XoneK3.TIMING.bootMaxAttempts;
-    XoneK3.CO_MATCH_EPSILON         = XoneK3.TIMING.coMatchEpsilon;
-    XoneK3.TAKEOVER_EPSILON         = XoneK3.TIMING.takeoverEpsilon;
+    // A future cleanup pass can migrate reads to
+    // XoneK3.TIMING.pacingDefaultThrottleMs and delete
+    // XoneK3.SYSEX_THROTTLE_MS.
+    XoneK3.PACING_DEFAULT_THROTTLE_MS = XoneK3.TIMING.pacingDefaultThrottleMs;
+    XoneK3.SYSEX_THROTTLE_MS          = XoneK3.TIMING.sysexThrottleMs;
+    XoneK3.BEAT_REPAINT_THROTTLE_MS   = XoneK3.TIMING.beatRepaintThrottleMs;
+    XoneK3.PULSE_CO_MS                = XoneK3.TIMING.pulseCoMs;
+    XoneK3.BEATJUMP_GAP_MS            = XoneK3.TIMING.beatjumpGapMs;
+    XoneK3.BEAT_STALL_MS              = XoneK3.TIMING.beatStallMs;
+    XoneK3.META_SETTLE_MS             = XoneK3.TIMING.metaSettleMs;
+    XoneK3.BOOT_SETTLE_MS             = XoneK3.TIMING.bootSettleMs;
+    XoneK3.BOOT_MAX_ATTEMPTS          = XoneK3.TIMING.bootMaxAttempts;
+    XoneK3.CO_MATCH_EPSILON           = XoneK3.TIMING.coMatchEpsilon;
+    XoneK3.TAKEOVER_EPSILON           = XoneK3.TIMING.takeoverEpsilon;
 
     function _refreshAliases() {
-        XoneK3.SYSEX_THROTTLE_MS        = XoneK3.TIMING.sysexThrottleMs;
-        XoneK3.BEAT_REPAINT_THROTTLE_MS = XoneK3.TIMING.beatRepaintThrottleMs;
-        XoneK3.PULSE_CO_MS              = XoneK3.TIMING.pulseCoMs;
-        XoneK3.BEATJUMP_GAP_MS          = XoneK3.TIMING.beatjumpGapMs;
-        XoneK3.BEAT_STALL_MS            = XoneK3.TIMING.beatStallMs;
-        XoneK3.META_SETTLE_MS           = XoneK3.TIMING.metaSettleMs;
-        XoneK3.BOOT_SETTLE_MS           = XoneK3.TIMING.bootSettleMs;
-        XoneK3.BOOT_MAX_ATTEMPTS        = XoneK3.TIMING.bootMaxAttempts;
-        XoneK3.CO_MATCH_EPSILON         = XoneK3.TIMING.coMatchEpsilon;
-        XoneK3.TAKEOVER_EPSILON         = XoneK3.TIMING.takeoverEpsilon;
+        XoneK3.PACING_DEFAULT_THROTTLE_MS = XoneK3.TIMING.pacingDefaultThrottleMs;
+        XoneK3.SYSEX_THROTTLE_MS          = XoneK3.TIMING.sysexThrottleMs;
+        XoneK3.BEAT_REPAINT_THROTTLE_MS   = XoneK3.TIMING.beatRepaintThrottleMs;
+        XoneK3.PULSE_CO_MS                = XoneK3.TIMING.pulseCoMs;
+        XoneK3.BEATJUMP_GAP_MS            = XoneK3.TIMING.beatjumpGapMs;
+        XoneK3.BEAT_STALL_MS              = XoneK3.TIMING.beatStallMs;
+        XoneK3.META_SETTLE_MS             = XoneK3.TIMING.metaSettleMs;
+        XoneK3.BOOT_SETTLE_MS             = XoneK3.TIMING.bootSettleMs;
+        XoneK3.BOOT_MAX_ATTEMPTS          = XoneK3.TIMING.bootMaxAttempts;
+        XoneK3.CO_MATCH_EPSILON           = XoneK3.TIMING.coMatchEpsilon;
+        XoneK3.TAKEOVER_EPSILON           = XoneK3.TIMING.takeoverEpsilon;
     }
 
     // Merge a hardware's pacing overrides. Order of precedence:
@@ -144,7 +167,7 @@ XoneK3._requireLoad('xone-k3-lib-timing.js', []);
     // PACING QUEUE
     // ============================================================
     // Rate-limited output queue. Hardware writes LED frames via
-    //   ctrl.pacer('<name>').enqueue(key, payload); start();
+    //   ctrl.pacer('<name>', { sendFn: fn, throttleMs: ms });
     //
     // - Enqueue is O(1) and replace-in-place: a second enqueue for
     //   the same key while the first is still queued keeps the

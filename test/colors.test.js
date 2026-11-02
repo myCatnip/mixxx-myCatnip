@@ -1,6 +1,6 @@
 'use strict';
 
-// resolveColorEntry, mapMixxxColor.
+// resolveColorEntry, mapMixxxColor, HW_K3 palette surface.
 
 // ── resolveColorEntry ────────────────────────────────────────
 
@@ -83,8 +83,9 @@ test('resolveColorEntry: rgb-in-string form', function(t) {
 });
 
 test('resolveColorEntry: every palette entry resolves', function(t) {
-    for (var name in XoneK3.SYSEX_PALETTE) {
-        if (!XoneK3.SYSEX_PALETTE.hasOwnProperty(name)) continue;
+    // v1.2.0: palette lives on the hardware descriptor.
+    for (var name in XoneK3.HW_K3.PALETTE) {
+        if (!XoneK3.HW_K3.PALETTE.hasOwnProperty(name)) continue;
         var e = XoneK3.resolveColorEntry(name);
         t.ok(e, 'palette entry ' + name + ' failed');
     }
@@ -105,4 +106,26 @@ test('mapMixxxColor: known hexes', function(t) {
 test('mapMixxxColor: unknown halves the RGB', function(t) {
     // 0x123456 → [18, 52, 86] → halved → [9, 26, 43]
     t.eq(XoneK3.mapMixxxColor(0x123456), [9, 26, 43]);
+});
+
+// ── HW_K3 palette / Mixxx colour surface ────────────────────
+
+test('HW_K3: exposes PALETTE and MIXXX_COLORS', function(t) {
+    t.ok(XoneK3.HW_K3.PALETTE);
+    t.ok(XoneK3.HW_K3.MIXXX_COLORS);
+    t.eq(XoneK3.HW_K3.PALETTE.red,               [127, 0, 0]);
+    t.eq(XoneK3.HW_K3.PALETTE.magenta,           [127, 0, 127]);
+    t.eq(XoneK3.HW_K3.MIXXX_COLORS[0xC50A08],    [0x6F, 0x05, 0x00]);
+    t.eq(XoneK3.HW_K3.MIXXX_COLORS[0xFF8000],    [0x7F, 0x20, 0x00]);
+});
+
+test('resolveNamedColour: K3 hardware populates the table', function(t) {
+    t.eq(XoneK3.resolveNamedColour('red'),     [127, 0, 0]);
+    t.eq(XoneK3.resolveNamedColour('magenta'), [127, 0, 127]);
+    t.eq(XoneK3.resolveNamedColour('nope'),    null);
+});
+
+test('mapMixxxColor: K3 hardware implements the hook', function(t) {
+    t.eq(XoneK3.mapMixxxColor(0xC50A08), [0x6F, 0x05, 0x00]);
+    t.eq(XoneK3.mapMixxxColor(0),        null);
 });

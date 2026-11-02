@@ -13,9 +13,11 @@
 //     _bootWith's applyPacing call doesn't clobber the test values)
 //   - controllers array cleared, print log cleared
 //
-// TIMING.sysexThrottleMs and TIMING.beatRepaintThrottleMs are 0
-// in tests, so LED writes hit midi.sendSysexMsg synchronously and
-// beat handlers don't throttle.
+// TIMING.pacingDefaultThrottleMs and TIMING.beatRepaintThrottleMs
+// are 0 in tests, so LED writes hit midi.sendSysexMsg synchronously
+// and beat handlers don't throttle. (sysexThrottleMs is a
+// getter/setter alias on TIMING — see lib-timing.js — and mirrors
+// pacingDefaultThrottleMs.)
 
 'use strict';
 
@@ -134,16 +136,17 @@ function fmt(v) {
 // -------------------------------------------------------------
 function _refreshTimingAliases() {
     var X = global.XoneK3;
-    X.SYSEX_THROTTLE_MS        = X.TIMING.sysexThrottleMs;
-    X.BEAT_REPAINT_THROTTLE_MS = X.TIMING.beatRepaintThrottleMs;
-    X.PULSE_CO_MS              = X.TIMING.pulseCoMs;
-    X.BEATJUMP_GAP_MS          = X.TIMING.beatjumpGapMs;
-    X.BEAT_STALL_MS            = X.TIMING.beatStallMs;
-    X.META_SETTLE_MS           = X.TIMING.metaSettleMs;
-    X.BOOT_SETTLE_MS           = X.TIMING.bootSettleMs;
-    X.BOOT_MAX_ATTEMPTS        = X.TIMING.bootMaxAttempts;
-    X.CO_MATCH_EPSILON         = X.TIMING.coMatchEpsilon;
-    X.TAKEOVER_EPSILON         = X.TIMING.takeoverEpsilon;
+    X.PACING_DEFAULT_THROTTLE_MS = X.TIMING.pacingDefaultThrottleMs;
+    X.SYSEX_THROTTLE_MS          = X.TIMING.sysexThrottleMs;
+    X.BEAT_REPAINT_THROTTLE_MS   = X.TIMING.beatRepaintThrottleMs;
+    X.PULSE_CO_MS                = X.TIMING.pulseCoMs;
+    X.BEATJUMP_GAP_MS            = X.TIMING.beatjumpGapMs;
+    X.BEAT_STALL_MS              = X.TIMING.beatStallMs;
+    X.META_SETTLE_MS             = X.TIMING.metaSettleMs;
+    X.BOOT_SETTLE_MS             = X.TIMING.bootSettleMs;
+    X.BOOT_MAX_ATTEMPTS          = X.TIMING.bootMaxAttempts;
+    X.CO_MATCH_EPSILON           = X.TIMING.coMatchEpsilon;
+    X.TAKEOVER_EPSILON           = X.TIMING.takeoverEpsilon;
 }
 
 function resetGlobals() {
@@ -156,9 +159,13 @@ function resetGlobals() {
     // midi.sendSysexMsg synchronously. _pacingTestOverride is the
     // framework's named test hook for this — applyPacing merges it
     // at highest priority.
+    //
+    // pacingDefaultThrottleMs is the canonical name; sysexThrottleMs
+    // is a getter/setter alias (see lib-timing.js), so setting
+    // either key has the same effect.
     X._pacingTestOverride = {
-        sysexThrottleMs:       0,
-        beatRepaintThrottleMs: 0
+        pacingDefaultThrottleMs: 0,
+        beatRepaintThrottleMs:   0
     };
 
     if (X.TIMING && X._TIMING_DEFAULTS) {

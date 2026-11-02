@@ -141,6 +141,35 @@ var XoneK3 = (typeof XoneK3 !== 'undefined') ? XoneK3 : {};
         print('[k3] ' + msg);
     };
 
+    // ============================================================
+    // HARDWARE HOOKS — palette + Mixxx colour
+    // ============================================================
+    // Framework defaults warn once and return null. A hardware
+    // descriptor (e.g. HW_K3) populates PALETTE / MIXXX_COLORS
+    // at module load and overrides both hooks. A non-K3 hardware
+    // that omits either will render every named-colour or
+    // mixxx-typed LED as dark (with a warn-once diagnostic) —
+    // no colour is silently guessed.
+    //
+    // Consumers: lib-schemes._parseNamedEntry (via
+    // resolveColorEntry) and lib-binding._resolveMixxxColor.
+    // Neither reads PALETTE / MIXXX_COLORS directly.
+    XoneK3.resolveNamedColour = function(name) {
+        XoneK3._warnOnce('noPalette',
+            'XoneK3.resolveNamedColour: hardware does not populate ' +
+            'PALETTE — named colour "' + name + '" cannot resolve; ' +
+            'LED will be dark.');
+        return null;
+    };
+
+    XoneK3.mapMixxxColor = function(rgb) {
+        XoneK3._warnOnce('noMixxxColors',
+            'XoneK3.mapMixxxColor: hardware does not populate ' +
+            'MIXXX_COLORS — mixxx colour stops cannot resolve; ' +
+            'LED will be dark.');
+        return null;
+    };
+
     XoneK3.debugPrint = function(key, vars) {
         if (!XoneK3._debugPrintsOn) return;
         var tpl = null;

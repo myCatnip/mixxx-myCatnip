@@ -11,6 +11,10 @@ var H = require('./helpers');
 // Transport choice is whole-controller (ctrl.sysex). The per-LED
 // k2 flag and sendLED's k2Override arg were removed. K2-mode
 // tests use ctrl.sysex = false on the controller instead.
+//
+// v1.2.0: ctrl.pacer(name) now takes an optional opts object with
+// { sendFn, throttleMs }. HW_K3 supplies the sysex sender; a
+// pacer created without a sendFn warns once and drops payloads.
 
 // ── HW_K3 descriptor surface ────────────────────────────────
 
@@ -269,7 +273,7 @@ test('anyPendingWrites: no pacer → false', function(t) {
 
 test('anyPendingWrites: empty pacer → false', function(t) {
     var c = H.ctrl({sysex: true});
-    c.pacer('led');
+    c.pacer('led', { sendFn: function() {} });
     t.eq(XoneK3.HW_K3.anyPendingWrites(c), false);
 });
 
@@ -277,7 +281,7 @@ test('anyPendingWrites: empty pacer → false', function(t) {
 
 test('pacer: "led" exists after boot blank (sysex path)', function(t) {
     var c = H.ctrl({sysex: true});
-    // init() → _blankLeds() → hw.blank() → ctrl.pacer('led')
+    // init() → _blankLeds() → hw.blank() → ctrl.pacer('led', {sendFn})
     t.ok(c._pacers.led);
     t.eq(c._pacers.led.name, 'led');
 });
@@ -291,27 +295,56 @@ test('pacer: "led" absent after boot in K2 mode', function(t) {
 test('pacer: lazy creation for a new name', function(t) {
     var c = H.ctrl();
     t.eq(c._pacers.other, undefined);
-    var p = c.pacer('other');
+    var p = c.pacer('other', { sendFn: function() {} });
     t.ok(p);
     t.eq(c._pacers.other, p);
 });
 
 test('pacer: caches instance', function(t) {
     var c = H.ctrl();
-    t.eq(c.pacer('led'), c.pacer('led'));
+    t.eq(c.pacer('led', { sendFn: function() {} }),
+         c.pacer('led', { sendFn: function() {} }));
 });
 
-test('pacer: throttleMs matches TIMING', function(t) {
+test('pacer: throttleMs matches TIMING.pacingDefaultThrottleMs', function(t) {
     var c = H.ctrl();
-    t.eq(c.pacer('led').throttleMs, XoneK3.TIMING.sysexThrottleMs);
+    t.eq(c.pacer('led', { sendFn: function() {} }).throttleMs,
+         XoneK3.TIMING.pacingDefaultThrottleMs);
+});
+
+test('pacer: TIMING.sysexThrottleMs aliases pacingDefaultThrottleMs', function(t) {
+    t.eq(XoneK3.TIMING.sysexThrottleMs,
+         XoneK3.TIMING.pacingDefaultThrottleMs);
 });
 
 test('pacer: onDrop clears _ledCache slot', function(t) {
     var c = H.ctrl();
-    var p = c.pacer('led');
+    var p = c.pacer('led', { sendFn: function() {} });
     c._ledCache[5] = 42;
     p.onDrop(5);
     t.eq(c._ledCache[5], undefined);
+});
+
+test('pacer: sendFn param routes payload through provided fn', function(t) {
+    var c = H.ctrl({sysex: true});
+    var captured = [];
+    var p = c.pacer('custom', {
+        throttleMs: 0,
+        sendFn: function(msg) { captured.push(msg); }
+    });
+    p.enqueue('k', 'PAYLOAD');
+    p.start();
+    t.eq(captured, ['PAYLOAD']);
+});
+
+test('pacer: no sendFn → warn-once, payload dropped', function(t) {
+    var c = H.ctrl({sysex: true});
+    var before = _printLog.length;
+    var p = c.pacer('warn-test');
+    t.ok(_printLog.length > before, 'expected warn-once');
+    p.enqueue('k', 'x');
+    p.start();  // no-op sendFn should not throw
+    t.eq(p.length(), 0);
 });
 
 // ── XoneK3.Pacing ───────────────────────────────────────────

@@ -1,9 +1,15 @@
-// xone-k3-lib-schemes.js — scheme engine: palette, Mixxx colour
-// lookup, colour-spec parsing, compile / sample pipeline.
+// xone-k3-lib-schemes.js — scheme engine: palette lookup, Mixxx
+// colour dispatch, colour-spec parsing, compile / sample pipeline.
 //
 // Loaded by every preset, before any preset's binding config.
 // Preset-specific schemes, THEME, and QFX_CHAIN_LIST live in
 // the preset files — see xone-k3-cat.js.
+//
+// Palette and Mixxx-colour tables live on the hardware descriptor
+// (XoneK3.HW_K3.PALETTE, XoneK3.HW_K3.MIXXX_COLORS). The
+// framework hooks resolveNamedColour / mapMixxxColor are
+// overridden by the descriptor at module load; this file only
+// declares consumers.
 //
 // Transfer-curve data (measured [hw, luminance] pairs per
 // hardware) lives on XoneK3.HW_K3.LED_TRANSFERS; the normaliser
@@ -23,81 +29,28 @@
     XoneK3._requireLoad('xone-k3-lib-schemes.js',
         ['CURVE_GAIN', 'DEFAULT_RGB_BRIGHTNESS',
          'DEFAULT_RGB_BRIGHTNESS_OFF', 'DEFAULT_CO_SCHEME',
-         'CO_MATCH_EPSILON', 'RATIO_GAIN']);
+         'CO_MATCH_EPSILON', 'RATIO_GAIN',
+         'resolveNamedColour', 'mapMixxxColor']);
 
     // ============================================================
-    // PALETTE
+    // PALETTE + MIXXX COLOURS — live on the hardware descriptor
     // ============================================================
-    XoneK3.SYSEX_PALETTE = {
-        off:        [0,0,0],
-        red:        [0x7F,0,0],
-        green:      [0,0x7F,0],
-        blue:       [0,0,0x7F],
-        amber:      [0x7F,0x40,0],
-        orange:     [127,22,0],
-        orange_red: [72,5,0],
-        yellow:     [0x7F,0x7F,0],
-        yellow2:    [0x7F,0x7F,0x20],
-        lime:       [0x40,0x7F,0],
-        cyan:       [0,0x7F,0x7F],
-        sky:        [0x20,0x60,0x7F],
-        sky2:       [0x20,0x50,0x7F],
-        purple:     [0x40,0x20,0x7F],
-        magenta:    [0x7F,0,0x7F],
-        pink:       [0x7F,0x30,0x50],
-        white:      [0x7F,0x7F,0x7F],
-        teal:       [0,70,58],
-        teal2:      [13,127,21],
-        teal3:      [0,127,43],
-        teal_fade:  [0x10,0x50,0x10],
-        cool_white: [0x50,0x60,0x7F],
-        dim:        [0x10,0x10,0x10],
-        m_red:      [0x6F, 0x05, 0x00],
-        m_orange:   [0x7F, 0x20, 0x00],
-        m_yellow:   [0x7F, 0x56, 0x00],
-        m_green:    [0x15, 0x57, 0x05],
-        m_celeste:  [0x15, 0x7F, 0x4F],
-        m_blue:     [0x00, 0x0F, 0x7F],
-        m_purple:   [0x4F, 0x00, 0x5F],
-        m_pink:     [0x6F, 0x3F, 0x3F],
-        m_white:    [0x4F, 0x5F, 0x45]
-    };
-
-    // ============================================================
-    // MIXXX HOTCUE COLOURS
-    // ============================================================
-    XoneK3.MIXXX_COLORS = {
-        0xC50A08:[0x6F,0x05,0x00],0xFF8000:[0x7F,0x20,0x00],
-        0xF8D200:[0x7F,0x56,0x00],0x32BE44:[0x15,0x67,0x05],
-        0x42D4F4:[0x15,0x7F,0x4F],0x0044FF:[0x00,0x0F,0x7F],
-        0xAF00CC:[0x4F,0x00,0x5F],0xFCA6D7:[0x7F,0x3F,0x3F],
-        0xF2F2FF:[0x60,0x60,0x60],0x000000:[0x00,0x00,0x00],
-        0xFF0000:[0x7F,0x00,0x00],0xFFFF00:[0x7F,0x7F,0x00],
-        0x00FF00:[0x00,0x7F,0x00],0x00FFFF:[0x00,0x7F,0x7F],
-        0x0000FF:[0x00,0x00,0x7F],0xFF00FF:[0x7F,0x00,0x7F],
-        0xFF88FF:[0x7F,0x40,0x7F],0xFFFFFF:[0x7F,0x7F,0x7F],
-        0x000088:[0x00,0x00,0x40],0x008800:[0x00,0x40,0x00],
-        0x008888:[0x00,0x40,0x40],0x228800:[0x10,0x40,0x00],
-        0x880000:[0x40,0x00,0x00],0x882200:[0x40,0x10,0x00],
-        0x888800:[0x40,0x40,0x00],0x888888:[0x40,0x40,0x40],
-        0x88FF00:[0x40,0x7F,0x00],0xFF8800:[0x7F,0x40,0x00]
-    };
-
-    XoneK3.mapMixxxColor = function(rgb) {
-        if (!rgb || rgb <= 0) return null;
-        if (XoneK3.MIXXX_COLORS[rgb]) return XoneK3.MIXXX_COLORS[rgb];
-        return [
-            Math.round(((rgb >> 16) & 0xFF) / 2),
-            Math.round(((rgb >> 8)  & 0xFF) / 2),
-            Math.round(( rgb        & 0xFF) / 2)
-        ];
-    };
+    // These were framework-global until v1.2.0 but are
+    // hardware-specific: the RGB values are K3's perceived
+    // colours, tuned against measured transfer curves. A different
+    // hardware tunes different values (or omits one/both entirely
+    // and renders those LEDs dark).
+    //
+    // Framework hook defaults (return null + warn once) live in
+    // lib-core.js. HW_K3.PALETTE and HW_K3.MIXXX_COLORS live in
+    // xone-k3-hw-k3.js, which overrides resolveNamedColour /
+    // mapMixxxColor at module load.
 
     // ============================================================
     // COLOUR RESOLVER
     // ============================================================
-    // Palette lookups read XoneK3.SYSEX_PALETTE directly. No
-    // copy registry — a copy was only ever a boot-time snapshot,
+    // Palette lookups dispatch through XoneK3.resolveNamedColour.
+    // No copy registry — a copy was only ever a boot-time snapshot,
     // and _parseNamedEntry runs at compile time anyway.
 
     // ---------- Colour-entry parsing ----------
@@ -157,7 +110,7 @@
 
     function _parseNamedEntry(parts, DEF) {
         var first = (typeof parts[0] === 'string') ? parts[0].toLowerCase() : parts[0];
-        var rgbNamed = XoneK3.SYSEX_PALETTE[first];
+        var rgbNamed = XoneK3.resolveNamedColour(first);
         if (!rgbNamed) return null;
         return {
             rgb: rgbNamed.slice(),
