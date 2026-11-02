@@ -5,6 +5,80 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — Boundary hardening
+
+Backwards-compatible. Existing presets, tests, and saved layouts load
+unchanged. Non-K3 hardware that omits the new data blocks degrades
+gracefully with warn-once diagnostics.
+
+### Changed — Framework / Hardware boundary
+
+- **L3a — Palette.** `XoneK3.SYSEX_PALETTE` moved to
+  `XoneK3.HW_K3.PALETTE`. New framework hook
+  `XoneK3.resolveNamedColour(name)`; default warns once and returns
+  `null`. `HW_K3` overrides at module load. `_parseNamedEntry` in
+  `lib-schemes` already dispatched through the hook; no consumer
+  change required.
+
+- **L3b — Mixxx colour mapping.** `XoneK3.MIXXX_COLORS` moved to
+  `XoneK3.HW_K3.MIXXX_COLORS`. New framework hook
+  `XoneK3.mapMixxxColor(hex)`; default warns once and returns `null`.
+  `HW_K3` overrides. `Binding._resolveMixxxColor` already dispatched
+  through the hook.
+
+- **L4 — Brightness defaults.** `DEFAULT_RGB_BRIGHTNESS` (110) and
+  `_OFF` (12) stay as framework fallbacks with the same values, but
+  are re-declared on `HW_K3` at module load so a second hardware has
+  a single override point. K3 behaviour unchanged.
+
+- **L1 — Pacer transport hook.** `ctrl.pacer(name, opts)` now accepts
+  `opts.sendFn` and `opts.throttleMs`. Called without a `sendFn`,
+  the pacer warns once and drops payloads — no transport is
+  silently guessed. `TIMING.sysexThrottleMs` renamed to
+  `TIMING.pacingDefaultThrottleMs` (getter/setter alias keeps both
+  names working; `XoneK3.SYSEX_THROTTLE_MS` and the new
+  `XoneK3.PACING_DEFAULT_THROTTLE_MS` framework aliases both stay in
+  sync). `HW_K3.writeLED` passes its `_sendSysex` helper to the
+  pacer.
+
+- **L7 — Blank sweep.** The `for 0x0C..0x37` loop replaced by an
+  explicit 44-entry `BLANK_NOTES` array (`HW_K3`-local) laid out
+  like the physical K3: layer / pressL / pressR / shift, unmapped
+  gap, grid rows top-down, button rows top-down, encoder press row.
+  Same bytes on the wire, auditable row-by-row against the
+  hardware.
+
+### Tests
+
+- `test/colors.test.js`: last test now iterates `HW_K3.PALETTE` (was
+  `SYSEX_PALETTE`); three new tests covering the `HW_K3` palette
+  surface and the two framework hooks.
+- `test/sysex.test.js`: two new tests — `pacer` accepts `opts.sendFn`
+  and routes payloads through it; `pacer` with no `sendFn` warns once
+  and drops payloads. `pacer` tests that previously omitted a
+  `sendFn` now pass a no-op to avoid tripping the warn-once.
+- `test/run.js`: `_refreshTimingAliases` refreshes
+  `PACING_DEFAULT_THROTTLE_MS`; `resetGlobals` uses
+  `pacingDefaultThrottleMs` in the test override.
+
+### Compatibility
+
+- All existing schemes resolve unchanged.
+- `lab.js`, `snake.js`, `onek3.js`, `onek3-minifx.js`, and all
+  `.midi.xml` files load without source changes — their palette
+  access routes through `resolveColorEntry`, their pacer use routes
+  through `ctrl.sendLED` → `HW_K3.writeLED`, and their blank path
+  routes through `_blankLeds` → `HW_K3.blank`.
+- `XoneK3.SYSEX_PALETTE` / `XoneK3.MIXXX_COLORS` are **removed** as
+  framework globals. Any external code that read them directly
+  should read `XoneK3.HW_K3.PALETTE` / `XoneK3.HW_K3.MIXXX_COLORS`
+  instead, or call the hooks.
+- `XoneK3.TIMING.sysexThrottleMs` / `XoneK3.SYSEX_THROTTLE_MS`
+  continue to work as aliases. No deprecation yet — both names are
+  first-class in v1.2.0.
+
+---
+
 ## [1.1.0] — 2026-11-02
 
 Hardware descriptor extraction. The framework (`xone-k3-lib-*.js`) is
