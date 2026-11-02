@@ -1,0 +1,1475 @@
+# Changelog
+
+All notable changes to this controller preset are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.0] — 2026-11-02
+
+Hardware descriptor extraction. The framework (`xone-k3-lib-*.js`) is
+now hardware-agnostic; K3-specific protocol lives in
+`xone-k3-hw-k3.js`, timing constants in `xone-k3-lib-timing.js`.
+
+Preset behaviour unchanged: byte-identical LED output across all
+five presets, same input dispatch, same calibration. Verified
+against `pre-hardware-extraction`.
+
+### Added
+
+- **`xone-k3-hw-k3.js`** — hardware descriptor. HAL contract:
+  `buildBindings(ctrl)`, `wireInputs(ctrl)`,
+  `writeLED(ctrl, idx, r, g, b, hw)`, `blank(ctrl)`,
+  `anyPendingWrites(ctrl)`, `decodeLedCache(val)`. Data blocks:
+  `DEFAULTS` (boot defaults), `pacing` (TIMING overrides),
+  `LED_TRANSFERS` (raw calibration curves).
+- **`xone-k3-lib-timing.js`** — `XoneK3.TIMING` (all throttle /
+  settle / epsilon constants), `XoneK3.Pacing` (generic
+  rate-limited queue), `XoneK3.applyPacing(overrides)`
+  (idempotent merge, validates the
+  `takeoverEpsilon > coMatchEpsilon` invariant).
+- **`ctrl.pacer(name)`** — lazy named-Pacing accessor. `'led'` is
+  the sysex RGB queue; a zero-throttle hardware sends
+  synchronously and never allocates a timer.
+- **`cfg.hw`** — presets may pass a custom hardware descriptor to
+  `bootCat` / `bootLab`. Defaults to `XoneK3.HW_K3`.
+- **`inspect('root')`** — new `hw:` line showing the active
+  descriptor's name.
+
+### Changed
+
+- **`HARDWARE_CALIB` → `XoneK3.HW_K3.DEFAULTS`.** Same fields
+  (`calibration`, `calibrationMode`, `wbGain`,
+  `channelPerceptual`, `hkBoost`, `lumGamma`), plus
+  `midiChannel` and `sysex`.
+- **`LED_TRANSFERS` → `XoneK3.HW_K3.LED_TRANSFERS`.** Raw curve
+  data. `XoneK3._buildTransferRGB` (framework) normalises;
+  controller reads `this.hw.LED_TRANSFERS[cfg.calibration]`.
+- **`LAYER_BUTTON_NOTE`, `SHIFT_BUTTON_NOTE`, `K2_RG_THRESHOLD`
+  → `XoneK3.HW_K3`.** Physical-note constants and palette
+  threshold moved with the protocol.
+- **Timing constants → `XoneK3.TIMING.*`.**
+  `XoneK3.SYSEX_THROTTLE_MS`, `BEAT_REPAINT_THROTTLE_MS`,
+  `PULSE_CO_MS`, `BEATJUMP_GAP_MS`, `BEAT_STALL_MS`,
+  `META_SETTLE_MS`, `BOOT_SETTLE_MS`, `BOOT_MAX_ATTEMPTS`,
+  `CO_MATCH_EPSILON`, `TAKEOVER_EPSILON` still resolve (compat
+  re-exports), but their source of truth is `XoneK3.TIMING`.
+- **`BOOT_DEFAULTS` in `xone-k3-cat.js`** no longer carries
+  `midiChannel` or `sysex` — these come from `HW_K3.DEFAULTS`.
+- **`sendLED`** signature reduced to `(idx, r, g, b, hw)` —
+  `k2Override` removed (was per-LED; now whole-controller via
+  `ctrl.sysex`).
+
+### Removed
+
+- **Per-LED K2 mode.** `k2: true` on a binding, `Binding._k2`,
+  `_BINDING_FIELDS` `k2` row, `_bindCore._k2`, `_unbind.wasK2`,
+  `k2Indices` scan, `sendLED`'s 6th arg. To force K2 MIDI mode,
+  set `sysex: false` on the preset or the hardware descriptor.
+- **`XoneK3.buildSysExLED`, `sendK2Note`, `noteToLEDIndex`,
+  `rgbToK2`, `idxToK2`** — moved to `XoneK3.HW_K3.*`.
+- **`XoneK3._wireInputs`** — moved to `XoneK3.HW_K3.wireInputs`.
+- **`XoneK3._sendSysExLED`, `_enqueueSysEx`,
+  `_startSysExDrain`, `_sysExDrainTick`, `_stopSysExDrain`,
+  `_decodeLedCacheValue`, `_blankShortMsgSweep`,
+  `_blankSysexSweep`** — replaced by `Pacing` + `hw.writeLED` /
+  `hw.blank` / `hw.decodeLedCache`.
+- **`ctrl._sysexQueue`, `ctrl._sysexQueueMap`,
+  `ctrl._sysexTimer`** — replaced by `ctrl._pacers`.
+
+### Fixed
+
+- **Preset reload with custom pacing.** `XoneK3.applyPacing` now
+  resets from `_TIMING_DEFAULTS` before merging, so loading
+  preset A (`sysexThrottleMs: 25`) then preset B (no override)
+  restores 10. Previously the merge was purely additive and A's
+  values poisoned B.
+- **`applyPacing` epsilon invariant.** A broken
+  `takeoverEpsilon <= coMatchEpsilon` override now warns once and
+  restores both defaults, rather than silently letting deviation
+  LEDs misreport "matched" when control isn't live.
+
+### Migration notes
+
+- **From 1.0.x** — no action required for shipped presets. Cat,
+  Kitten, oneK3, oneK3-miniFX and colorLab all boot and behave
+  identically. Byte-identical LED output across all five presets.
+- **Custom bindings with `k2: true`** — remove the field. To
+  force K2 for the whole controller, pass `sysex: false` in the
+  preset override.
+- **Custom hardware** — implement the six HAL methods
+  (`buildBindings`, `wireInputs`, `writeLED`, `blank`,
+  `anyPendingWrites`, `decodeLedCache`) plus the three data
+  blocks (`DEFAULTS`, `pacing`, `LED_TRANSFERS`). Pass via
+  `overrides.hw` to `bootCat` / `bootLab`.
+- **Custom timing overrides** — pass `pacing: { ... }` on the
+  hardware descriptor, or call `XoneK3.applyPacing({ ... })`
+  before boot.
+
+---
+
+## [v1.0.18] — 2026-11-01
+
+Removed a duplicate map in `_applyResolved`'s diff state. No
+behaviour change.
+
+## Removed
+
+- **`_appliedCfgs`.** It held the same cfg object references as
+  `_applied`; the identity guard
+  `oldCfgs[name] === cfg` was the only consumer. Now reads from
+  `_applied` directly. Three parallel maps to two, and one
+  "these must be updated together" invariant becomes structural
+  (`_applied` and `_appliedHashes` are the only pair left, and
+  they're updated in one place each). Drops a `newCfgs = {}`
+  allocation per recompute and one assignment per binding per
+  recompute.
+
+  Relies on `_resolvePatch`'s memoization — a repeated
+  recompute over an unchanged stack returns the same cfg
+  object references, so the identity check fires and the hash
+  recompute is skipped. That memoization is unchanged.
+
+## Tests
+
+- No test changes. `test/helpers.js`'s
+  `Object.assign({}, ctrl._applied)` still copies the flat cfg
+  map — `_applied` remains that. `_inspectRoot`,
+  `_needsBeatClocks`, `_unbindRemoved` still read `_applied`
+  unchanged.
+
+## Review notes (no code change)
+
+- Full collapse into a single `{ name → { cfg, hash } }` map
+  (`_applied` + `_appliedHashes` → `_appliedMeta`) was
+  considered and deferred. It needs `test/helpers.js` updated
+  in lockstep — the helper copies `_applied` as a flat cfg
+  map, so a nested shape would break `bind()` and every
+  cell-discovery path in `test/helpers.js`. The two-map form
+  shipped here is safe; the one-map form would be a clean
+  follow-up if `test/helpers.js` is refactored anyway.
+
+## Compatibility
+
+- Mixxx 2.5 · preset schema unchanged · no config changes ·
+  no shipped-preset behaviour change
+
+---
+
+## [v1.0.17] — 2026-11-01
+
+Clarity pass across `lib-binding.js`, `lib-controller.js`, and
+`lib-controller-beat.js`. Long functions split, per-object state
+documented at class-top, pipeline comments added. No behaviour
+change; no shipped-preset impact.
+
+## Changed
+
+- **`Binding.input` split into 6 named methods.** The 130-line
+  dispatcher becomes a ~35-line orchestration (`input`) plus
+  `_readPhysicalInput`, `_maybeOpenTransaction`, `_isBounce`,
+  `_dispatchInput`, `_postInputRefresh`. Pipeline comment at
+  the top of `input` names the seven steps.
+- **`_dispatchCapturedRelease` split.** Captured-surface
+  swap-out / swap-in becomes `_captureCurrentSurface` /
+  `_installSurface`, both accepting the same
+  `{group, inKey, func, funcArgs, buttonMode}` shape.
+- **`_refresh` fallback render extracted to `_renderOutKey`.**
+  The no-colorScheme path (outKey on/off) becomes a
+  one-method body.
+- **`_updateModifiers` split into `_deriveModifierChanges` /
+  `_applyModifierChanges`.** Derivation returns
+  `{ patchChanges, needsRecompute }`; application batches
+  patch deltas and fires hooks. The public entry point is
+  four lines. Same hook order, same batching, same
+  standalone-recompute fallback.
+- **`_onPlayposition` split into `_trackPlayhead` /
+  `_shouldSkipPulse` / `_dispatchPositionTick`.** The
+  90-line body becomes a ~15-line orchestration (read
+  playhead, throttle gate, advance clock, derive origin,
+  dispatch) plus three named helpers.
+- **Class-top state blocks.** `Binding` gains a documented
+  list of the ten `_cs*` colour-scheme flags and the
+  four-state transaction machine. `freshDeckState` in
+  `lib-controller.js` gains a twelve-field table.
+- **`_isShuttingDown` / `_isNoteOn` helpers.** Named
+  predicates replace the inline `this._ctrl._shuttingDown`
+  and `(status & 0xF0) === 0x90` tests in `input`,
+  `_refresh`, and `_send`.
+- **Base-hook comment on `_afterRecompute` / `_onInput` /
+  `_onPatchChange`.** Grouped under one "subclass hook —
+  no-op in base" note.
+- **Pipeline comments on `_applyBinding`, `_buildStack`,
+  `_batchPatches`, `_refreshColorScheme`, `_onPlayposition`.**
+  Numbered-step headers. Original inline comments preserved
+  on each step.
+- **`_resolveFxPatchName` return-value comment.**
+  `undefined` = not mine, `null` = mine-but-missing,
+  `string` = swap target. Surfaces the convention at the
+  function head instead of only in INTERNALS.
+
+## Removed
+
+- **`_send`'s redundant shutdown check.** `sendLED` gates on
+  `_shuttingDown` at the actual MIDI choke point; the extra
+  check in `_send` was unreachable-by-design. Comment in
+  `_send` explains the delegation.
+
+## Tests
+
+- No test changes. Every method added is a straight
+  extraction with the same signature and side effects as the
+  inline original. Warn keys (`inputThrow:`, `txReleaseThrow:`,
+  `refreshThrow:`, `obsRefreshThrow:`, `updateModifiersPressThrow:`,
+  `updateModifiersReleaseThrow:`) unchanged.
+  `_onPlayposition` split preserves the exact dispatch order
+  (backward detect → throttle → clock advance → origin derive
+  → guard → sync-or-repaint).
+
+## Review notes (no code change)
+
+- The plan's `_guardShutdown` wrapper was dropped in favour
+  of `_isShuttingDown`. A wrapper buys nothing when the
+  underlying check is a single boolean load; the named
+  predicate gives the readability win at zero indirection.
+- `_isNoteOn` is defined in `lib-binding.js` but only consumed
+  by `_wireInputs` in `lib-controller-boot.js`. Kept on
+  `Binding.prototype` so the status-nibble idiom is next to
+  the midi field it inspects.
+
+## Compatibility
+
+- Mixxx 2.5 · preset schema unchanged · no config changes ·
+  no shipped-preset behaviour change
+
+---
+
+## [v1.0.16] — 2026-11-01
+
+Code review pass. One LED fix, a palette cleanup, tunable
+extraction, minor read-path tidy-ups. No shipped-preset
+behaviour change.
+
+## Fixed
+
+- **`routeTo` LED staleness on THEME.fx mutation.** FX-routing
+  overlay grid cells held a raw reference to `THEME.fx[unit]`,
+  so an in-place mutation (`THEME.fx[3][0] = 100`) didn't
+  repaint — the ref-identity memo in `_evaluateScheme` saw the
+  same array and skipped recompile. Routed through
+  `CAT.themeScheme('fx', unit)`.
+
+## Added
+
+- **`on.group` without `on.co` warns.** The group was silently
+  dropped before (it's a known `on:` field only *with* `co`).
+  Key: `csOnGroupNoCo`.
+- **`on.patchActive` alongside `co` / `state` warns.**
+  `_evalCsOn` checks patchActive first and returns early; the
+  other source is unreachable. Key: `csOnPatchActiveSource`.
+- **`BEAT_STALL_MS = 1500`** in `lib-core.js`. Replaces the
+  sole inline timing literal among the beat-repaint tunables.
+  Same value; `_requireLoad`'d from `lib-controller-beat.js`.
+
+## Changed
+
+- **`slipOrLoad` uses `_loadSelectedOntoChannel`.** Matches
+  the other three load-arm call sites. No behaviour change —
+  `selectedDeckCurrent` is clamped 1–4 at boot.
+- **`_parseSchemeValue` returns a boolean.** Dropped the dead
+  `hasBase` field from the `{ hasBase, schemeIsFn }` shape.
+- **`Binding` ctor / `_reset` use `Object.assign`.** Same
+  semantics as the manual `for..in` copy; one less place to
+  edit when fields are added.
+
+## Removed
+
+- **`XoneK3.COLORS` / `_populateColors`.** The registry was a
+  boot-time copy of `XoneK3.SYSEX_PALETTE`; the only consumer
+  (`_parseNamedEntry`) reads the palette directly. Dropped
+  from `_bootWith` and `test/harness.js`.
+
+## Tests
+
+- `test/harness.js` — `_populateColors()` call removed.
+- `test/colors.test.js` — two `_populateColors` tests removed.
+  `resolveColorEntry: every palette entry resolves` already
+  covers the same invariant.
+
+## Review notes (no code change)
+
+- `_segsCacheId` attaches a controller-scoped id onto cached
+  scheme arrays. A WeakMap would be cleaner but can't back
+  `_flatCache`'s 1024-entry eviction. Deferred.
+- `_wireCsOnConnection` / `_buildCsFromStateClosure` share a
+  seed-then-connect shape. Extracting a helper saves ~6 lines
+  at the cost of indirection. Deferred.
+
+## Compatibility
+
+- Mixxx 2.5 · preset schema unchanged · no config changes ·
+  no shipped-preset behaviour change
+
+---
+
+## [v1.0.15] — 2026-11-01
+
+Verification pass on v1.0.10 – v1.0.14, focused review of
+`lib-controller-colour.js`, and nine micro-cleanups. No
+shipped-preset behaviour change.
+
+## Performance
+
+- **`_beatjumpAllowed` accepts the already-read `loop_enabled`
+  value.** `encBeatjump` reads `loop_enabled` for its loop-only
+  gate, then `_beatjumpAllowed` read it again for its 130 ms gap
+  gate — two `engine.getValue` (CO mutex) acquisitions per
+  encoder tick while spinning. The encoder now passes the fresh
+  value through; grid buttons still omit it and the gate reads
+  fresh. Halves the CO-mutex load on the beatjump spin path.
+- **`_evalPatchActive` skips the array wrap for string input.**
+  Every render of any `on: { patchActive: 'name' }` binding
+  (shipped: `CHORD.pressL`, `CHORD.pressR`) was allocating
+  `[patchActive]` fresh. Negligible frequency (chord-held only)
+  but zero-cost to remove.
+
+## Hardening
+
+- **`colorScheme.knob: null` means "no knob".** Previously
+  `null` fell through `!== undefined`, set `_csDeviation`,
+  then failed at `this.bindings[null]` → `_csFailed` → black
+  LED with a confusing "knob 'null' not found" warning. Now
+  treated as `undefined` and renders the static scheme as
+  intended. No shipped preset uses `knob: null`, so this is
+  a config-shape hardening.
+- **`schemeFromState` with a source but no `map`/`list`
+  warns at parse.** The closure always returned `undefined`;
+  with a base scheme also set, the base silently masked the
+  misconfiguration and `csDarkFromFn` never fired. New
+  `csFsNoMap` warn-once at parse time surfaces it.
+
+## Readability
+
+- **`_onPlayposition` inlines the mock-fallback `grp`.** The
+  local sat above the throttle gate, misleadingly implying
+  hot-path use; it only fed the `newPos === undefined` mock
+  branch. No behaviour change.
+- **`_parseSchemeFromState` drops the dead shape re-check and
+  return value.** The caller (`_parseCsScheme`) already
+  guarantees a non-array object via its `hasFromState` guard;
+  the check was unreachable and the return value ignored. Pure
+  cleanup.
+- **`_setupColorScheme` uses `_warnOnce` for a bad-shape
+  `colorScheme:`.** Previously `print`ed the same line on
+  every rebind (focus flips, patch swaps); now warns once per
+  binding. Warning key: `csShape:<name>`.
+- **`csOnEmpty` warning text matches the actual fallback.**
+  On this path `_csOn` stays `null`, so `_bindConns` wires the
+  `outKey` listener and `_isOn` reads it — the LED renders
+  from `outKey` (or off-ramp), not dark. New text:
+  "on: ignored; LED falls back to outKey (or stays off if
+  none)." Warning text only.
+- **`csOnNoSource` warning text matches the actual outcome.**
+  `_csOn` is set with `equals`/`contains` but no source →
+  `_isOn` returns 0 → off-ramp renders (dim), not black. New
+  text: "no match possible; LED renders its off-ramp."
+  Pairs with the `csOnEmpty` fix.
+
+## Tests
+
+- No test changes required. `encBeatjump`'s in-loop /
+  out-of-loop tests still pass unchanged (the `> 0` cast
+  preserves semantics for binary `loop_enabled`).
+  `_beatjumpAllowed`'s default-argument path is identical from
+  `beatjumpButton`'s perspective. `_evalPatchActive` returns
+  the same values on array and scalar inputs.
+
+## Review notes (no code change)
+
+- **v1.0.10 – v1.0.14 changelog claims re-verified.** All 28
+  verifiable claims confirmed on disk (parseNum strictness,
+  `_warned` null-proto, `_stableStringify` cycle detection,
+  `resolve` bail-outs, `_onPlayposition` callback `v`, hotcue
+  colour cache, `applyBeat` deferred slice, `_sampleSnap` /
+  `_sampleBlend` index-tracked, `_warnIfFreshScheme` hoist,
+  `_buildSegments` warn, `wbGain` validation, `BOOT_WHITE_ENTRY`,
+  `_resolveDeckRef` fast paths, `pos` threading, `EMPTY_META`,
+  `encBeatjump` loop gate, `_wbRGB` / `_channelEmit` scratch,
+  `sendLED` wb-off skip, `_bootWith` shutdown + try/catch,
+  `_inspectBeat` dead local). External-fact claims
+  (`PULSE_CO_MS`, `ControlPushButton` CO types, Mixxx mock
+  signatures) not re-verified from source this pass.
+- **`_buildCsFromStateClosure` — `sf.list.slice()` inconsistent
+  with `sf.map`.** `list` is copied, `map` shared. Not
+  exercised by shipped code (no `list:` in any provided
+  preset). Design decision rather than a bug; deferred.
+- **`scheme: 'invalid'` + valid `schemeFromState` — base
+  failure blocks fromState.** `_parseSchemeValue` sets
+  `_csFailed = true` and `_parseCsScheme` returns before
+  `_parseSchemeFromState`. Arguably correct (config error
+  blocks downstream) but the user sees only `csUnresolved`,
+  not "schemeFromState was also provided". Deferred.
+- **`resolveScheme` returns `null` silently for missing named
+  schemes.** `csUnresolved` at the caller stringifies the ref
+  so the bad name is visible. Sufficient. Deferred.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No shipped-preset behaviour change
+
+---
+
+## [v1.0.14] — 2026-11-01
+
+Beatjump encoder scope fix, render-path allocation reduction,
+boot hardening. One shipped-preset behaviour change: encoder
+beatjump is now loop-only.
+
+**Perf reclaimed:**
+- ~24 array allocations / knob-event on calibrated schemes —
+  eliminated (shared `_wbRGB` / `_channelEmit` scratch)
+- One passthrough function call / LED frame when white balance
+  is off
+
+## Fixed
+
+- **`encBeatjump` is now loop-only.** The beatjump encoder
+  previously fired outside a loop, where no throttle exists
+  and fast spins could drop. Mixxx's `beatjump_forward` /
+  `beatjump_backward` are `ControlPushButton`, not
+  `ControlTrigger` — `_pulseCo` is required for them, so
+  removing the pulse was not an option. The fix gates the
+  encoder on `loop_enabled`: outside a loop it does nothing
+  (no beatjump, no pulse timer); inside a loop the existing
+  130ms `_beatjumpAllowed` cap sits well below the 30ms pulse
+  width, so no drops. The grid beatjump buttons
+  (`beatjumpButton`, `grid0_1` / `grid1_1`) are unchanged and
+  remain usable outside a loop for track navigation.
+
+## Performance
+
+- **Shared scratch for `_wbRGB` / `_channelEmit`.**
+  Both returned a fresh 3-element array per call. On a
+  calibrated scheme, every `_calibratedHw` cache miss runs
+  12 bisect iterations × 1 `_emitAt` → `_channelEmit` →
+  `_wbRGB` = **24 array allocations per knob position**.
+  Every production caller unpacks indices immediately and
+  discards the array; none holds it past the current call.
+  Module-scope scratch eliminates the allocation.
+
+  **Contract:** `_wbRGB` / `_channelEmit` return a shared
+  array — read indices immediately, do not hold across calls.
+  A new caller that needs to hold two returns must copy
+  explicitly. The `_channelEmit: scales linearly` test was
+  updated to unpack immediately for this reason.
+- **`sendLED` skips `_wbRGB` entirely when white balance is
+  off.** colorLab after `labToggleWb`, custom configs with
+  `wbActive: false`, and any preset where `calibrationMode`
+  is off — all skip the passthrough `_wbRGB` call. Saves one
+  function call per LED frame, not just an allocation.
+
+## Hardening
+
+- **`_bootWith` shuts down existing controllers before
+  resetting the array.** Console `init()` after a boot would
+  otherwise leak the old controllers' sysex drain timer,
+  beat-clock connections, and boot-settle timers. Mixxx's
+  framework calls shutdown before init on preset reload, so
+  this only matters for manual re-init — but the fix is one
+  line and removes a real leak path.
+- **`_bootWith` device loop is try/catch per device.** A
+  throwing constructor or `init()` previously aborted the
+  loop — remaining devices never booted, and the failed
+  controller wasn't in `controllers` for `halt` to clean up.
+  Now warn-onces per device and continues.
+
+## Readability
+
+- **`_inspectBeat`** — removed dead `vbeat` local
+  (`_virtualBeatFor` result was assigned but never used).
+
+## Tests
+
+- `calibration.test.js` — "`_channelEmit: scales linearly with
+  hw`" now unpacks each return immediately (was holding two
+  returns across calls, which aliases under the new shared
+  scratch). Same mathematical assertion.
+- `funcs.test.js` — the two `encBeatjump` tests enable a loop
+  before firing the encoder; two new tests cover the
+  outside-loop no-op. Locks in the loop-only gate.
+
+## Review notes (no code change)
+
+- **All four `_pulseCo` callers verified as `ControlPushButton`.**
+  `beatjump_forward` / `beatjump_backward` are declared
+  `ControlPushButton*` in `loopingcontrol.h`;
+  `reloop_toggle` and `beatloop_activate` are the same loop-
+  button family. `ControlPushButton` stays at 1 until
+  explicitly reset, so `_pulseCo` is load-bearing for all
+  four. Removing it would leave every beatjump and loop
+  action stuck after the first press.
+- **`PULSE_CO_MS` stays at 30.** No split into
+  beatjump / loop-action tuneables — the pulse width is CO
+  reset latency (enough for Mixxx's event loop to observe
+  the 1), identical requirement for every caller. The
+  throttle side effect is unintentional but harmless: inside
+  a loop the 130ms `_beatjumpAllowed` cap is the real rate
+  limiter, and outside a loop the encoder now does nothing.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- **`encBeatjump` outside a loop is now a no-op.** If a user
+  relied on encoder beatjumps for non-loop navigation, bind
+  `beatjumpButton` to a grid cell instead — those stay
+  unrestricted.
+- No other config changes required
+
+---
+
+## [v1.0.13] — 2026-11-01
+
+Beat-engine performance + readability. No shipped-preset behaviour
+change.
+
+**Perf reclaimed:**
+- ~1.3k token comparisons + ~80 regex matches /sec — steady
+  playback
+- ~52 redundant CO mutex acquisitions / boot
+- ~33 redundant CO mutex acquisitions / track load
+- ~32 object allocations /sec — idle-deck countdown repaints
+
+## Performance
+
+**`_resolveDeckRef` fast-paths the three common deck tokens.**
+Every beat-enabled LED refresh resolved its `beat.deck` via the
+full 16-token `XoneK3.resolve` loop plus a regex match. Shipped
+schemes all use `$DECK_ACTIVE$` (or `$DECK_A$` / `$DECK_B$` in
+custom configs), which map directly to controller state. The
+fast path returns the same numeric channel in O(1); other tokens
+fall through unchanged to the generic resolver. Steady-state
+playback eliminates ~1.3k token comparisons and ~80 regex
+matches per second; a `_refreshAllLeds` sweep saves the same
+per-binding cost across all ~80 bindings.
+
+**`_catchUpChannel`, `_onTrackLoaded`, and the `track_samples`
+listener pass `pos` into `_syncBeatCount`.** Each handler read
+`playposition` for origin derivation, then let `_syncBeatCount`
+re-read it via `_trackBeatF`'s fallback. Passing the already-read
+value avoids the second `engine.getValue`. Saves ~20 redundant
+reads per boot (boot settle runs up to 5 × 4 channels) plus one
+per track load and per `track_samples` fire.
+
+**Hotcue colour/position observers use the callback `v`.**
+`makeConnection` delivers the new CO value as the first callback
+argument; the observers were ignoring it and re-reading via
+`engine.getValue`. Same value, one fewer mutex acquisition per
+fire. 32 reads eliminated per track load (4 channels × 4 hotcue
+slots × 2 COs). The `playposition` read inside each observer
+stays — that's a different CO the observer isn't watching.
+
+**`_trackMeta` returns a shared `EMPTY_META` sentinel for
+unloaded decks.** Previously allocated a fresh
+`{ duration: 0, fileBpm: null, samples: 0, outroEnd: 0 }` per
+call. Unloaded-deck countdown LEDs repaint at ~32 Hz across four
+channels; the shared object skips that allocation. No caller
+mutates it (verified). Same pattern as `BOOT_WHITE_ENTRY` in
+`lib-binding.js`.
+
+## Readability
+
+- **`_repaintFromPosition`** — `trackAbs` was a dead local used
+  only to compute `trackFrac`. Inlined.
+- **`_onPlayIndicator`** — comment documents the two independent
+  refresh triggers (state change → virtual clock + beat LED
+  repaint; `v === 1` → beat-count resync). The double refresh on
+  play-start is intentional; `_ledCache` dedupes unchanged frames.
+
+## Review notes (no code change)
+
+- **`_patchActive` doesn't recurse into host's `_host`.** Reviewed
+  as a possible hardening gap. Shipped `_host` values all
+  reference base patches (no nesting), so the presence-based
+  check is correct for every shipped preset. Recursion would
+  require cycle detection for a config shape nobody writes. A
+  future INTERNALS §4 edit could add "`_host` should reference
+  base patches, not other overlays" if desired.
+- **`_recompute` throw during patch mutation leaves
+  `activePatches` mutated.** A cycle in an overlay's patch tree
+  self-heals on the next toggle (the patch is already in the
+  array, so the next press removes it, and the subsequent
+  `_recompute` succeeds). A cycle in a base patch is a broken
+  config — the preset is unusable by design. No change.
+- **`_applyBinding`'s per-binding refresh is unreached in shipped
+  code.** INTERNALS §21's phrasing ("direct callers still get a
+  per-binding refresh") is conditional — describing behaviour if
+  a direct caller existed, not asserting one does. Dead code is
+  intentional scaffolding. No change.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No shipped-preset behaviour change
+
+---
+
+## [v1.0.12] — 2026-11-01
+
+Small hardening + readability release. No shipped-preset behaviour
+change.
+
+## Fixed
+
+- **Constructor validates `wbGain` before slicing.** `wbGain:
+  undefined` (or `null`) crashed at construction with
+  `.slice()` on undefined. `wbGain: 'foo'` (string) survived
+  construction — strings have `.slice` — but fed `NaN` through
+  `_channelEmit`'s white-balance multiplication, silently
+  degrading calibrated schemes to uncalibrated. Now validates
+  with the same warn-once + `[1,1,1]` fallback pattern as
+  `channelPerceptual` (which sits immediately above it in the
+  constructor). Warning key: `wbGainShape:<label>`.
+
+## Performance
+
+- **`_renderDeviation` boot-white fallback uses a shared
+  module constant.** The deviation-LED fallback for a knob
+  that has never reported was allocating
+  `{ rgb: [127,127,127], brightness: 127, brightnessOff: 127 }`
+  fresh on every render. Hoisted to `BOOT_WHITE_ENTRY` at
+  module scope. `_sendColor` reads indices only — no mutation,
+  safe to share. Bounded win (fires only before the first
+  knob turn), zero behavioural change.
+
+## Documentation
+
+- **`_armOwnConn` value listener** — comment explains why the
+  listener reads `getParameter` instead of using the callback
+  `v`. The callback value is the raw CO value; co-match's
+  deviation maths needs the normalised [0,1] parameter, and
+  for ranged COs (`rate`, `pitch_adjust`) the two differ.
+  Standard [0,1] COs (EQ, pregain, volume) are unaffected,
+  but the read is load-bearing for custom bindings. Prevents
+  a future "obvious optimization" from breaking co-match on
+  ranged COs.
+
+## Review notes (no code change)
+
+- **`_patchActive` doesn't recurse into host's `_host`.**
+  Reviewed as a possible hardening gap. Shipped `_host` values
+  all reference base patches (no nesting), so the presence-based
+  check is correct for every shipped preset. Recursion would
+  require cycle detection for a config shape nobody writes.
+  Future INTERNALS §4 edit could add "`_host` should reference
+  base patches, not other overlays" if desired.
+- **`_recompute` throw during patch mutation leaves
+  `activePatches` mutated.** Reviewed as a possible recovery
+  gap. A cycle in an overlay's patch tree self-heals on the
+  next toggle (the patch is already in the array, so the next
+  press removes it, and the subsequent `_recompute` succeeds).
+  A cycle in a base patch is a broken config — the preset is
+  unusable by design. Rolling back state would mask the
+  underlying problem. No change.
+- **`_applyBinding`'s per-binding refresh is unreached in
+  shipped code.** Reviewed as a possible dead-code / doc
+  mismatch. INTERNALS §21's phrasing ("direct callers still
+  get a per-binding refresh") is conditional — describing
+  behaviour if a direct caller existed, not asserting one
+  does. Dead code is intentional scaffolding. No change.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No shipped-preset behaviour change
+
+---
+
+## [v1.0.11] — 2026-11-01
+
+Performance-focused release plus small UX and warning improvements.
+No shipped-preset behaviour change except the intro/outro marker
+LEDs, which now stay dimly visible when unset.
+
+## Performance
+
+**`_onPlayposition` uses the callback value instead of re-reading
+`playposition`.** `makeConnection` delivers the new value as the
+first callback argument, and every other CO listener in the file
+already uses it — `playposition` alone discarded it and called
+`engine.getValue` for the same value. `playposition` fires at
+audio-buffer rate (~690 Hz per playing deck at 64-sample
+buffers), so the old path was taking ~2,760 control-object
+mutex acquisitions per second across four playing decks — the
+audio thread contends on the same mutex. Now zero. Playback
+states (play / pause / seek / reverse / loop wrap) update
+identically because the callback value *is* the new position.
+The `undefined` fallback covers test mocks and future Mixxx
+variation.
+
+**Hotcue colour CO read eliminated from render path.** Hotcue
+and phrase LEDs using `colorScheme: 'mixxx'` were regex-matching
+`outKey` and re-reading `hotcue_N_color` on every render. The
+colour CO name is now precomputed at bind time, and its value is
+cached on the binding — seeded at bind, kept current by the
+existing colour listener. Same pattern as `_lastOutKeyValue`,
+`_lastCoValue`, and `_csOn.cachedValue`. Removes one regex
+match and one mutex acquisition per mixxx-typed LED per sweep
+(sweeps happen on track load, patch swap, focus change, and
+hotcue state / colour change).
+
+**`applyBeat` no longer slices `entry.rgb` on brightness-only
+cascades.** The common case — bar / phrase boundaries that only
+override brightness — was allocating a fresh rgb array that was
+never replaced. Deferred the slice to when the cascade actually
+supplies a new colour. ~660 allocations/sec saved on a typical
+20-LED playback sweep.
+
+**`_sampleSnap` / `_sampleBlend` no longer allocate per-candidate
+wrapper objects.** Both functions built intermediate
+`{ t, color }` / `{ rgb, brightness, type }` objects inside the
+scan loop. Index-tracked now — one allocation per sample call,
+identical behaviour. ~5,400 small objects/sec churned during
+knob turn (deviation LEDs sampling at ~30 Hz).
+
+## Warning improvements
+
+**`_warnIfFreshScheme` now catches fresh-array scheme
+functions.** The warning exists to catch scheme functions that
+return a structurally-identical-but-different-reference value
+each call (which forces a recompile every render) — but the
+guard silently skipped arrays. `scheme: function() {
+return [127,0,0]; }` was the same trap as a fresh object, and
+now warns.
+
+**`_warnIfFreshScheme` stops re-stringifying after warning.**
+Two `_stableStringify` calls per render used to run forever for
+a buggy config, because the warn-once guard sat below them. Now
+the guard sits above. No effect on well-behaved configs.
+
+**`_buildSegments` warns on unresolved colour specs.** A typo
+in a scheme's `colors` array (`'gren'` for `'green'`) silently
+dropped the segment — no warning, no error, just a scheme with
+fewer stops than the config declares. Now warn-onces with the
+bad spec. No effect on shipped schemes.
+
+## UX
+
+**Intro / outro marker buttons stay dimly visible when unset.**
+`markerCell` / `markerCellShift` previously set brightness-off
+to 0, so the marker LEDs went fully dark when the marker wasn't
+set — indistinguishable from a dead LED or an unused cell.
+Brightness-off is now 12 (`DEFAULT_RGB_BRIGHTNESS_OFF`), so the
+unset state shows a dim version of the marker colour (or dim
+red under shift). Only affects the four row-3 marker cells in
+the hotcue2 overlay.
+
+## Tests
+
+- `integration-bottom.test.js` — "hotcue2: row-3 LED follows
+  `_enabled` (off)" updated to assert `hw = 12` and rgb
+  `(0, 127, 0)`. Previous assertion was `hw = 0` (fully dark).
+  Aligns with the marker dim-when-unset change above; only
+  the off-state brightness assertion changed, on-state test
+  was already correct.
+  
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No shipped-preset behaviour change beyond marker LED
+  visibility
+
+---
+
+## [v1.0.10] — 2026-11-01
+
+## Changed
+
+- **`parseNum` is strict about malformed fractions.** `'1/0'`,
+  `'5/'`, and `'1/2/3'` now return `NaN` instead of silently
+  falling back to the leading integer (`1`, `5`, `1`). Affected
+  shipped configs: none.
+- **`resolve()` bails out early on token-free strings.** Two
+  `indexOf` guards — one at function entry, one per token
+  iteration. No behavioural change; focus-flip rebinds are
+  measurably cheaper.
+
+## Fixed
+
+- **`_stableStringify` detects cycles.** Previously recursed
+  until stack overflow if a binding cfg held a cyclic
+  reference. Now warn-onces (`stableStringifyCycle`) and
+  substitutes `"[cycle]"` at the cycle point. Unreachable from
+  any shipped config; hardening. Diamond references serialise
+  normally.
+- **`_warned` uses `Object.create(null)`.** A warn key
+  colliding with `Object.prototype` (`toString`, `constructor`,
+  `__proto__`) inherited truthy and was silently swallowed.
+  All shipped keys are prefixed, so unreachable today —
+  one-line hardening. Two reset sites updated (lib-core,
+  lib-controller-boot).
+
+## Documentation
+
+- **README** — clarified how `midiChannel` is used. It controls
+  input routing (MIDI note-on/note-off) and the K2 fallback
+  output (`sysex: false`) only; SysEx LED output is port-scoped
+  by the `<controller id="...">` binding in each `.midi.xml`.
+  The `0x0E` byte in the SysEx frame is a fixed command-header
+  byte — shared by the RGB write and release commands, invariant
+  across LED indices — not a channel. Confirmed empirically
+  (Cat on `0x0E` and Kitten on `0x0D` emit identical 14-byte
+  frames to their respective ports and both render correctly).
+  The "fight over outputs" warning now describes the actual
+  failure mode: shared input bindings, one preset's LED state
+  driven by the wrong physical unit.
+- **`beatLevel`** — comment clarifying that `prePhraseBeats`
+  marks a single beat, not a duration.
+
+---
+
+## [v1.0.9] — 2026-11-01
+
+Dead code removal. No runtime behaviour change on shipped presets.
+
+## Cleanup
+
+**Transaction `type` field removed.** `_captureTransaction` was
+snapshotting `binding.type` onto `_transaction.type`, and
+`_orphanTransaction` was comparing it against the current
+binding's type. Hardware type is fixed per control in
+`_buildHardware` (an encoder is always an encoder), so the
+comparison was a tautology — it could never contribute to
+orphan detection. Removed from the transaction init, from
+`_captureTransaction`, and from `_orphanTransaction`'s signature
+comparison. The documented orphan-detection signature is now
+`group`, `inKey`, `func`, `funcArgs`, `buttonMode`.
+
+**`_accel` binding field removed.** Listed in `_BINDING_FIELDS`
+with `ignored: true` as a leftover from a removed acceleration
+feature. Never written, never read, never audited against
+`_bindingDefaults` (which doesn't define it). Removed from
+`_BINDING_FIELDS`; the derived `_SNAPSHOT_IGNORED` list is
+shorter by one entry. `_auditBindingCfg`'s warn-once for the
+non-underscore `accel:` config key is unchanged — that's the
+migration check for user configs, not the binding-side field.
+
+## Docs
+
+- `docs/INTERNALS.md` §2.5 — transaction lifecycle paragraph
+  drops `type` from the captured-field list.
+- `docs/INTERNALS.md` §2.5 — signature paragraph moves `type`
+  from "fields compared" to "fields excluded", with a note on
+  why (hardware type is immutable per binding).
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No behaviour change on shipped presets
+- `node test/run.js` green
+
+---
+
+## [v1.0.8] — 2026-11-01
+
+Phrase-origin correction after a mid-session track swap; FX layout
+unit 2 aligned with unit 1; chord/overlay and lab-bake docs
+corrected.
+
+## Bug fix
+
+**Phrase colours stayed stale until play after a paused track
+swap.** `_onTrackLoaded` and the `track_samples` observer both
+ran `_deriveOriginFromPosition` and `_syncBeatCount` before
+Mixxx's queued `duration` / `file_bpm` emissions had landed — so
+`_phraseOrigin[ch]` and `st.count` were computed from the
+outgoing track's metadata. The `duration` / `file_bpm`
+observers cleared the cache and repainted LEDs but never
+re-derived origin or count, so a paused deck kept the wrong
+cascade colour until the user played, jogged, or seeked. Both
+observers now re-read `playposition`, re-derive origin, and
+re-sync count with settled metadata. User-visible: load a track
+while paused and the phrase colours are correct immediately;
+no play needed.
+
+## Changed
+
+- **`FX_LAYOUTS[2]` now shares unit 1's Moog → Echo → Moog
+  layout.** The Bitcrusher overrides were commented out — unit 2
+  is a copy of unit 1 for users running a duplicate FX chain on
+  the second unit. `fx-presets/2-2ndEchoMoog.xml` added as the
+  pairing preset for the shipped unit-2 layout.
+  `fx-presets/2-EchoBit.xml` is retained but no longer pairs
+  with the shipped layout — users who want the old Bitcrusher
+  behaviour on unit 2 should restore the commented overrides in
+  `xone-k3-cat-fx.js`.
+
+## Docs
+
+- `README.md` focus-mode cell table, Row 0: unit 2 column no
+  longer bolds the four cells that used to differ from unit 1
+  (`knob2_0`, `knob3_0`, `button2_0`, `button3_0`).
+- `README.md` shipped FX presets table: `2-2ndEchoMoog.xml`
+  added (Moog → Echo → Moog); `2-EchoBit.xml` row marked as
+  pairing with the pre-v1.0.8 unit-2 layout.
+- `README.md` §CHORD: `grid2_1` line corrected. The chord +
+  slip cell is not declared on `CHORD`; it routes through
+  `CUE_SHIFT.grid2_1` / `LOOP_SHIFT.grid2_1`, each branching
+  on `modifiers.chord`.
+- `docs/INTERNALS.md` §9: removed the `grid2_1` line from the
+  CHORD cell list; added the shift-companion routing
+  explanation.
+- `docs/INTERNALS.md` §17: lab `colorSet` persistence note
+  corrected — save/load paths strip it via `_cloneScheme`,
+  bake paths do not use `_cloneScheme` but are safe because
+  `bakeScheme` builds a fresh object from `segs[].color`.
+- `xone-k3-kitten.js` header comment: corrected to describe the
+  actual boot config (`initialActiveDeck` / `initialActiveFx`
+  both `'A'`, not `'B'`).
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- **FX unit 2 default layout changed** — pair with the new
+  `2-2ndEchoMoog.xml`, or restore the overrides in
+  `xone-k3-cat-fx.js` to keep using `2-EchoBit.xml`
+- No other config changes required beyond reloading the preset
+- `node test/run.js` green
+
+---
+
+## [v1.0.7] — 2026-10-31
+
+Chord + overlay LED fix. Config-only change; runtime untouched.
+No .midi.xml changes.
+
+## Bug fix
+
+**Slip button stayed slip-coloured while an overlay was
+active under chord.** `CHORD.grid2_1` had no `colorScheme`,
+no `group`, no `outKey` — the binding's `_refresh` fell
+through every branch and sent nothing, so the LED kept the
+pre-chord frame (the slip colour) until shift or layer was
+released. Chord is pushed last in `_buildStack`, so it
+shadowed the overlay's own `grid2_1` — which has the correct
+colour and CO. User-visible: with fxRouting or selectAB open
+under chord, `grid2_1` now shows that overlay's colour and
+on/off state (yellow / dim yellow for the FX2→Ch3 route;
+cyan / dim cyan for `selectedFxB === 3`) from the moment the
+overlay appears, matching the state after releasing shift and
+layer.
+
+## Behaviour
+
+- `CHORD.grid2_1` removed. The binding now falls through to
+  whichever overlay is active (`SELECT_AB_SHIFT` /
+  `FX_ROUTING_SHIFT`), or to the slip companion
+  (`CUE_SHIFT` / `LOOP_SHIFT`) when none is.
+- `CUE_SHIFT.grid2_1` / `LOOP_SHIFT.grid2_1` dispatch
+  `toggleLayerOverlay` when `modifiers.chord` is held,
+  `toggleActiveDeck` otherwise. Chord + slip without an
+  overlay still toggles hotcue2 / loopOdd, unchanged.
+- Chord + slip **with** an overlay active now performs the
+  overlay's own `grid2_1` action (toggle the FX2→Ch3 route;
+  select FX unit 3 into slot B) instead of toggling the layer
+  overlay. Overlay switching between fxRouting and selectAB
+  already worked via `_addOverlayWithSiblingClear`; the LED
+  was the only thing not reflecting the swap.
+
+## Docs
+
+- README §CHORD: `grid2_1` line updated.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No runtime changes
+- No other config changes required
+
+---
+
+## [v1.0.6] — 2026-10-30
+
+Modifier-state fallout, THEME mutation propagation, snake exit
+ergonomics. Small config-adjacent changes; runtime touched in
+five files. No .midi.xml changes.
+
+## Correctness fixes
+
+**`ledSelectMarker` read `ctrl.isShifted` — a property the
+modifier-state rework removed.** Dead branch, so shift+press on
+the colorLab marker LED behaved identically to normal press and
+never cleared the marker. Switched to `ctrl.modifiers.shift`.
+User-visible: shift+press now deletes the marker as `LAB.md`
+advertises.
+
+**In-place `THEME` array mutation didn't repaint.** Emitters
+returned the raw `THEME.deck[n]` / `THEME.fx[n]` value; the
+binding's ref-identity memo (`_evaluateScheme`) compared by
+reference and skipped recompile. `THEME.deck[3][0] = 100` left
+the LED stuck at the old colour. Added a content-keyed
+`CAT.themeScheme(kind, n)` helper — same approach as the
+existing `fxScheme` — and rerouted `slipScheme`,
+`activeSlotButton`, `deckSelect`, `fxSelect`, and `FX_COLOR_MAP`
+through it. Assignment-replacement worked before and still
+works; in-place mutation now propagates on the next render.
+User-visible: channels 3/4 deck themes and any array-valued
+`THEME.fx` entry can now be recoloured at runtime without
+assignment.
+
+**`inspect('why', name)` blamed the wrong on-source.**
+`_verdictFor` checked `outKey` ahead of `_csOn` conditionals,
+and `state` ahead of `patchActive`, the reverse of `_evalCsOn`'s
+priority. Reordered to patchActive → co → state → outKey.
+Debug-only; no runtime behaviour change.
+
+**Press dispatch used `this._func`, not the captured func.**
+`Binding.input`'s press-path dispatch read the current binding's
+func even after `_onBindingPress` could have rebound the binding
+via a modifier-driven patch swap — so press ran the new func
+while release (via `_dispatchCapturedRelease`) ran the old one.
+Now reads `_transaction.func` / `funcArgs` when the transaction
+is active, mirroring the release path. No shipped patch triggers
+this; the constraint is now enforced in code rather than by
+convention.
+
+**Toggle-mode bounce guard missed the push→toggle rebind-mid-
+hold case.** A push binding rebound to toggle while held had its
+push guard skipped (the guard reads the *current* mode) so a
+hardware bounce reached the toggle branch and dispatched the
+captured push func a second time. The toggle guard now also
+returns when `_transaction.active`. Release still routes through
+`_dispatchCapturedRelease`, which ignores `_togglePressActive`.
+
+**Snake overlay could be left stuck in `activePatches`.**
+`F.snakeExit` cleared `ctrl._snake` before `_batchPatches` ran.
+A throwing mutator (contract-allowed; `_batchPatches` re-throws)
+left the overlay installed with `_snake === null`, and every
+snake func — including `snakeExit` — was guarded by
+`if (!ctrl._snake) return`. Two-part fix: null `_snake` before
+the batch (so `CHORD.press2`'s `on: { state: '_snake' }` LED
+reads false during the recompute — previously it stayed lit
+until the next input), and restore on throw so a retry works.
+
+## Snake exit ergonomics
+
+**Any button except `layer` / `shift` now exits immediately.**
+Previously only `press2` exited, and playfield cells exited only
+when the game was dead or won. Now every button except `layer`
+and `shift` — the two game controls, which stay as turn left /
+turn right (and start) during play — exits on press, in any
+pre-dead state. Fast-out for accidental chord + `press2` entry:
+one tap on any other button. When the game is dead or won,
+`layer` and `shift` also exit (press-any-key pattern unchanged).
+
+## Hardening
+
+**`_csOn` assigned before the CO listener is wired.**
+`_parseCsOn` previously called `_wireCsOnConnection` before
+setting `b._csOn`. Mixxx currently defers CO callbacks, so the
+order didn't matter; a synchronous fire (future Mixxx, test
+mock) would read `_csOn === null` and fall through to the
+`outKey` branch. Reordered.
+
+## Docs
+
+- `docs/INTERNALS.md` §10 clock connection table: count
+  corrected from 9 to 12; added `outro_end_position`,
+  `duration`, `file_bpm` rows.
+- `CHANGELOG.md` added, seeded at v1.0.6. History prior to
+  v1.0.6 reconstructed from GitHub Releases.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No config changes required
+- No shipped-preset behaviour change
+
+---
+
+## [v1.0.5] — 2026-10-30
+
+Lab bake rework. Config-only change; runtime untouched. No
+.midi.xml changes.
+
+Replaces the sampled/wire bake levels with four levels that all
+preserve the source stop count. Calibration is bisected into
+stop brightness at bake time; export additionally bakes white
+balance into rgb.
+
+## Bake levels
+
+| Slot | Name | Stops | interp | calibration |
+|---|---|---|---|---|
+| 12 | structural | source rgb+br | live (source) | live on reload |
+| 13 | baked+interp | source rgb, bisected br | forced true | baked off |
+| 14 | baked | source rgb, bisected br | forced false | baked off |
+| 15 | export | wb-applied rgb, bisected br | live (source) | baked off |
+
+`curve`, `schemePosition`, `ratio` stay as live fields on every
+level. `brightnessScale` is live on structural, baked into the
+bisect on the other three.
+
+## Which one to paste
+
+- **12 structural** — same stops as your edit buffer, everything
+  still live. Use this to keep editing after paste.
+- **13 baked+interp** — paste and forget for this runtime, smooth
+  blending. Matches source for any tuning.
+- **14 baked** — paste and forget, snapped bands.
+- **15 export** — hand-off to a foreign script or machine. White
+  balance baked in; reloading here double-applies wb — don't ship
+  as a runtime scheme.
+
+## Code
+
+- `LAB_SLOT`: `SOURCE` / `SAMPLED` / `WIRE` gone.
+  `STRUCTURAL=12`, `BAKED_INTERP=13`, `BAKED=14`, `EXPORT=15`.
+- `LAB_SLOT_COLOURS`: 12 blue, 13 cyan, 14 magenta, 15 orange.
+- `bakeScheme` — per-segment emit replaces the 23-point resample.
+  `bakeCal` covers bakedInterp / baked / export; `bakeWb` only
+  export.
+- `_applyAutoBake` writes the four slots.
+- `_previewLabel` returns `structural` / `baked+interp` / `baked`
+  / `export`.
+
+## Docs and tests
+
+README and docs/LAB.md updated: cell colours, per-stage matrix,
+"what each bake keeps", preview-vs-hardware, paste-which list.
+Matrix "which one to paste" lives in README, not LAB.
+
+`test/lab-bake.test.js` and `test/lab-model.test.js` updated to
+the new slot keys and levels.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No runtime changes
+- `node test/run.js` green
+
+---
+
+## [v1.0.4] — 2026-10-29
+
+hotcue2 overlay. Config-only change; runtime untouched. No config
+changes required beyond reloading the preset.
+
+Replaces the hotcue916 chord + slip overlay on the cue layer.
+
+## Layout
+
+**Row 2** (unchanged): hotcues 9, 10, 11, 12 with
+phrase-colour-on-create, clear on shift+press.
+
+**Row 3** (new): intro_start / intro_end / outro_start /
+outro_end markers, bound to Mixxx's _activate / _clear /
+_enabled COs.
+
+| Action | Behaviour |
+|---|---|
+| Press (unset) | Sets marker at playhead |
+| Press (set) | Seeks playhead to marker |
+| Shift+press | Deletes marker |
+| LED | Lit while set, dark while unset |
+
+Colours: green / lime / amber / orange. Shift layer red.
+
+Marker activate seeks only — no jump-and-play variant. Matches
+Mixxx UI.
+
+## Renames
+
+- `hotcue916` → `hotcue2` in CAT_LAYERS and the chord overlay.
+- Helper funcs: `hotcuePhrase` / `hotcuePhraseClear` (was
+  `hotcue916` / `hotcueClear916`); added `markerCell` /
+  `markerCellShift`.
+
+## Docs and tests
+
+README, INTERNALS §9, CUSTOMISE §1.8, GLOSSARY, AI-HELPER
+updated. 11 new row-3 tests.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No runtime changes
+
+---
+
+## [v1.0.3] — 2026-10-29
+
+Correctness and defensive fixes. No config changes required.
+**No shipped-preset behaviour change.**
+
+Follow-up to v1.0.2. Sweep for edge-case bugs and defensive
+guards the shipped presets don't hit but custom configs might.
+
+## Correctness fixes
+
+**`_refresh` outKey-only fallback sent `(127,0,0,0)` instead of
+`(0,0,0,0)`.** A binding with `outKey` but no `colorScheme`
+takes a fallback that reads `v ? 127 : 127` — always 127. The
+LED is still dark (hw=0) but `_ledCache` dedupes against the
+wrong tuple and `inspect('why')` shows a phantom R channel for
+the off state. Shipped presets all have `colorScheme` on their
+outKey bindings so this path never runs — custom config only.
+One-character fix.
+
+**`_refreshBeatLeds` gated on the base scheme's beat deck, not
+the function scheme's.** A binding with both a base `scheme`
+(beat on deck A) and a `schemeFromState` function (beat on
+deck B) refreshed on the wrong channel's beat edges. Now uses
+`_evaluateScheme()` — the same compiled scheme the render path
+uses — as the single source of truth.
+
+**`_loadSelectedOntoChannel` had no range guard.** `args[2] =
+5` with loadArm held (pressR) wrote to a nonexistent
+`[Channel5]`. Guard now rejects out-of-range before the write.
+
+**`encQuickFxCycle` divided by zero when `QFX_CHAIN_LIST` was
+empty.** `% 0` → NaN → `setValue(…, NaN)`. Early return.
+
+## Defensive fixes
+
+- `channelPerceptual` length validated at construction. Short
+  array (`[1, 1]`) silently killed the blue channel; NaN
+  coerced to 0 by the bit-AND in the sysex encoder. Warns once
+  at boot, falls back to `[1,1,1]`.
+- `Binding.input` no longer calls `getParameter` on unbound
+  pots. Focus mode's `encoder2: null` was triggering a wasted
+  call per MIDI event.
+- `replacePatch(from, from)` early return. Previously fired a
+  full recompute and a `_onPatchChange('cue', 'cue')` event for
+  a semantic no-op.
+- `_recompute` wraps `_afterRecompute` and `_refreshAllLeds` in
+  try/catch. A throwing subclass hook (LabController) or a
+  connection error in `_syncBeatClocks` no longer skips the
+  trailing state stamp (which triggered spurious
+  "outside a recompute" warnings) or the LED sweep.
+
+## Cleanup
+
+- Duplicate comment above `encBpmOrHeadMix` removed.
+- Dead `X.VIRTUAL_CLOCKS` reset removed from `test/run.js`.
+
+## Tests
+
+**22 new tests.** Each fix has a direct regression test; plus
+contract tests for `_applyBinding` skipRefresh, `_reapplyByTokens`
+resolved-hash skip, `_batchPatches` mutator restrictions,
+`_evalOnCoValue` cached value, shutdown captured-release
+suppression, `_dispatchCapturedRelease` throw recovery, and a
+custom-func co-match cache case.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No new script files
+- No config changes required
+- No shipped-preset behaviour change
+
+---
+
+## [v1.0.2] — 2026-10-29
+
+Hardening + burst CO-read elimination. No config changes
+required. No user-visible behaviour change on shipped presets.
+
+Follow-up to v1.0.1.
+
+## Hardening
+
+**`PHRASE_HOTCUE_SLOTS` rejects non-integer entries.** A config
+like `[9.5, 10, 11]` previously passed both the runtime slot
+list and the boot validator, seeded a connection to a
+nonexistent CO, and had no effect — silent. Now dropped at both
+layers, with a warn naming the constraint (integer between 1
+and `MIXXX_HOTCUE_LIMIT`).
+
+**Toggle-mode bounce guard.** Push-mode was already protected
+by the transaction model. Toggle-mode was not: a bouncing pad
+fired the action twice with no release between, flipping the CO
+back — one press, no change. `_togglePressActive` now rejects
+the second `v>0` until the physical release clears it. Real
+double-presses (with a release between) are unaffected.
+
+The clear runs on every button release, not just when the
+current mode is toggle. This closes the toggle→push→toggle
+rebind case — without it, a binding pressed as toggle, rebound
+to push mid-hold, released, then rebound back to toggle would
+leave the flag stuck and swallow the next press.
+
+## Burst CO-read elimination
+
+Every LED render sweep re-read each binding's `outKey`, `on.co`,
+`schemeFromState.co`, and (for deviation LEDs) the knob's
+co-match value. Those COs already had listeners — the callback
+only triggered a repaint, it never cached the value. So a burst
+of `_refreshAllLeds` calls issued ~55-65 CO reads per sweep,
+contending with the audio thread on Mixxx's CO mutex.
+
+Four caches:
+
+- `Binding._lastOutKeyValue` — seeded at bind, updated by the
+  outKey listener
+- `Binding._lastCoValue` — seeded at bind for knob/fader
+  bindings, updated by the value listener
+- `_csOn.cachedValue` — seeded at bind, updated by the on.co
+  listener
+- `sd.cachedValue` — seeded at bind, updated by the
+  schemeFromState.co listener
+
+Each falls back to a live read when undefined (before the first
+listener fire). Staleness window is one event-loop turn — the
+same deferral Mixxx's `makeConnection` already has.
+
+`_lastCoValue` is also refreshed synchronously inside `input()`
+after dispatch. Without this, a knob's own write updated the CO
+synchronously but the cache only on the next event-loop turn,
+so a deviation LED sampling the knob flashed a spurious
+co-match gradient on every MIDI event. The read-back is in
+`input()` rather than `_defaultInput`, so it covers both the
+default path and custom funcs that write to the binding's own
+CO.
+
+**Net reads eliminated:**
+- Track load (11 sweeps): ~600
+- Focus change (1 sweep): ~55
+- Patch swap (1 sweep): ~55
+- Steady state: unchanged (listeners only fire on change)
+
+## Bug fix
+
+`_evalOnCoValue` restored in `lib-binding.js`. It had been
+dropped during the multi-pass edits of the cache work. Any
+`colorScheme` with `on: { co: ... }` would have thrown from
+`_evalCsOn` and painted the LED black. No shipped preset uses
+`on.co`, so no user-visible breakage — but the API was broken
+and two test files hit it.
+
+## Behaviour-preserving cleanups
+
+- `_resetBeat` skips the redundant `_refreshBeatLeds` call
+  after `_refreshAllLeds` (beat LEDs are a strict subset of
+  that sweep), with a defensive fallback for the re-entrancy-
+  guard case.
+- `_buildStack` computes `_patchActive(name)` once per patch
+  instead of twice per `_noModifiers` patch.
+
+## Tests
+
+- `_validatePhraseHotcueSlots`: non-array, out-of-range,
+  duplicate, non-integer
+- `_phraseHotcueSlots`: non-integer rejection
+- Toggle bounce: no double-flip; release-then-press toggles
+  correctly; toggle→push→release→toggle does not swallow the
+  next press
+- All four caches: seeded, updated, `_isOn` reads cache, stale
+  window recovers, `coMatchSample` fallback, synchronous
+  read-back after `input()`
+- Integration tests updated for the bounce guard (add
+  `H.release` between back-to-back `H.press` calls on toggle
+  buttons) and for cached CO semantics (`H.fireCO` /
+  `engine._trigger` where a CO change must be observed)
+
+## Debounce
+
+The time-based `DEBOUNCE_MS` approach from an earlier
+iteration is NOT re-introduced. It swallowed fast legitimate
+double-taps. The state-based `_togglePressActive` guard covers
+the realistic hardware-bounce case without penalising fast
+user actions. The remaining `press→release→press` window is a
+broken-switch scenario, already accepted as out of scope.
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No new script files
+- No config changes required
+
+---
+
+## [v1.0.1] — 2026-10-29
+
+Polish and hardening release. No config changes required for
+existing presets.
+
+**No bugs in this release were observed in real use.** The fixes
+are all edge cases, silent-failure paths, and configs nobody has
+shipped. If v1.0.0 has been working for you, the behaviour you
+see is identical.
+
+## Behaviour shifts (narrow)
+
+- Boot adapts to slow CO trees — catch-up reschedules up to
+  `BOOT_MAX_ATTEMPTS` while boot-relevant fires are still landing
+- Stale phrase origin after a track swap while beat LEDs were off
+  is corrected at catch-up
+
+## New tuneables
+
+All defaults reproduce v1.0.0 behaviour — setting either to its
+default is a no-op.
+
+- `PHRASE_HOTCUE_SLOTS` — hotcue slots scanned for marker colours
+  (default `[9, 10, 11, 12]`). Reduces observer connections from
+  32 to 8 per channel. Range is fixed at boot; hotcue contents
+  within those slots remain live via observers.
+- `BOOT_SETTLE_MS` (100), `BOOT_MAX_ATTEMPTS` (5) — boot settle
+  loop timing
+
+## Silent-error hardening
+
+Warns or falls back where the runtime previously misbehaved
+silently:
+
+- Uncaught throws from binding funcs, CO observers, and modifier
+  hooks now warn-once and continue
+- Scheme `offScheme` / `coScheme` cycle detection (was infinite
+  recursion)
+- `colorScheme.knob` pointing at a button/encoder (was stuck
+  boot-white)
+- Short `wbGain` config (was silent blue kill)
+- Array scheme refs in `composeScheme` (was silent null)
+- Non-finite `parseNum` results (was `Infinity` written to a CO)
+- Fractional / non-finite `setTimeSig` args
+- Out-of-range `initialDeckA/B` / `initialFxA/B`
+
+## Additions
+
+- `$DECK_ACTIVE$` support in the countdown scheme — countdown
+  LEDs can follow deck focus
+- Push-mode bounce guard — hardware bounce no longer resets
+  per-press flags mid-hold
+
+## Removed
+
+- `HOTCUE_MAX` — deprecated in v1.0.0, superseded by
+  `PHRASE_HOTCUE_SLOTS`
+
+## Compatibility
+
+- Mixxx 2.5
+- Preset `.midi.xml` schema unchanged
+- No new script files
+
+---
