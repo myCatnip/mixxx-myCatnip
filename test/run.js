@@ -1,9 +1,9 @@
-// test/run.mjs — ESM test runner.
+// Test runner.
 //
-//   node test/run.mjs                run all
-//   node test/run.mjs <substr>       run files matching
-//   node test/run.mjs --bail         stop on first failure
-//   node test/run.mjs --verbose      print every passing test
+//   node test/run.js                run all
+//   node test/run.js <substr>       run files matching
+//   node test/run.js --bail         stop on first failure
+//   node test/run.js --verbose      print every passing test
 //
 // Between every test:
 //   - engine + midi mocks reset
@@ -13,28 +13,27 @@
 //   - TIMING reset from _TIMING_DEFAULTS then 0-throttled
 //   - controllers array cleared, print log cleared
 
-import { load } from './harness.mjs';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+'use strict';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+var fs = require('fs');
+var path = require('path');
+var harness = require('./harness');
 
-const argv = process.argv.slice(2);
-let filter = null, bail = false, verbose = false;
-for (const a of argv) {
-    if (a === '--bail') bail = true;
-    else if (a === '--verbose') verbose = true;
-    else if (!filter) filter = a;
+var argv = process.argv.slice(2);
+var filter = null, bail = false, verbose = false;
+for (var ai = 0; ai < argv.length; ai++) {
+    if (argv[ai] === '--bail')         bail = true;
+    else if (argv[ai] === '--verbose') verbose = true;
+    else if (!filter)                  filter = argv[ai];
 }
 
-const { engine, midi, print, _printLog } = await load();
+var ctx = harness.load();
 
-global.myCatnip  = global.myCatnip;
-global.engine    = engine;
-global.midi      = midi;
-global.print     = print;
-global._printLog = _printLog;
+global.myCatnip  = ctx.myCatnip;
+global.engine    = ctx.engine;
+global.midi      = ctx.midi;
+global.print     = ctx.print;
+global._printLog = ctx._printLog;
 
 // -------------------------------------------------------------
 // Assertion API
@@ -42,32 +41,32 @@ global._printLog = _printLog;
 function makeT(errors) {
     function pfx(m) { return m ? '[' + m + '] ' : ''; }
 
-    const t = {
-        eq: (actual, expected, msg) => {
+    var t = {
+        eq: function(actual, expected, msg) {
             if (!deepEq(actual, expected))
                 errors.push(pfx(msg) + 'eq: ' + fmt(actual) + ' !== ' + fmt(expected));
         },
-        neq: (actual, expected, msg) => {
+        neq: function(actual, expected, msg) {
             if (actual === expected)
                 errors.push(pfx(msg) + 'neq: ' + fmt(actual) + ' === ' + fmt(expected));
         },
-        approx: (actual, expected, tol, msg) => {
+        approx: function(actual, expected, tol, msg) {
             if (typeof tol === 'string') { msg = tol; tol = 1e-6; }
-            tol = typeof tol === 'number' ? tol : 1e-6;
+            tol = (typeof tol === 'number') ? tol : 1e-6;
             if (typeof actual !== 'number' || Math.abs(actual - expected) > tol)
                 errors.push(pfx(msg) + 'approx: ' + fmt(actual) +
                             ' not within ' + tol + ' of ' + expected);
         },
-        ok:    (v, msg) => { if (!v) errors.push(pfx(msg) + 'ok: got ' + fmt(v)); },
-        notOk: (v, msg) => { if (v)  errors.push(pfx(msg) + 'notOk: got ' + fmt(v)); },
-        throws: (fn, pattern, msg) => {
-            let threw = false, got = '';
-            try { fn(); } catch (e) { threw = true; got = e?.message || ''; }
+        ok:    function(v, msg) { if (!v) errors.push(pfx(msg) + 'ok: got '     + fmt(v)); },
+        notOk: function(v, msg) { if (v)  errors.push(pfx(msg) + 'notOk: got '  + fmt(v)); },
+        throws: function(fn, pattern, msg) {
+            var threw = false, got = '';
+            try { fn(); } catch (e) { threw = true; got = (e && e.message) || ''; }
             if (!threw) { errors.push(pfx(msg) + 'throws: no exception'); return; }
             if (pattern && !pattern.test(got))
                 errors.push(pfx(msg) + 'throws: "' + got + '" did not match ' + pattern);
         },
-        contains: (hay, needle, msg) => {
+        contains: function(hay, needle, msg) {
             if (typeof hay === 'string') {
                 if (hay.indexOf(needle) === -1)
                     errors.push(pfx(msg) + 'contains: string lacks "' + needle + '"');
@@ -78,21 +77,21 @@ function makeT(errors) {
                 errors.push(pfx(msg) + 'contains: not iterable');
             }
         },
-        hasKey: (obj, key, msg) => {
+        hasKey: function(obj, key, msg) {
             if (!obj || !Object.prototype.hasOwnProperty.call(obj, key))
                 errors.push(pfx(msg) + 'hasKey: missing ' + fmt(key));
         },
-        rgb: (led, r, g, b, tol, msg) => {
+        rgb: function(led, r, g, b, tol, msg) {
             if (typeof tol === 'string') { msg = tol; tol = 2; }
-            tol = typeof tol === 'number' ? tol : 2;
+            tol = (typeof tol === 'number') ? tol : 2;
             if (!led) { errors.push(pfx(msg) + 'rgb: no LED'); return; }
             if (Math.abs(led.r - r) > tol || Math.abs(led.g - g) > tol || Math.abs(led.b - b) > tol)
                 errors.push(pfx(msg) + 'rgb: got [' + led.r + ',' + led.g + ',' + led.b +
                             '] expected [' + r + ',' + g + ',' + b + ']');
         },
-        hw: (led, hw, tol, msg) => {
+        hw: function(led, hw, tol, msg) {
             if (typeof tol === 'string') { msg = tol; tol = 1; }
-            tol = typeof tol === 'number' ? tol : 1;
+            tol = (typeof tol === 'number') ? tol : 1;
             if (!led) { errors.push(pfx(msg) + 'hw: no LED'); return; }
             if (Math.abs(led.hw - hw) > tol)
                 errors.push(pfx(msg) + 'hw: got ' + led.hw + ' expected ' + hw);
@@ -106,17 +105,17 @@ function deepEq(a, b) {
     if (typeof a !== typeof b) return false;
     if (a === null || b === null) return false;
     if (typeof a !== 'object') return false;
-    const aArr = Array.isArray(a), bArr = Array.isArray(b);
+    var aArr = Array.isArray(a), bArr = Array.isArray(b);
     if (aArr !== bArr) return false;
     if (aArr) {
         if (a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) if (!deepEq(a[i], b[i])) return false;
+        for (var i = 0; i < a.length; i++) if (!deepEq(a[i], b[i])) return false;
         return true;
     }
-    const ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
+    var ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
     if (ka.length !== kb.length) return false;
-    for (let j = 0; j < ka.length; j++) if (ka[j] !== kb[j]) return false;
-    for (let k = 0; k < ka.length; k++) if (!deepEq(a[ka[k]], b[ka[k]])) return false;
+    for (var j = 0; j < ka.length; j++) if (ka[j] !== kb[j]) return false;
+    for (var k = 0; k < ka.length; k++) if (!deepEq(a[ka[k]], b[ka[k]])) return false;
     return true;
 }
 
@@ -130,7 +129,7 @@ function fmt(v) {
 // Reset between tests
 // -------------------------------------------------------------
 function _refreshTimingAliases() {
-    const X = global.myCatnip;
+    var X = global.myCatnip;
     X.PACING_DEFAULT_THROTTLE_MS = X.TIMING.pacingDefaultThrottleMs;
     X.SYSEX_THROTTLE_MS          = X.TIMING.sysexThrottleMs;
     X.BEAT_REPAINT_THROTTLE_MS   = X.TIMING.beatRepaintThrottleMs;
@@ -145,9 +144,15 @@ function _refreshTimingAliases() {
 }
 
 function resetGlobals() {
-    const X = global.myCatnip;
+    var X = global.myCatnip;
 
-    X._pacingTestOverride = { pacingDefaultThrottleMs: 0, beatRepaintThrottleMs: 0 };
+    // applyPacing resets TIMING from _TIMING_DEFAULTS, so tests
+    // need a hook to force zero-throttle across every boot path.
+    X._pacingTestOverride = {
+        pacingDefaultThrottleMs: 0,
+        beatRepaintThrottleMs:   0
+    };
+
     if (X.TIMING && X._TIMING_DEFAULTS) {
         Object.assign(X.TIMING, X._TIMING_DEFAULTS);
         X.TIMING.sysexThrottleMs       = 0;
@@ -163,13 +168,13 @@ function resetGlobals() {
     X.MODE_PRINTS              = false;
 
     // shared.* — reassign timeSig / lastLoopTouchMs / controllers,
-    // and *reset warned in place* so any captured reference (e.g.
-    // _warned alias) stays coherent.
+    // and reset warned *in place* so _warned (which aliases
+    // shared.warned at module load in lib/core.js) stays coherent.
+    X.shared.warned          = Object.create(null);
+    X._warned                = X.shared.warned;
     X.shared.timeSig         = { 1: null, 2: null, 3: null, 4: null };
     X.shared.lastLoopTouchMs = { 1: 0, 2: 0, 3: 0, 4: 0 };
     X.shared.controllers     = {};
-    X.shared.warned          = Object.create(null);
-    X._warned                = X.shared.warned;
 
     X._modeSeen                = { edit: false, slots: false };
     X._schemeCache             = {};
@@ -180,48 +185,43 @@ function resetGlobals() {
     X.PHRASE_HOTCUE_SLOTS        = [9, 10, 11, 12];
     X._phraseHotcueSlotsCache    = null;
     X._phraseHotcueSlotsCacheSrc = null;
-
-    engine._reset();
-    midi._reset();
-    _printLog.length = 0;
+    global.engine._reset();
+    global.midi._reset();
+    global._printLog.length = 0;
 }
 
 // -------------------------------------------------------------
 // Test registration
 // -------------------------------------------------------------
-const results = [];
-let currentFile = '';
+var results = [];
+var currentFile = '';
 
-global.test = (name, fn) => {
-    const errors = [];
-    const t = makeT(errors);
+global.test = function(name, fn) {
+    var errors = [];
+    var t = makeT(errors);
     resetGlobals();
-    const start = Date.now();
+    var start = Date.now();
     try {
         fn(t);
     } catch (e) {
-        errors.push('threw: ' + (e?.message || e) + '\n    ' +
-                    String(e?.stack || '').split('\n').slice(1, 4).join('\n    '));
+        errors.push('threw: ' + (e && e.message || e) + '\n    ' +
+                    String(e && e.stack || '').split('\n').slice(1, 4).join('\n    '));
     }
-    results.push({ file: currentFile, name, errors, ms: Date.now() - start });
+    results.push({ file: currentFile, name: name, errors: errors, ms: Date.now() - start });
     if (bail && errors.length > 0) { report(); process.exit(1); }
 };
 
 // -------------------------------------------------------------
 // Load test files
 // -------------------------------------------------------------
-const files = fs.readdirSync(__dirname)
-    .filter(f => f.endsWith('.test.mjs'))
+var files = fs.readdirSync(__dirname)
+    .filter(function(f) { return /\.test\.js$/.test(f); })
     .sort();
-if (filter) {
-    const filtered = files.filter(f => f.indexOf(filter) !== -1);
-    files.length = 0;
-    files.push(...filtered);
-}
+if (filter) files = files.filter(function(f) { return f.indexOf(filter) !== -1; });
 
-for (const fi of files) {
-    currentFile = fi.replace('.test.mjs', '');
-    await import(path.join(__dirname, fi));
+for (var fi = 0; fi < files.length; fi++) {
+    currentFile = files[fi].replace('.test.js', '');
+    require(path.join(__dirname, files[fi]));
 }
 
 report();
@@ -230,35 +230,33 @@ report();
 // Report
 // -------------------------------------------------------------
 function report() {
-    const byFile = {};
-    for (const r of results) {
+    var byFile = {};
+    for (var i = 0; i < results.length; i++) {
+        var r = results[i];
         if (!byFile[r.file]) byFile[r.file] = [];
         byFile[r.file].push(r);
     }
-    const names = Object.keys(byFile).sort();
-    let totalPass = 0, totalFail = 0, totalMs = 0;
+    var names = Object.keys(byFile).sort();
+    var totalPass = 0, totalFail = 0, totalMs = 0;
 
-    for (const fn of names) {
-        const rs = byFile[fn];
-        let pass = 0, fail = 0;
-        const failed = [];
-        for (const r2 of rs) {
-            totalMs += r2.ms;
-            if (r2.errors.length === 0) {
+    for (var n = 0; n < names.length; n++) {
+        var fn = names[n], rs = byFile[fn];
+        var pass = 0, fail = 0, failed = [];
+        for (var r2 = 0; r2 < rs.length; r2++) {
+            totalMs += rs[r2].ms;
+            if (rs[r2].errors.length === 0) {
                 pass++;
-                if (verbose) console.log('    ✓ ' + r2.name);
-            } else {
-                fail++;
-                failed.push(r2);
-            }
+                if (verbose) console.log('    ✓ ' + rs[r2].name);
+            } else { fail++; failed.push(rs[r2]); }
         }
         totalPass += pass;
         totalFail += fail;
         console.log('  ' + (fail === 0 ? '✓' : '✗') + '  ' +
                     padRight(fn, 30) + padLeft(pass + '/' + (pass + fail), 8));
-        for (const f of failed) {
-            console.log('       ✗ ' + f.name);
-            for (const e of f.errors) console.log('           ' + e);
+        for (var f = 0; f < failed.length; f++) {
+            console.log('       ✗ ' + failed[f].name);
+            for (var e = 0; e < failed[f].errors.length; e++)
+                console.log('           ' + failed[f].errors[e]);
         }
     }
     console.log('');

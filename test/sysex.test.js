@@ -2,19 +2,9 @@
 
 var H = require('./helpers');
 
-// v1.1.0: K3 protocol and HAL live on myCatnip.HW_K3. The framework
-// names (myCatnip.buildSysExLED, myCatnip.noteToLEDIndex,
-// myCatnip.rgbToK2, myCatnip.idxToK2, myCatnip.sendK2Note) were removed
-// at v1.1.0 and are not coming back — testing HW_K3.* directly is
-// the correct surface.
-//
-// Transport choice is whole-controller (ctrl.sysex). The per-LED
-// k2 flag and sendLED's k2Override arg were removed. K2-mode
-// tests use ctrl.sysex = false on the controller instead.
-//
-// v1.2.0: ctrl.pacer(name) now takes an optional opts object with
-// { sendFn, throttleMs }. HW_K3 supplies the sysex sender; a
-// pacer created without a sendFn warns once and drops payloads.
+// v2.1.0: transport is hw.send(ctrl, idx, rgb, hw) — rgb is an
+// array. Perception runs before send; send handles framing +
+// dedupe + K2 fallback only.
 
 // ── HW_K3 descriptor surface ────────────────────────────────
 
@@ -22,18 +12,31 @@ test('HW_K3: HAL surface present', function(t) {
     var hw = myCatnip.HW_K3;
     t.eq(typeof hw.buildBindings,      'function');
     t.eq(typeof hw.wireInputs,         'function');
-    t.eq(typeof hw.writeLED,           'function');
+    t.eq(typeof hw.send,               'function');
     t.eq(typeof hw.blank,              'function');
     t.eq(typeof hw.anyPendingWrites,   'function');
     t.eq(typeof hw.decodeLedCache,     'function');
+    t.eq(typeof hw.writeLED,           'undefined');
 });
 
-test('HW_K3: DEFAULTS populated', function(t) {
+test('HW_K3: PERCEPTION populated', function(t) {
+    var p = myCatnip.HW_K3.PERCEPTION;
+    t.eq(p.curves,           'measuredRGB');
+    t.eq(p.mode.mix,         'correct');
+    t.eq(p.mode.brightness,  'flat');
+    t.ok(Array.isArray(p.wbGain));
+    t.ok(Array.isArray(p.weights));
+    t.ok(typeof p.gamma === 'number');
+    t.ok(typeof p.hkBoost === 'number');
+});
+
+test('HW_K3: DEFAULTS shrunk to boot fields', function(t) {
     var d = myCatnip.HW_K3.DEFAULTS;
     t.eq(d.midiChannel, 0x0E);
     t.eq(d.sysex, true);
-    t.eq(d.calibration, 'measuredRGB');
-    t.eq(d.calibrationMode, 'rms');
+    t.eq(d.calibration, undefined);
+    t.eq(d.calibrationMode, undefined);
+    t.eq(d.wbGain, undefined);
 });
 
 test('HW_K3: framework names removed', function(t) {
@@ -129,7 +132,7 @@ test('rgbToK2: green-dominant → 2', function(t) {
     t.eq(myCatnip.HW_K3.rgbToK2(20, 127, 0, 127), 2);
 });
 
-test('rgbToK2: balanced (r≈g) → 1', function(t) {
+test('rgbToK2: balanced → 1', function(t) {
     t.eq(myCatnip.HW_K3.rgbToK2(0, 20, 127, 127), 1);
     t.eq(myCatnip.HW_K3.rgbToK2(80, 80, 0, 127), 1);
     t.eq(myCatnip.HW_K3.rgbToK2(127, 127, 127, 127), 1);
@@ -152,8 +155,6 @@ test('idxToK2: unknown idx → null', function(t) {
 });
 
 // ── HW_K3.sendK2Note ────────────────────────────────────────
-//
-// Bucket → offset: 0 → base+0, 1 → base+36, 2 → base+72.
 
 test('sendK2Note: black → note-off on base', function(t) {
     myCatnip.HW_K3.sendK2Note(0x0E, 0, 0, 0, 0, 0);
@@ -193,12 +194,12 @@ test('decodeLedCache: non-number passes through', function(t) {
     t.eq(myCatnip.HW_K3.decodeLedCache('junk'),    'junk');
 });
 
-// ── HW_K3.writeLED ──────────────────────────────────────────
+// ── HW_K3.send ──────────────────────────────────────────────
 
-test('writeLED: sysex path when sysex true', function(t) {
+test('send: sysex path when sysex true', function(t) {
     var c = H.ctrl({sysex: true});
     H.clearLeds(c);
-    myCatnip.HW_K3.writeLED(c, 5, 100, 50, 25, 90);
+    myCatnip.HW_K3.send(c, 5, [100, 50, 25], 90);
     t.eq(midi._sysex.length, 1);
     t.eq(midi._short.length, 0);
     var m = midi._sysex[0];
@@ -209,34 +210,34 @@ test('writeLED: sysex path when sysex true', function(t) {
     t.eq(m[12], 90);
 });
 
-test('writeLED: K2 path when sysex false', function(t) {
+test('send: K2 path when sysex false', function(t) {
     var c = H.ctrl({sysex: false});
     H.clearLeds(c);
-    myCatnip.HW_K3.writeLED(c, 0, 127, 0, 0, 127);
+    myCatnip.HW_K3.send(c, 0, [127, 0, 0], 127);
     t.eq(midi._sysex.length, 0);
     t.ok(midi._short.length > 0);
 });
 
-test('writeLED: identical sysex value not resent', function(t) {
+test('send: identical sysex value not resent', function(t) {
     var c = H.ctrl({sysex: true});
     H.clearLeds(c);
-    myCatnip.HW_K3.writeLED(c, 5, 100, 0, 0, 100);
-    myCatnip.HW_K3.writeLED(c, 5, 100, 0, 0, 100);
+    myCatnip.HW_K3.send(c, 5, [100, 0, 0], 100);
+    myCatnip.HW_K3.send(c, 5, [100, 0, 0], 100);
     t.eq(midi._sysex.length, 1);
 });
 
-test('writeLED: different sysex value resends', function(t) {
+test('send: different sysex value resends', function(t) {
     var c = H.ctrl({sysex: true});
     H.clearLeds(c);
-    myCatnip.HW_K3.writeLED(c, 5, 100, 0, 0, 100);
-    myCatnip.HW_K3.writeLED(c, 5, 100, 0, 0, 101);
+    myCatnip.HW_K3.send(c, 5, [100, 0, 0], 100);
+    myCatnip.HW_K3.send(c, 5, [100, 0, 0], 101);
     t.eq(midi._sysex.length, 2);
 });
 
-test('writeLED: K2 path bypasses _ledCache', function(t) {
+test('send: K2 path bypasses _ledCache', function(t) {
     var c = H.ctrl({sysex: false});
     H.clearLeds(c);
-    myCatnip.HW_K3.writeLED(c, 0, 127, 0, 0, 127);
+    myCatnip.HW_K3.send(c, 0, [127, 0, 0], 127);
     t.eq(c._ledCache[0], undefined);
 });
 
@@ -281,14 +282,12 @@ test('anyPendingWrites: empty pacer → false', function(t) {
 
 test('pacer: "led" exists after boot blank (sysex path)', function(t) {
     var c = H.ctrl({sysex: true});
-    // init() → _blankLeds() → hw.blank() → ctrl.pacer('led', {sendFn})
     t.ok(c._pacers.led);
     t.eq(c._pacers.led.name, 'led');
 });
 
 test('pacer: "led" absent after boot in K2 mode', function(t) {
     var c = H.ctrl({sysex: false});
-    // K2 blank returns before touching the pacer.
     t.eq(c._pacers.led, undefined);
 });
 
@@ -343,11 +342,11 @@ test('pacer: no sendFn → warn-once, payload dropped', function(t) {
     var p = c.pacer('warn-test');
     t.ok(_printLog.length > before, 'expected warn-once');
     p.enqueue('k', 'x');
-    p.start();  // no-op sendFn should not throw
+    p.start();
     t.eq(p.length(), 0);
 });
 
-// ── myCatnip.Pacing ───────────────────────────────────────────
+// ── myCatnip.Pacing ─────────────────────────────────────────
 
 test('Pacing: throttle 0 flushes immediately on start', function(t) {
     var sent = [];
@@ -382,7 +381,7 @@ test('Pacing: overflow drops oldest', function(t) {
 
 // ── sendLED (framework dispatch) ────────────────────────────
 
-test('sendLED: delegates to HW writeLED', function(t) {
+test('sendLED: delegates to hw.send', function(t) {
     var c = H.ctrl({sysex: true});
     H.clearLeds(c);
     c.sendLED(5, 100, 50, 25, 90);

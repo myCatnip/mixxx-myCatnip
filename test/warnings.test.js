@@ -28,10 +28,10 @@ test('_warnOnce: clearing _warned re-arms', function(t) {
     t.eq(_printLog.length, 2);
 });
 
-test('_warnOnce: message prefixed with [k3]', function(t) {
+test('_warnOnce: message prefixed with [myCatnip]', function(t) {
     _printLog.length = 0;
     myCatnip._warnOnce('k1', 'my message');
-    t.contains(_printLog[0], '[k3] my message');
+    t.contains(_printLog[0], '[myCatnip] my message');
 });
 
 // ── colorScheme warning paths ──────────────────────────────

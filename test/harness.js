@@ -1,50 +1,79 @@
-// test/harness.mjs — loads lib modules into the Node ESM runtime.
-// Sets up mocks, imports framework + config + fixtures in order.
-// Returns { engine, midi, print, _printLog }.
+// test/harness.js — loads lib files into a vm sandbox with mocks.
+//
+// Returns the sandbox. No controller is created; tests build
+// their own via helpers.bootCat() / helpers.ctrl().
+//
+// Load order mirrors k3-cat.js (framework + hw + config), minus
+// entry modules that would overwrite myCatnip.init.
 
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+'use strict';
 
-export async function load() {
-    const engine   = require('./mocks/engine');
-    const midi     = require('./mocks/midi');
-    const printLog = [];
-    const printFn  = (s) => { printLog.push(String(s)); };
+var fs = require('fs');
+var path = require('path');
+var vm = require('vm');
 
-    global.engine    = engine;
-    global.midi      = midi;
-    global.print     = printFn;
-    global._printLog = printLog;
+module.exports.load = function() {
+    var engine   = require('./mocks/engine');
+    var midi     = require('./mocks/midi');
+    var printLog = [];
+    var printFn  = function(s) { printLog.push(String(s)); };
 
-    // Framework
-    await import('../lib/core.mjs');
-    await import('../lib/timing.mjs');
-    await import('../lib/schemes.mjs');
-    await import('../lib/perception.mjs');
-    await import('../lib/binding.mjs');
-    await import('../hw/k3.mjs');
-    await import('../lib/controller.mjs');
-    await import('../lib/controller-colour.mjs');
-    await import('../lib/controller-beat.mjs');
-    await import('../lib/controller-render.mjs');
-    await import('../lib/controller-boot.mjs');
-    await import('../lib/funcs.mjs');
-    await import('../lib/inspect.mjs');
+    var sandbox = {
+        console: console,
+        Math: Math, JSON: JSON, Date: Date,
+        Array: Array, Object: Object, String: String, Number: Number,
+        Boolean: Boolean, RegExp: RegExp, Error: Error,
+        WeakMap: WeakMap, Map: Map, Set: Set,
+        Uint8Array: Uint8Array,
+        isNaN: isNaN, isFinite: isFinite,
+        parseInt: parseInt, parseFloat: parseFloat,
+        Infinity: Infinity, NaN: NaN, undefined: undefined,
+        engine: engine,
+        midi: midi,
+        print: printFn,
+        _printLog: printLog
+    };
+    vm.createContext(sandbox);
 
-    // Config + lab
-    await import('../config/k3-cat-config.mjs');
-    await import('../config/k3-lab.mjs');
+    var dir = path.resolve(__dirname, '..');
+    var files = [
+        'lib/core.js',
+        'lib/timing.js',
+        'lib/schemes.js',
+        'lib/perception.js',
+        'lib/binding.js',
+        'hw/k3.js',
+        'lib/controller.js',
+        'lib/controller-colour.js',
+        'lib/controller-beat.js',
+        'lib/controller-render.js',
+        'lib/controller-boot.js',
+        'lib/funcs.js',
+        'lib/inspect.js',
 
-    // Test fixtures
-    await import('./hw-fake.mjs');
-    await import('./hw-custom.mjs');
+        // Cat config
+        'config/k3-cat-schemes.js',
+        'config/k3-cat-fx.js',
+        'config/k3-cat-top.js',
+        'config/k3-cat-bottom.js',
+        'config/k3-cat-overlays.js',
+        'config/k3-cat-config.js',
 
-    // Legacy: linearTest curve still referenced by pre-perception tests
-    global.myCatnip.HW_K3.LED_TRANSFERS.linearTest = {
+        // Lab runtime
+        'config/k3-lab.js'
+    ];
+    for (var i = 0; i < files.length; i++) {
+        var src = fs.readFileSync(path.join(dir, files[i]), 'utf8');
+        vm.runInContext(src, sandbox, { filename: files[i] });
+    }
+
+    // Linear transfer curve — used by helpers._identityHw(). Same
+    // shape as v2.0.0's linearTest entry.
+    sandbox.myCatnip.HW_K3.LED_TRANSFERS.linearTest = {
         r: [[0, 0], [127, 1]],
         g: [[0, 0], [127, 1]],
         b: [[0, 0], [127, 1]]
     };
 
-    return { engine, midi, print: printFn, _printLog: printLog };
-}
+    return sandbox;
+};

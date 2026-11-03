@@ -307,24 +307,6 @@ test('co-match cache: synchronous after input() write', function(t) {
              '_lastCoValue matches CO immediately after input()');
 });
 
-// ── channelPerceptual shape validation ──────────────────────
-
-test('channelPerceptual: short array warns and falls back to [1,1,1]', function(t) {
-    _printLog.length = 0;
-    var c = H.ctrl({ channelPerceptual: [1, 1] });
-    t.eq(c.channelPerceptual, [1, 1, 1]);
-    t.contains(_printLog.join('\n'),
-        'channelPerceptual must be a 3-element array');
-});
-
-test('channelPerceptual: short array does not produce NaN in _channelEmit', function(t) {
-    var c = H.ctrl({ channelPerceptual: [1, 1] });
-    var out = c._channelEmit([127, 0, 0], 127);
-    t.ok(!isNaN(out[0]));
-    t.ok(!isNaN(out[1]));
-    t.ok(!isNaN(out[2]));
-});
-
 // ── co-match cache: custom func writes own CO ───────────────
 
 test('co-match cache: custom func writing own CO → cache updated synchronously', function(t) {

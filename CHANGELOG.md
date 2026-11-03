@@ -5,6 +5,98 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.1] — 2026-11-03
+
+Test restoration + framework compat fixes. No shipped-preset
+behaviour change vs v2.1.0. Restores the vm-based test harness
+that was left in .mjs form at v2.1.0, adds two small API shims
+for backward compat, and fixes three bugs that surfaced once
+tests ran again.
+
+## Fixed
+
+- **`applyBeat` inline brightness inheritance.** A colour spec
+  with an inline brightness (`'red, 60'`, `[127, 0, 0, 60]`)
+  no longer had its brightness carried into the emitted entry
+  when the cascade reached that stop via bar / phrase /
+  prePhrase. `applyBeat` now checks `_colorHasBrightness(lc.color)`
+  and inherits `ce.brightness` when no higher level set an
+  explicit brightness. Restores v2.0.0 behaviour.
+
+- **`_resetShared` crashes on null-prototype warned map.** The
+  shared warn dedupe map is `Object.create(null)` — no
+  `hasOwnProperty` on the prototype. Switched to `Object.keys`
+  iteration. `_bootWith` no longer throws on the second boot.
+
+- **`_resolveSig` with no channel argument.** Callers that used
+  the v2.0.0 session-global `TIME_SIG` shape (`myCatnip.beatLevel(
+  beat, count)` without a channel) hit `shared.timeSig[undefined]`
+  and fell through to scheme defaults. Now falls back to
+  channel 1 when `ch === undefined` — matches the 2-arg
+  `setTimeSig(bb, pb)` semantic.
+
+- **`resolveNamedColour` / `mapMixxxColor` with no ctrl.** Direct
+  API calls without a controller (scheme compile from a
+  bootstrap context, `applyBeat` resolving a colour name before
+  a controller exists) returned `null`. Falls back to `HW_K3`'s
+  palette when `ctrl` is undefined. When `ctrl` is passed but
+  its hardware has no `PALETTE`, still warn-once + dark — that's
+  a real HW config gap.
+
+## Added
+
+- **`myCatnip._warned` is now a getter/setter proxy over
+  `myCatnip.shared.warned`.** v2.0.0 code and tests reset the
+  warn-once map by reassigning `myCatnip._warned = {}`. The
+  proxy keeps both names in sync — the setter replaces
+  `shared.warned`, the getter returns the live object.
+
+- **`myCatnip.TIME_SIG` accessor.** Getter returns
+  `myCatnip.shared.timeSig[1]` (or null). Setter writes all
+  four channels at once — same as `setTimeSig(bb, pb)`. Existing
+  presets that read or write `myCatnip.TIME_SIG` directly
+  continue to work; new code should use `setTimeSig` /
+  `clearTimeSig` / `shared.timeSig` directly.
+
+## Changed
+
+- **Test harness restored to vm-based `node test/run.js`.**
+  `test/harness.js`, `test/helpers.js`, `test/run.js`, and all
+  `*.test.js` files loaded from v2.0.0 and re-targeted at the
+  v2.1.0 file layout. `test/calibration.test.js` removed
+  (tested controller-bound implementation details that moved
+  to `myCatnip.perception.*`). New `test/perception.test.js`
+  covers the public perception API. `test/sysex.test.js`
+  rewritten for `hw.send(ctrl, idx, rgb, hw)` +
+  `PERCEPTION.curves` / `.mode`. `test/misc-hooks.test.js`
+  drops two `channelPerceptual` tests (feature moved to
+  `PERCEPTION.weights`, validated at derivation time not
+  construction time).
+
+- **`test/helpers.js` provides `_identityHw()`.** Returns
+  `HW_K3` with `PERCEPTION: { curves: 'linearTest',
+  mode: { mix: 'off', brightness: 'off' } }` — the equivalent
+  of v2.0.0's `calibrationMode: 'off'` + `wbActive: false`.
+  All test fixture controllers use this by default, so LED
+  output assertions observe the scheme's raw rgb + brightness.
+
+## Tests
+
+- 1005 passing, 0 failing.
+- `test/beatjump-gate.test.js`, `test/beatsync.test.js` — sed
+  migrated `c._lastLoopTouchMs[ch]` → `myCatnip.shared.lastLoopTouchMs[ch]`.
+- `test/warnings.test.js` — sed migrated `[k3]` prefix to `[myCatnip]`.
+
+## Compatibility
+
+- Mixxx 2.5
+- Same `.midi.xml` schema as v2.1.0
+- Same file layout as v2.1.0
+- No config changes vs v2.1.0
+- Pure patch release — no behaviour change for shipped presets
+
+---
+
 ## [v2.1.0] — 2026-11-03
 
 Major restructuring release. File layout reorganised into

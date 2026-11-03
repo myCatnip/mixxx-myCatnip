@@ -358,11 +358,11 @@ test('track_loaded resets beat state', function(t) {
 test('track_loaded clears _lastLoopTouchMs for that channel', function(t) {
     var c = setup();
     withBeat(c);
-    c._lastLoopTouchMs[1] = Date.now();
-    c._lastLoopTouchMs[2] = Date.now();
+    myCatnip.shared.lastLoopTouchMs[1] = Date.now();
+    myCatnip.shared.lastLoopTouchMs[2] = Date.now();
     engine._trigger('[Channel1]', 'track_loaded', 1);
-    t.eq(c._lastLoopTouchMs[1], 0);
-    t.ok(c._lastLoopTouchMs[2] > 0);
+    t.eq(myCatnip.shared.lastLoopTouchMs[1], 0);
+    t.ok(myCatnip.shared.lastLoopTouchMs[2] > 0);
 });
 
 test('track_loaded starts loop clock when track has loop and playing', function(t) {
