@@ -1,5 +1,5 @@
-// config/inpulse500-vu.js — VU, tempo LEDs (guide only), deck
-// indicators, browser LED burst (deck-selection readout).
+// config/inpulse500-vu.js — VU, tempo LEDs (guide | markers),
+// deck indicators, browser LED burst (deck-selection readout).
 
 myCatnip.InpulseController = function(cfg) {
     myCatnip.Controller.call(this, cfg);
@@ -24,6 +24,7 @@ myCatnip.InpulseController = function(cfg) {
     this._ip500BrowserPressConsumed = false;
     this._ip500VUConns = [];
     this._ip500TempoTimer = null;
+    this._ip500BeatmatchGuideMode = cfg.beatmatchGuideMode || 'guide';
 
     this._ip500BrowserLedTimer = null;
     this._ip500BrowserLedRetriesLeft = 0;
@@ -98,6 +99,12 @@ myCatnip.InpulseController.prototype._initExtra = function() {
     this._ip500UpdateDeckIndicators();
     midi.sendShortMsg(0x90, 0x14, 0x7F);
     midi.sendShortMsg(0x90, 0x15, 0x7F);
+
+    // Ask the controller to dump all current CC values. Without
+    // this, Mixxx doesn't learn physical pot positions at boot,
+    // and soft-takeover forces a physical touch before each
+    // fader/knob "catches." Matches the community script's init().
+    midi.sendShortMsg(0xB0, 0x7F, 0x7F);
 };
 
 myCatnip.InpulseController.prototype._shutdownExtra = function() {
@@ -193,7 +200,39 @@ myCatnip.InpulseController.prototype._ip500TempoSend = function(status, note, ve
 };
 
 myCatnip.InpulseController.prototype._ip500TempoUpdate = function() {
-    this._ip500TempoGuide();
+    if (this._ip500BeatmatchGuideMode === 'markers') {
+        this._ip500TempoMarkers();
+    } else {
+        this._ip500TempoGuide();
+    }
+};
+
+// Markers mode — community-script behaviour. Beat-align LEDs show
+// alt-deck presence (A=3, B=4). Number LEDs (0x30) are NOT written
+// here; _ip500UpdateDeckIndicators is the sole owner, avoiding the
+// duplicate 0x30 write that the v2.2.1 port had.
+myCatnip.InpulseController.prototype._ip500TempoMarkers = function() {
+    var altA = this.selectedDeckA === 3;
+    var altB = this.selectedDeckB === 4;
+    var ON = 0x7F, OFF = 0x00;
+
+    // Beat-align LEDs under each jog: solid when that side is on its
+    // alt deck. These are the same notes the tempo guide uses;
+    // markers mode repurposes them.
+    this._ip500TempoSend(0x91, 0x1C, altA ? ON : OFF);
+    this._ip500TempoSend(0x91, 0x1D, altA ? ON : OFF);
+    this._ip500TempoSend(0x91, 0x2D, altA ? ON : OFF);
+    this._ip500TempoSend(0x92, 0x1C, altB ? ON : OFF);
+    this._ip500TempoSend(0x92, 0x1D, altB ? ON : OFF);
+    this._ip500TempoSend(0x92, 0x2D, altB ? ON : OFF);
+
+    // Other tempo LEDs off in markers mode.
+    this._ip500TempoSend(0x91, 0x1E, OFF);
+    this._ip500TempoSend(0x91, 0x1F, OFF);
+    this._ip500TempoSend(0x92, 0x1E, OFF);
+    this._ip500TempoSend(0x92, 0x1F, OFF);
+    this._ip500TempoSend(0x91, 0x2C, OFF);
+    this._ip500TempoSend(0x92, 0x2C, OFF);
 };
 
 // Tempo guide — matches the community script's tempoLEDsGuide

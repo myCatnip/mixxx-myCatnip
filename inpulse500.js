@@ -22,7 +22,8 @@ myCatnip.init = function() {
         modifierStates: {},
 
         initialVinylMode: true,
-        browserOffFocus: false
+        browserOffFocus: false,
+        beatmatchGuideMode: 'guide'    // 'guide' (tempo assist) | 'markers' (deck selection)
     }], myCatnip.InpulseController, 'Inpulse 500');
 };
 

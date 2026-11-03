@@ -5,6 +5,41 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.3] — 2026-11-03
+
+Inpulse 500 patch on v2.2.2. No behaviour change for K3 presets.
+
+## Changed
+
+- **Inpulse beatmatch markers mode restored.** Removed in v2.2.2 on
+  a misread of the port scope — the intent was that beat-align LEDs
+  should do what the original community script does, and the
+  original ships both guide and markers modes. Both are now
+  available via boot config:
+    `beatmatchGuideMode: 'guide'`   (default — tempo assist)
+    `beatmatchGuideMode: 'markers'` (alt-deck state, A=3 / B=4)
+  Markers mode writes only the beat-align LEDs (`0x1C`, `0x1D`,
+  `0x2D` per side) plus off-frames on the unused tempo LEDs. Number
+  LEDs (`0x30`) are not written from `_ip500TempoMarkers` — the
+  v2.2.2 single-owner fix in `_ip500UpdateDeckIndicators` is
+  preserved, so deck switches no longer double-write `0x30`.
+
+## Fixed
+
+- **Inpulse CC dump request missing at boot.** The community script
+  sends `0xB0/0x7F` (`all-CC-dump`) from `init()` so the hardware
+  reports current pot positions to Mixxx. Without it, soft-takeover
+  forced a physical touch per knob before each fader/knob would
+  "catch." Restored in `_ip500InitExtra`.
+
+## Review notes (no code change)
+
+- v2.2.2's "Removed beatmatch markers mode" bullet stands as the
+  historical record of that release. v2.2.3 restores it. Released
+  CHANGELOG notes are not rewritten.
+
+---
+
 ## [v2.2.2] — 2026-11-03
 
 Inpulse 500 bug pass. No behaviour change for K3 presets.
