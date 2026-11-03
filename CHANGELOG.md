@@ -5,6 +5,143 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.2] — 2026-11-03
+
+Documentation-only release. **No shipped-preset behaviour change**
+vs v2.1.1, no code changes, no `.midi.xml` changes, no config
+changes. Brings every doc up to v2.1.x reality after the
+v2.1.0 / v2.1.1 code churn: `.mjs` paths, `hw.writeLED`,
+`calibration` fields, per-controller `_lastLoopTouchMs`,
+session-global `TIME_SIG`, and `labToggleWb` were still
+referenced throughout `docs/` and `README.md`.
+
+## Changed
+
+- **`docs/HARDWARE.md` split into `HARDWARE.md` + `PERCEPTION.md`.**
+  Perception was ~40% of the file and genuinely self-contained.
+  HARDWARE.md retains the descriptor-side contract (six
+  methods, other data blocks, boundary, porting checklist,
+  worked examples, cross-controller state, migration).
+  PERCEPTION.md covers the model, curves, modes, Model A/B,
+  per-scheme override, and the `myCatnip.perception.*` API.
+  Cross-referenced from both directions.
+
+- **`docs/PERCEPTION.md` — new file.** Covers the whole
+  perception pipeline: data formats (curves / samples / custom),
+  model parameters, modes (`mix`, `brightness`), Model A vs
+  Model B, runtime mix toggle, K3's own expression, per-scheme
+  override, public API with resolution order, per-HW caches.
+  Three doc-side corrections along the way:
+  - The v2.1.0 `mode` default was documented as
+    `{ mix: 'correct', brightness: 'own' }` when omitted; it is
+    in fact `'off'` for both. Fixed.
+  - Model B emit formula now correctly states "post-mix rgb"
+    as the sampling input.
+  - Static render paths skip the brightness solve; deviation
+    paths run it. This was implied but not stated — now
+    explicitly documented.
+
+- **`docs/INTERNALS.md` full rewrite.** Every v2.0.x identifier
+  removed (`writeLED`, `_transfer`, `_calibCurveName`,
+  `calibrationMode`, `_flatCache` / `_hwCache` on the controller,
+  `_lastLoopTouchMs` per-controller, session-global `TIME_SIG`,
+  `[k3]` prefix). File reorganised from "list of non-obvious
+  facts" into themed sections:
+  - §0 known artifacts (`config/k3-lab.js` vs `lib/`, `.mjs`
+    comment headers).
+  - §3–§10 boot, recompute, patches, modes, focus, modifiers,
+    chord, timeline — prose-first with the reasoning behind
+    each invariant.
+  - §16 debugging with the six new perception warnings added to
+    the warn table.
+  - §19 performance — `PERFORMANCE.md` merged in, reorganised
+    by "design → slow machine → can't save → measuring →
+    cross-project principles".
+  - §20 design notes — the old ~90 bullet "non-obvious" list
+    regrouped by theme with reasons attached.
+  - §21 limits updated (hardware descriptor contract now names
+    all seven data blocks; `shared.lastLoopTouchMs[ch]`).
+
+- **`docs/PERFORMANCE.md` deleted.** Content merged into
+  INTERNALS §19. Two unique sections (bisect cost, ramp sample
+  cost) folded into INTERNALS §19.3. Per the doc-pass plan.
+
+- **`docs/CONCEPTS.md`** — new §8.5 "Shared session state"
+  covering `shared.timeSig[ch]`, `shared.lastLoopTouchMs[ch]`,
+  `shared.controllers[label]`, `warned`, `rw`. §8 beatjump
+  gate sentence now names `shared.lastLoopTouchMs[ch]`. §8
+  gains a per-channel time signature paragraph. §10 gains a
+  K2 perception note and the "calibration solve" → "perception
+  solve" wording fix. "Where to go next" now points at
+  HARDWARE.md and PERCEPTION.md, drops PERFORMANCE.md.
+
+- **`docs/CUSTOMISE.md`** — path renames throughout
+  (`config/k3-*.js`, `lib/*.js`, `hw/k3.js`). Scheme field
+  table gains `perception`, marks `calibration` deprecated
+  with translation note. §2.7 was "hardware calibration" — now
+  a stub pointing at `PERCEPTION.md`. §2.8 "K2-mode LEDs"
+  rewritten: K2 is transport-level only, `k2: true` and
+  `k2Indices` were removed in v2.1.0 and have no effect.
+  §2.9 tunables now show per-channel `setTimeSig(bb, pb, ch)`.
+  §2.10 diagnostics gains `inspect('perception')` and
+  `inspect('shared')`. §2.11 funcs reference
+  `shared.lastLoopTouchMs[ch]` instead of
+  `_lastLoopTouchMs[ch]`. §1.5 "calibration solve" →
+  "perception solve". §1.13 builder calls use
+  `myCatnip.builders.*`.
+
+- **`docs/AI-HELPER.md`** — doc map updated (HARDWARE, PERCEPTION
+  added; PERFORMANCE removed). "Where changes happen" updated
+  to `config/k3-*.js` + `lib/*.js` + `hw/k3.js`. "Reading the
+  user" gains eight perception / K2 / shared mappings. "When to
+  say no" gains wbGain-moved and per-binding-K2-removed
+  entries. "AI failure modes" gains the K2 transport-level
+  entry.
+
+- **`docs/GLOSSARY.md`** — 15 new entries: HAL, Perception,
+  `PERCEPTION`, Model A, Model B, Mix, Brightness solve,
+  `_perceptionMixActive`, `labToggleMix`, `shared`,
+  `shared.controllers[label]`, `shared.timeSig[ch]`,
+  `shared.lastLoopTouchMs[ch]`, Time signature, K2. Updated:
+  Beatjump gate (shared location), Bake (perception brightness
+  solve), Wire (perception brightness solve). Static LED entry
+  clarified to note brightness solve is skipped.
+
+- **`README.md`** — install section rewritten to describe the
+  `lib/` / `hw/` / `config/` tree and the full-restart
+  requirement. "Where to go" table updated: HARDWARE and
+  PERCEPTION added; PERFORMANCE removed; INTERNALS now covers
+  tuning performance. Four `xone-k3-cat-*.js` references
+  renamed to `config/k3-cat-*.js`.
+
+## Review notes (no code change)
+
+- **`hw/k3.js` file header still says the K2 mode skips
+  brightness solve.** It doesn't — `_perceptionMixActive` only
+  suppresses the mix step; brightness solve runs and its output
+  reaches `sendK2Note` (which then collapses it to a coarse dim
+  scalar). Documented in PERCEPTION.md §6.1 as a code-comment
+  bug for the follow-up code pass.
+
+- **`.mjs` remains in some source comment headers** (e.g.
+  `hw/k3.js`, `lib/perception.js`, `lib/binding.js`,
+  `lib/controller.js`, `lib/controller-beat.js`,
+  `lib/controller-boot.js`, `lib/controller-colour.js`,
+  `lib/controller-render.js`, `lib/schemes.js`). Cosmetic
+  leftover from the v2.1.0 `.mjs` → `.js` port. Noted in
+  INTERNALS §0. Fix in a follow-up `.mjs` cleanup commit.
+
+## Compatibility
+
+- Mixxx 2.5
+- **No behaviour change** vs v2.1.1
+- Same file layout as v2.1.1
+- No config changes
+- Pure documentation release — safe to ship without a Mixxx
+  restart (docs aren't loaded by Mixxx)
+
+---
+
 ## [v2.1.1] — 2026-11-03
 
 Test restoration + framework compat fixes. No shipped-preset

@@ -35,11 +35,23 @@ Kitten ships on `0x0D` and pairs with Cat without conflict.
 
 ## Install
 
-1. Copy the `xone-k3-*.js` files and the `*.midi.xml` files into
-   `~/.mixxx/controllers/`.
+1. Copy the whole preset tree into `~/.mixxx/controllers/`:
+   - Entry modules `k3-*.js` at the top level.
+   - The `*.midi.xml` files at the top level.
+   - The `lib/`, `hw/`, `config/` subdirectories beside them.
+
+   The `<scriptfiles>` in each `.midi.xml` reference the
+   subdirectory paths directly (`lib/core.js`, `hw/k3.js`,
+   `config/k3-cat.js`), so the tree must be preserved. A flat
+   layout (every file at the top level) is not supported by the
+   shipped `.midi.xml` files — if you need one, edit every
+   `filename="..."` entry to drop the directory prefix.
+
 2. Preferences → Controllers → pick the K3 → Preset.
 3. Pick a preset.
 4. After editing any file: untick / re-tick the preset checkbox.
+   A full quit-and-reopen of Mixxx is required when `lib/` or
+   `hw/` changes — the preset reload doesn't re-read `.js`.
 
 ---
 
@@ -79,8 +91,9 @@ slip LED, QFX buttons, and so on.
 | See the physical layout and what each control does | this file |
 | Look up an FX cell by unit and mode | this file, §FX cell layouts |
 | Change a colour, rebind a button, add a mode | `CUSTOMISE.md` |
-| Understand the runtime, tune internals | `INTERNALS.md` |
-| Tune performance, see caching strategy | `PERFORMANCE.md` |
+| Write a hardware descriptor | `HARDWARE.md` |
+| Tune how an LED looks on the wire | `PERCEPTION.md` |
+| Understand the runtime, tune internals, tuning performance | `INTERNALS.md` |
 | Build a colour ramp on the hardware | `LAB.md` |
 | Look up a term | `GLOSSARY.md` |
 | Ask an AI to edit for me | `AI-HELPER.md` |
@@ -484,12 +497,12 @@ difference between oneK3 and oneK3 mini is this middle layout.
 
 ### Editing a layout
 
-Change the table entry in `xone-k3-cat-fx.js`. See CUSTOMISE §1.9
+Change the table entry in `config/k3-cat-fx.js`. See CUSTOMISE §1.9
 for the field vocabulary and worked examples.
 
 ### QFX chain presets
 
-`QFX_CHAIN_LIST` in `xone-k3-cat-schemes.js` must match
+`QFX_CHAIN_LIST` in `config/k3-cat-schemes.js` must match
 Preferences → Effects → Quick Effect Chains. Only the chains
 listed there light up correctly on the QFX buttons. To add a new
 chain: create it in Mixxx, then add its name to the list. See
@@ -518,7 +531,7 @@ touch each effect's meta + enable, so any of the four is fine):
 | `1.miniEcho.xml` | Echo — time / feedback / ping-pong / send + quantize / triplets |
 
 **Quick Effect chains** — pairs with `QFX_CHAIN_LIST` in
-`xone-k3-cat-schemes.js`, in order:
+`config/k3-cat-schemes.js`, in order:
 
 | File | `QFX_CHAIN_LIST` index |
 |---|---|
@@ -552,7 +565,7 @@ Mixxx — the status bar shows the CO name (`parameter2`,
 **oneK3 — column A on effect 1:**
 
 ```js
-// in xone-k3-cat-fx.js
+// in config/k3-cat-fx.js
 var TWO_DECK_FX_LAYOUTS = {
     1: twoDeckFxTable({
         knob0:   { effect: 1, param: 1 },             // knob1_0
@@ -579,7 +592,7 @@ above, button below in each):
 
 This is the shipped `echo` layout (units 2–4). To use it on a
 different unit, or to build your own, add a named layout to
-`MINI_LAYOUTS` (in `xone-k3-cat-fx.js`):
+`MINI_LAYOUTS` (in `config/k3-cat-fx.js`):
 
 ```js
 // MINI_LAYOUTS:

@@ -8,8 +8,8 @@ surface reconfigures itself based on context — deck focus, FX
 focus, bottom layer, shift, chord.
 
 Three primitives: **bindings**, **patches**, the **stack**.
-Everything else — tokens, schemes, timelines, modes — builds on
-them.
+Everything else — tokens, schemes, timelines, modes, shared
+state — builds on them.
 
 Terms are defined on first use. `GLOSSARY.md` has the one-liners.
 
@@ -42,6 +42,10 @@ button0_0: {
 Any can be omitted. `group` + `inKey` alone is a plain control.
 `colorScheme` alone is an LED-only indicator. `func` alone is a
 script action.
+
+A binding with **no physical control** (no `midi` field on the
+hardware side) is an **output-only LED** — pure indicator. See
+CUSTOMISE §1.5.
 
 ---
 
@@ -214,6 +218,10 @@ gradient when the physical knob disagrees with its bound CO.
 The `on:` block decides when the LED is logically on, independent
 of the scheme itself.
 
+A scheme can override the hardware's perception modes for its
+own LEDs — `scheme.perception = false | { mix?, brightness? }`.
+See `PERCEPTION.md` §8.
+
 Details: CUSTOMISE §1.1–1.6, §2.2–2.3, §2.5.
 
 ---
@@ -253,10 +261,67 @@ count). No manual setter — move the playhead, or place a marker.
 
 **Beatjump gate.** A beatjump is blocked when its target channel
 has an active loop and less than `BEATJUMP_GAP_MS` (130 ms) has
-elapsed since the last loop-touching event on that channel.
+elapsed since the last loop-touching event on that channel. The
+timestamp lives in `myCatnip.shared.lastLoopTouchMs[ch]`, so two
+controllers driving the same channel share the gate — §8.5.
 Outside a loop every beatjump fires.
 
+**Time signature** is per-channel (`myCatnip.shared.timeSig[ch]`).
+Set all channels with `setTimeSig(bb, pb)`; one channel with
+`setTimeSig(bb, pb, ch)`. Read by the beat cascade and the
+layer/shift countdown schemes. `null` means "use scheme
+defaults". `myCatnip.TIME_SIG` still works as a proxy — reads
+channel 1, writes all four — but new code should use
+`shared.timeSig` directly. Details: §8.5, INTERNALS §6.
+
 Details: INTERNALS §6 (mechanics), §21 (beatjump gate).
+
+---
+
+## 8.5 Shared session state
+
+Two controllers on the same musical channel need to agree about
+the music — not about their physical surface. That state lives
+in `myCatnip.shared`:
+
+```js
+myCatnip.shared = {
+    timeSig:         { 1: null, 2: null, 3: null, 4: null },
+    lastLoopTouchMs: { 1: 0, 2: 0, 3: 0, 4: 0 },
+    warned:          Object.create(null),
+    controllers:     {},
+    rw:              {}
+};
+```
+
+**`timeSig`** — per-channel `{ barBeats, phraseBars }` (§8).
+
+**`lastLoopTouchMs`** — per-channel beatjump throttle timestamp
+(§8). Shared across controllers on the same channel so one
+controller's rapid beatjumps can't bypass the other's cooldown.
+Deliberate: Mixxx misbehaves on rapid `beatjump_*` fires in an
+active loop, and a per-controller timestamp would leave the
+second controller unthrottled.
+
+**`warned`** — warn-once dedupe, session-scoped. A warning
+prints once per key regardless of how many controllers trigger
+it.
+
+**`controllers`** — one block per running controller. Read by
+any controller, written only by its owner. Used for
+cross-controller LEDs (an LED on controller A reading a field
+from controller B's block) and any state that must outlive the
+current binding stack. Blocks are removed on shutdown. Block
+shape: see `HARDWARE.md` §4.2 (descriptor-side view) or
+INTERNALS §4.
+
+**`rw`** — reserved. Bar to add a field: a concrete case an
+owner-block can't model. No case exists today.
+
+**The rule: written only by the owner, read by everyone.**
+Session-scoped state shared across all controllers lives here;
+per-controller state (`bindings`, `_ledCache`, `_pacers`,
+`_perceptionMixActive`) stays on the controller.
 
 ---
 
@@ -264,7 +329,7 @@ Details: INTERNALS §6 (mechanics), §21 (beatjump gate).
 
 Separate preset, same runtime, own layer tree. LED ramp editor.
 Load it, build a ramp, dump it, paste into
-`xone-k3-cat-schemes.js`, switch back to Cat.
+`config/k3-cat-schemes.js`, switch back to Cat.
 
 Full guide: `LAB.md`.
 
@@ -277,7 +342,9 @@ within the framework.
 
 - **Timed sequences / animation along the strip.** Bindings render
   from current state only.
-- **LEDs that read other LEDs.** Each binding renders in isolation.
+- **LEDs that read other LEDs.** Each binding renders in isolation
+  (cross-controller LEDs go through `shared.controllers`, not by
+  reading another LED's rendered value).
 - **Fades.** Beat pulses are on/off; nothing interpolates over time.
 - **Fixed-rate blinks.** Only beat-synced pulses.
 - **Per-binding beat timing.** Beat timing is per-scheme.
@@ -291,7 +358,12 @@ within the framework.
 - **`mixxx` in a sampled ramp.** `mixxx` reads the pad's
   hotcue colour at render time — only the static path has that
   access. In a ramp (deviation LED, multi-stop scheme,
-  calibration solve), the stop is skipped with a warning.
+  perception solve), the stop is skipped with a warning.
+- **K2 mode discards the perception model.** The K2 fallback
+  (`sysex: false`) is a coarse discrete-colour transport. Mix
+  is disabled end-to-end (prediction matches wire), and
+  brightness solve technically runs but its byte collapses to a
+  coarse dim scalar. See `PERCEPTION.md` §6.
 
 ---
 
@@ -299,6 +371,7 @@ within the framework.
 
 - **README.md** — physical layout, per-mode behaviour, FX cell tables
 - **CUSTOMISE.md** — how to change anything (recipes + reference)
+- **HARDWARE.md** — descriptor-side HAL contract
+- **PERCEPTION.md** — perception model (curves, modes, Model A/B)
 - **INTERNALS.md** — engine internals and debugging
-- **PERFORMANCE.md** — what's cheap/expensive, what to tune
 - **GLOSSARY.md** — one-line definitions

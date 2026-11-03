@@ -1,10 +1,11 @@
 # AI-HELPER
 
 Context for an AI assisting with this Xone K3 Mixxx mapping.
-Presented alongside CONCEPTS, CUSTOMISE, INTERNALS, PERFORMANCE,
-README, LAB, GLOSSARY. This file holds behavioural guidance —
-rules, tone, and recognition patterns. Reference material lives
-in the other docs; look it up when the request implies it.
+Presented alongside CONCEPTS, CUSTOMISE, HARDWARE, PERCEPTION,
+INTERNALS, LAB, README, GLOSSARY. This file holds behavioural
+guidance — rules, tone, and recognition patterns. Reference
+material lives in the other docs; look it up when the request
+implies it.
 
 ---
 
@@ -33,18 +34,20 @@ When the request implies a topic, look it up:
 
 | Topic | Doc |
 |---|---|
-| Binding, patch, stack, tokens, focus, colour schemes, timelines | CONCEPTS |
+| Binding, patch, stack, tokens, focus, colour schemes, timelines, shared state | CONCEPTS |
 | How to change a colour / rebind / add a mode (recipes) | CUSTOMISE §1 |
 | Field reference: binding fields, `on:` shapes, tokens, scheme fields, boot config, tunables, **annotated funcs** | CUSTOMISE §2 |
-| Engine internals, caches, symptom table, limits | INTERNALS |
-| What's cheap/expensive, what to tune, what you can't save | PERFORMANCE |
+| Descriptor contract — six methods, data blocks, boundary | HARDWARE |
+| Perception model — curves, modes, Model A/B, `myCatnip.perception.*` | PERCEPTION |
+| Engine internals, caches, symptom table, limits, performance | INTERNALS |
 | colorLab editor | LAB |
 | Physical layout, per-mode behaviour | README |
 | One-line term lookup | GLOSSARY |
 
-**Where changes happen.** Config files (cat-*, kitten, onek3,
-onek3-minifx, colorlab) carry 95% of requested edits. Runtime
-(xone-k3-lib-*.js) is shared — don't touch it unless asked.
+**Where changes happen.** Config files (`config/k3-cat-*.js`,
+`k3-kitten.js`, `k3-onek3.js`, `k3-onek3-minifx.js`,
+`k3-colorlab.js`) carry 95% of requested edits. Runtime
+(`lib/*.js`, `hw/k3.js`) is shared — don't touch it unless asked.
 
 ---
 
@@ -141,6 +144,24 @@ onek3-minifx, colorlab) carry 95% of requested edits. Runtime
   "is the shift held" / "held button state"
                                        → modifiers.<name>
   "held across rebind / patch change"  → transaction
+  "LED is too bright" / "washed out" / "colour looks wrong"
+                                       → PERCEPTION.mode.brightness,
+                                          PERCEPTION.mode.mix
+  "colour balance is off" / "red looks yellow"
+                                       → PERCEPTION.wbGain or curves
+  "brightness should be constant across colours"
+                                       → PERCEPTION.mode.brightness: 'flat'
+  "calibrate the LED" / "tune the LED"
+                                       → PERCEPTION (curves / samples /
+                                          mode), not boot config
+  "K2 mode" / "plain MIDI output" / "coarse palette"
+                                       → sysex: false (transport-level)
+  "follow the other controller's focus"
+                                       → shared.controllers[label]
+  "share time signature across decks"
+                                       → shared.timeSig[ch]
+  "same channel, two controllers, beatjump throttle"
+                                       → shared.lastLoopTouchMs[ch]
 
 ---
 
@@ -151,7 +172,7 @@ phrasings plus the closest workaround.
 
   "Swap the whole top half when I press a button."
   → setTopMode (chord + pressR) or toggleMiniFx (chord + pressL).
-    For a fourth mode: add to XoneK3.TOP_MODES and extend
+    For a fourth mode: add to myCatnip.TOP_MODES and extend
     _resolveFxPatchName.
 
   "Keep the faders and encoders live while I show a different layout."
@@ -172,7 +193,9 @@ phrasings plus the closest workaround.
   "My beatjump doesn't fire after touching a loop control."
   → Beatjump gate. _beatjumpAllowed blocks it if less than
     BEATJUMP_GAP_MS has passed since the last loop-touching
-    event on that channel. Set _debugPrintsOn for the gate line.
+    event on that channel. The timestamp lives in
+    shared.lastLoopTouchMs[ch]. Set _debugPrintsOn for the gate
+    line.
 
   "Make this fader feel more natural."
   → Add valueCurve. 2.0 exp, 0.5 log.
@@ -235,15 +258,26 @@ phrasings plus the closest workaround.
   "Track a held modifier in a func."
   → Read `this._ctrl.modifiers.<name>` — the state is derived
     from transaction activity on the declared `heldBy` bindings.
-    See INTERNALS §2.5.
+    See INTERNALS §8.
+
+  "Set wbGain in the boot config."
+  → wbGain moved to the hardware descriptor's PERCEPTION block
+    at v2.1.0. Boot config no longer takes it. Edit hw/k3.js
+    (or the hardware's own file).
+
+  "Turn off per-binding K2."
+  → Per-binding `k2: true` was removed in v2.1.0. K2 is
+    transport-level only now: set `sysex: false` in DEFAULTS
+    (or the boot config) to put the whole controller on the
+    K2 path.
 
 ---
 
 ## AI failure modes
 
-Five items where an AI is likely to guess plausibly but wrongly.
+Six items where an AI is likely to guess plausibly but wrongly.
 Verified against code or the Mixxx manual. The full INTERNALS
-gotcha list is §21.
+gotcha list is §20.
 
 - **`chain_selector` is not an index.** It's a relative ±1
   encoder control with no readable value. For "which QFX chain
@@ -275,3 +309,11 @@ gotcha list is §21.
   with `schemeFromState`, the function is silently ignored
   (fires `csDoubleDynamic` warn-once). Use `schemeFromState`
   alone; the map entries already supply the colour.
+
+- **K2 is transport-level, not per-binding.** v2.0.x had
+  `k2: true` on a binding and `k2Indices` in the boot config.
+  Both are gone in v2.1.x — no effect. The only way to enable
+  the K2 path is `sysex: false` on the whole controller. K2
+  also disables perception mix end-to-end (prediction and wire
+  both see pre-mix rgb) and discards the brightness solve's
+  resolution on the coarse palette. See PERCEPTION §6.1.

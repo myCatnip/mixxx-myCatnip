@@ -7,7 +7,7 @@ in Preferences → Controllers. Nothing takes effect until you do.
 
 Concepts (binding, patch, stack, token, scheme, timeline) live in
 `CONCEPTS.md`. Four playback presets (Cat, Kitten, oneK3, oneK3
-miniFX) share one layer tree — editing any `xone-k3-cat-*.js`
+miniFX) share one layer tree — editing any `config/k3-cat-*.js`
 file changes all four. colorLab is a separate tree — see `LAB.md`.
 
 ---
@@ -28,6 +28,7 @@ file changes all four. colorLab is a separate tree — see `LAB.md`.
 | Add a shift override | §1.10 |
 | Add an overlay | §1.11 |
 | Add a custom behaviour | §1.12 |
+| Tune perception (curves, modes, brightness) | `PERCEPTION.md` |
 | Change boot config | §2.6 |
 | Change runtime tunables | §2.9 |
 | Look up a func's arguments | §2.11 |
@@ -60,16 +61,16 @@ Colour spec accepts:
                         (static LEDs only — see §1.5)
 ```
 
-Brightness goes **after** the colour. `'red, 80'` ✓. `'80, red'` ✗.
+Brightness goes **after** the colour. `'red, 80'` ✔. `'80, red'` ✘.
 
-For a whole ramp, edit `XoneK3.SCHEMES` in `xone-k3-cat-schemes.js`.
+For a whole ramp, edit `myCatnip.SCHEMES` in `config/k3-cat-schemes.js`.
 
 ## 1.2 Change a theme colour
 
-Deck and FX number colours live in `xone-k3-cat-schemes.js`:
+Deck and FX number colours live in `config/k3-cat-schemes.js`:
 
 ```js
-XoneK3.THEME = {
+myCatnip.THEME = {
     deck: {
         1: 'green, 127',
         2: 'red, 93',
@@ -200,12 +201,18 @@ The second form opens a CO listener so the LED repaints when
 `loop_enabled` changes. The first has no CO and repaints only
 when the knob moves.
 
+**Output-only hardware LEDs** work the same way — a binding with
+no physical button on the descriptor side is just a `colorScheme`
+with no `midi` field on the hardware. Useful for status LEDs
+driven by cross-controller state (`shared.controllers[label]`).
+See `HARDWARE.md` §2.2.
+
 ## 1.6 Add a beat pulse
 
 A scheme can pulse on the playing deck's beat.
 
 ```js
-XoneK3.SCHEMES.myAlert = {
+myCatnip.SCHEMES.myAlert = {
     colors: [[127, 0, 0]],
     beat: {
         color: 'red, 60',
@@ -225,10 +232,10 @@ beat`. Field list and matrix: §2.5.
 
 ## 1.7 Add a scheme
 
-Register on `XoneK3.SCHEMES` in `xone-k3-cat-schemes.js`:
+Register on `myCatnip.SCHEMES` in `config/k3-cat-schemes.js`:
 
 ```js
-Object.assign(XoneK3.SCHEMES, {
+Object.assign(myCatnip.SCHEMES, {
     myRamp: {
         colors: [
             [0, 0, 127],     // stop 0 — blue
@@ -265,11 +272,11 @@ field to null.
 
 ## 1.8 Anchor the phrase at a hotcue
 
-Set `PHRASE_MARKER_COLORS` in `xone-k3-cat-schemes.js` to the
+Set `PHRASE_MARKER_COLORS` in `config/k3-cat-schemes.js` to the
 Mixxx hotcue colour hexes you want to treat as phrase markers:
 
 ```js
-XoneK3.PHRASE_MARKER_COLORS = [0xC50A08, 0x0044FF];
+myCatnip.PHRASE_MARKER_COLORS = [0xC50A08, 0x0044FF];
 ```
 
 Shipped default: `[0xF2F2FF]`. Empty list = feature off.
@@ -278,7 +285,7 @@ By default, only hotcues 9, 10, 11, and 12 are scanned — the top
 row of the `hotcue2` chord overlay. Change the range with:
 
 ```js
-XoneK3.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
+myCatnip.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];
 ```
 
 Set *before* boot — the range is fixed for the session. Any
@@ -303,7 +310,7 @@ than freezing.
 
 ## 1.9 Change FX cell mapping
 
-Three layout tables, one per mode, in `xone-k3-cat-fx.js`.
+Three layout tables, one per mode, in `config/k3-cat-fx.js`.
 
 ```js
 var FX_LAYOUTS = {
@@ -388,7 +395,7 @@ var MY_OVERLAY = {
 Toggle from a func:
 
 ```js
-XoneK3.FUNCS.myToggle = function() {
+myCatnip.FUNCS.myToggle = function() {
     if (this._ctrl._patchActive('myOverlay')) {
         this._ctrl.removePatch('myOverlay');
     } else {
@@ -426,12 +433,12 @@ while that patch is active and `_host`-satisfied — shift
 companions, chord, and modifier `patchActivate` enforcement are
 all suppressed. Use it when an overlay needs the whole surface
 (a game, a modal editor). Only snake ships this today. See
-INTERNALS §2.5.
+INTERNALS §8.
 
 ## 1.12 Custom funcs
 
 ```js
-XoneK3.FUNCS.myFunc = function(args, ch, c, v, s) {
+myCatnip.FUNCS.myFunc = function(args, ch, c, v, s) {
     // this    = the Binding
     // args    = cfg.args array, passed unchanged
     // v       = MIDI value (0..127)
@@ -445,7 +452,7 @@ XoneK3.FUNCS.myFunc = function(args, ch, c, v, s) {
 Bind it:
 
 ```js
-press0: { func: XoneK3.FUNCS.myFunc, args: ['arg1'] }
+press0: { func: myCatnip.FUNCS.myFunc, args: ['arg1'] }
 ```
 
 **On a rebind-during-hold, a func's release fires against the
@@ -455,7 +462,7 @@ the press was orphaned by a rebind. Funcs must not mutate
 `this._transaction` — it's owned by the runtime. Session-scoped
 fields (`this._normalized`, `this._ctrl`) are live. To read a
 modifier state from a func: `this._ctrl.modifiers.<name>`. See
-INTERNALS §2.5 for the full transaction model.
+INTERNALS §8 for the full transaction model.
 
 **If your func touches a loop** (moves a boundary, engages a
 loop, changes loop size), call `this._ctrl._touchLoop(this.group)`
@@ -490,10 +497,10 @@ Shipped examples: `fxLayoutTable()` + `fxCells(n)`,
 `twoDeckFxTable()` + `twoDeckFxColumn(side, n)`,
 `twoDeckMiniFxTable()` + `twoDeckMiniFxCells(n)`.
 
-Builders in `xone-k3-lib-funcs.js`: `eqKnob`, `fxKnob`,
-`fxEnabled`, `fxButton`, `fxHeadphone`, `fxGroupEnable`, `fxMix`,
-`qfxKnob`, `ledTrackButton`, `composeScheme`, `marker`. Call them
-as `B.eqKnob(...)` where `B = XoneK3.builders`.
+Builders in `lib/funcs.js`: `eqKnob`, `fxKnob`, `fxEnabled`,
+`fxButton`, `fxHeadphone`, `fxGroupEnable`, `fxMix`, `qfxKnob`,
+`ledTrackButton`, `composeScheme`, `marker`. Call them as
+`B.eqKnob(...)` where `B = myCatnip.builders`.
 
 **`composeScheme`** derives a variant of a named scheme:
 
@@ -507,7 +514,7 @@ Overrides: `markerColor`, `markerPosition`, `markerWidth`,
 `schemePosition`, `reverse`, `curve`, `brightness`, `beat`.
 Resolves the base at config-eval time and returns a plain object.
 Array colour specs (`[127, 0, 0]`) are supported — wrapped as a
-single-stop scheme with `interp` / `calibration` / `coScheme`
+single-stop scheme with `interp` / `perception` / `coScheme`
 disabled, matching the behaviour of `colorScheme.scheme: [127,0,0]`
 directly. Overrides apply on top of the same baseline.
 
@@ -524,15 +531,19 @@ directly. Overrides apply on top of the same baseline.
 | `outKey` | Output CO. Read for LED on/off, unless `colorScheme.on` overrides. |
 | `type` | `'push'` for momentary. Omit for toggle. |
 | `softTakeover` | `true` / `false`. Knobs and faders default true. |
-| `func` | A function reference from `XoneK3.FUNCS`. |
+| `func` | A function reference from `myCatnip.FUNCS`. |
 | `args` | Array passed to the func. |
 | `valueCurve` | Exponent on knobs / faders. `output = input^c`. |
 | `colorScheme` | See §2.2. |
 | `noLED` | `true` disables LED writes. |
-| `k2` | `true` forces MIDI-note colour output. |
 
 `valueCurve` applies at write time, after scaling;
 `_normalized` stays uncurved.
+
+**Removed fields.** `k2: true` on a binding was a v2.0.x
+per-binding K2 route. In v2.1.x K2 is transport-level only —
+set `sysex: false` in `DEFAULTS` (or the boot config) to put the
+whole controller on the K2 path. See §2.8.
 
 ## 2.2 colorScheme
 
@@ -645,7 +656,7 @@ Resolved at bind time in `group`, `inKey`, `outKey`,
 | `curve` | `0` | −0.95..0.95 warp on boundaries. |
 | `schemePosition` | `63.5` | Slides the ramp, 0..127. |
 | `interp` | `true` | `false` = snap, no blend. |
-| `calibration` | `true` | `false` = skip flat-target solve. |
+| `perception` | `null` | Per-scheme perception override (`PERCEPTION.md` §8). |
 | `brightness` | `127` | Default hw for stops without one. |
 | `brightnessScale` | `1` | Multiplier on flat-target. |
 | `markerColor` | `null` | Marker band colour. |
@@ -655,6 +666,22 @@ Resolved at bind time in `group`, `inKey`, `outKey`,
 | `coScheme` | `'coMatch'` | Steering ramp when knob and CO disagree. |
 | `reverse` | `false` | Flip the ramp direction. |
 | `beat` | `null` | Beat colour cascade. |
+
+**`perception`** — `false` bypasses perception for this scheme.
+An object overrides the hardware's modes per-key:
+
+```js
+perception: false                          // raw output, no correction
+perception: { mix: 'off' }                 // skip mix only
+perception: { brightness: 'flat' }         // force flat brightness only
+```
+
+Full resolution rules: `PERCEPTION.md` §8.
+
+**`calibration`** (deprecated) — `false` is translated at compile
+time to `perception: { brightness: 'off' }`. Kept for
+compatibility with v2.0.0 filter schemes. New schemes should use
+`perception:` directly.
 
 **Curve** warps the boundaries between stops, not the colours
 themselves. Applied before `schemePosition`.
@@ -691,8 +718,8 @@ beat`. Matrix:
 
 ## 2.6 Boot config
 
-`xone-k3-cat.js` defines `BOOT_DEFAULTS`. Presets override via
-`XoneK3.bootCat(overrides)`.
+`config/k3-cat.js` defines `BOOT_DEFAULTS`. Presets override via
+`myCatnip.bootCat(overrides)`.
 
 | Field | Default | Meaning |
 |---|---|---|
@@ -702,8 +729,8 @@ beat`. Matrix:
 | `initialActiveDeck` | `'A'` | Which of A/B boots as the active deck slot. |
 | `initialActiveFx` | `'A'` | Which of A/B boots as the active FX slot. |
 | `initialPatches` | `['topShared','fxLayout1','cue']` | Ordered active patches at boot. |
-| `patches` | `XoneK3.CAT_LAYERS` | The patch tree. |
-| `sysex` | `true` | RGB sysex vs K2 MIDI palette. |
+| `patches` | `myCatnip.CAT_LAYERS` | The patch tree. |
+| `sysex` | `true` | RGB sysex vs K2 MIDI palette (transport-level). |
 | `timeSig` | `null` | `{ barBeats, phraseBars }` override. |
 | `modifierStates` | (see §2.6.1) | Named held-states derived from transaction activity. |
 
@@ -739,7 +766,7 @@ hooks and drive patch activation. `patchActivate` idempotently
 enforces that the named patch is in `activePatches` on every
 press and release — a config func that removes it out of band
 gets corrected. `recompute` triggers a standalone recompute when
-the state changes. See INTERNALS §2.5 for mechanics.
+the state changes. See INTERNALS §8 for mechanics.
 
 Cat's boot config declares `shift`, `chord`, and `loadArm`:
 
@@ -774,101 +801,96 @@ modifierStates: {
 }
 ```
 
-## 2.7 Hardware calibration
+## 2.7 Perception
 
-`XoneK3.HARDWARE_CALIB` in `xone-k3-lib-core.js` holds the factory
-values for the LED calibration pipeline. Every preset's boot
-merges it in first — a preset only declares what's different.
+The hardware's perception model — curves, modes, brightness
+solve, Model A vs Model B — lives in `PERCEPTION.md`. This file
+does not repeat it. Authoring a `PERCEPTION` block, tuning a
+hardware's curves, or overriding a scheme's modes: see
+`PERCEPTION.md` §2–§8.
 
-```js
-XoneK3.HARDWARE_CALIB = {
-    calibration:       'measuredRGB',
-    calibrationMode:   'rms',
-    wbGain:            [0.6, 1.0, 0.93],
-    channelPerceptual: [1.35, 0.69, 0.19],
-    hkBoost:           0.29,
-    lumGamma:          0.32
-};
-```
+The one config-side field you'll set on a scheme is
+`perception: false | { mix?, brightness? }` — see §2.5 above.
 
-To override for one unit, pass the fields to `bootCat`:
-
-```js
-XoneK3.bootCat({ label: 'Kitten', midiChannel: 0x0D,
-                 wbGain: [0.55, 1.0, 0.90], hkBoost: 0.24 });
-```
-
-Changing these at boot is safe; changing at runtime needs a
-preset reload.
+v2.0.0's `HARDWARE_CALIB`, `wbGain`, `channelPerceptual`,
+`hkBoost`, `lumGamma` boot-config fields are gone. They moved to
+the hardware descriptor's `PERCEPTION` block.
+`HARDWARE.md` §Migration has the full rename table.
 
 ## 2.8 K2-mode LEDs
 
-`k2: true` on a binding routes its LED through MIDI notes instead
-of sysex.
+K2 is a **transport-level** fallback on the K3: when the
+descriptor boots with `sysex: false`, `hw.send` collapses each
+frame to a MIDI note + velocity on the K2's discrete-colour
+palette. All bindings on that controller go through the K2 path;
+there is no per-binding opt-in.
 
 ```js
-press2: { group: '$DECK_ACTIVE$', inKey: 'hotcue_1_activate',
-          outKey: 'hotcue_1_status', k2: true }
+myCatnip.bootCat({ sysex: false });
 ```
 
-Alternative: list raw indices in the boot config:
+Per-binding `k2: true` and boot-level `k2Indices` were removed in
+v2.1.x. Neither has any effect on a v2.1.x controller. If you're
+porting from v2.0.0, delete those fields.
 
-```js
-k2Indices: [0x1D]
-```
-
-`k2: true` works inside an overlay. `k2Indices` is keyed by LED
-index, so that LED is K2-locked for the whole session.
+**What K2 mode does to perception.** Mix correction is disabled
+end-to-end (`ctrl._perceptionMixActive = false`) so prediction
+and wire see the same pre-mix rgb. Brightness solve still runs
+but its byte collapses to a coarse dim scalar — the perception
+model's fine-grained solve is effectively discarded on the K2
+wire. See `PERCEPTION.md` §6.1.
 
 ## 2.9 Runtime tunables
 
 ```js
-// cat-schemes.js
-XoneK3.PHRASE_MARKER_COLORS = [0xF2F2FF];        // [] = feature off
-XoneK3.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];    // 1..32; see §1.8
-XoneK3.THEME = { ... };                          // see §1.2
-XoneK3.QFX_CHAIN_LIST = [...];                   // see cat-schemes.js
+// config/k3-cat-schemes.js
+myCatnip.PHRASE_MARKER_COLORS = [0xF2F2FF];        // [] = feature off
+myCatnip.PHRASE_HOTCUE_SLOTS = [9, 10, 11, 12];    // 1..32; see §1.8
+myCatnip.THEME = { ... };                          // see §1.2
+myCatnip.QFX_CHAIN_LIST = [...];                   // see k3-cat-schemes.js
 
-// lib-core.js
-XoneK3.BEATJUMP_GAP_MS = 130;
-XoneK3.PULSE_CO_MS = 30;
-XoneK3.BOOT_SETTLE_MS = 100;
-XoneK3.BOOT_MAX_ATTEMPTS = 5;
-XoneK3.BEAT_PLAYING_MODE = 'pulse';
-XoneK3.BEAT_PAUSED_MODE  = 'solid';
-XoneK3.CO_MATCH_EPSILON = 1 / 127;
-XoneK3.TAKEOVER_EPSILON = 2 / 127;
+// lib/core.js
+myCatnip.BEATJUMP_GAP_MS = 130;
+myCatnip.PULSE_CO_MS = 30;
+myCatnip.BOOT_SETTLE_MS = 100;
+myCatnip.BOOT_MAX_ATTEMPTS = 5;
+myCatnip.BEAT_PLAYING_MODE = 'pulse';
+myCatnip.BEAT_PAUSED_MODE  = 'solid';
+myCatnip.CO_MATCH_EPSILON = 1 / 127;
+myCatnip.TAKEOVER_EPSILON = 2 / 127;
 
-XoneK3.setTimeSig(4, 4);          // integers ≥ 1; fractional inputs floored
-XoneK3.clearTimeSig();
+myCatnip.setTimeSig(4, 4);              // all channels
+myCatnip.setTimeSig(4, 4, 2);           // channel 2 only
+myCatnip.clearTimeSig();                // all channels
 ```
 
-`setTimeSig` drives both the beat cascade (which cascade level
-a given beat count resolves to) and the layer / shift
-track-end countdown (which bar-length sets its phase
-boundaries). Both read `TIME_SIG.barBeats` with priority over
-their scheme's baked `barBeats`. If they disagree under a
-non-4/4 signature, the two go out of phase. Arguments are
-floored to integers; values below 1 or non-finite are rejected.
-Direct assignment to `XoneK3.TIME_SIG` bypasses the validation —
-a malformed value warns once and falls back to scheme defaults.
+**Time signature is per-channel** (`shared.timeSig[ch]`).
+`setTimeSig(bb, pb)` writes all four; `setTimeSig(bb, pb, ch)`
+writes one. Both the beat cascade and the layer/shift track-end
+countdown read `shared.timeSig[ch]` — a non-4/4 signature applies
+per channel, so two decks in different signatures won't drift out
+of phase. Arguments are floored to integers; values below 1 or
+non-finite are rejected. `myCatnip.TIME_SIG` still works as a
+proxy — reads channel 1, writes all four — but new code should
+use `shared.timeSig` directly.
 
-`QFX_CHAIN_LIST` order must match Preferences → Effects → Quick
-Effect Chains. Only the chains listed there light up correctly on
-QFX buttons. If a QFX button always shows the first scheme, check
-`loaded_chain_preset` — it defaults to 0 when Mixxx has no chain
-loaded or the loaded chain isn't in the list.
+**`QFX_CHAIN_LIST` order must match Preferences → Effects → Quick
+Effect Chains.** Only the chains listed there light up correctly
+on QFX buttons. If a QFX button always shows the first scheme,
+check `loaded_chain_preset` — it defaults to 0 when Mixxx has no
+chain loaded or the loaded chain isn't in the list.
 
 **`BEATJUMP_GAP_MS`** — gates beatjumps on a channel in an active
 loop when less than N ms has elapsed since the last loop-touching
-event. See INTERNALS §21 for the gate logic and PERFORMANCE for
-tuning.
+event. The timestamp lives in `shared.lastLoopTouchMs[ch]`, shared
+across controllers on the same channel. See INTERNALS §20.2 for
+the gate logic and §19.2 for tuning.
 
 **`BEAT_PLAYING_MODE` / `BEAT_PAUSED_MODE`** — what a beat
 scheme's LED shows, per deck state. For paused display on a
 custom beat LED, its `outKey` (or `on:`) must read 1 while paused
 — `track_loaded` works; `play_indicator` doesn't. Behaviour
-detail in CONCEPTS §7 / INTERNALS §6.
+detail in CONCEPTS §7 / INTERNALS §10.
 
 **`CO_MATCH_EPSILON` < `TAKEOVER_EPSILON`** must hold. `CO_MATCH`
 is how far a deviation LED's knob can be from its bound CO before
@@ -884,27 +906,29 @@ for mechanics and rationale.
 ## 2.10 Diagnostics
 
 ```js
-XoneK3._debugPrintsOn = true;      // edit prints
-XoneK3.MODE_PRINTS = true;         // colorLab mode prints
+myCatnip._debugPrintsOn = true;      // edit prints
+myCatnip.MODE_PRINTS = true;         // colorLab mode prints
 ```
 
-Warnings go through `XoneK3._warnOnce` and fire once per unique
+Warnings go through `myCatnip._warnOnce` and fire once per unique
 key per boot. Reload to re-arm.
 
 Runtime probes (safe to call any time):
 
 ```js
-XoneK3.controllers[0].inspect()             // top-level state
-XoneK3.controllers[0].inspect('press0')     // one binding
-XoneK3.controllers[0].inspect('patches')    // activePatches, stack
-XoneK3.controllers[0].inspect('why', 'layer')    // pipeline walk
+myCatnip.controllers[0].inspect()                  // top-level state
+myCatnip.controllers[0].inspect('press0')          // one binding
+myCatnip.controllers[0].inspect('patches')         // activePatches, stack
+myCatnip.controllers[0].inspect('perception')      // PERCEPTION mode, curves, fingerprint
+myCatnip.controllers[0].inspect('shared')          // shared state + all controller blocks
+myCatnip.controllers[0].inspect('why', 'layer')    // pipeline walk
 ```
 
-Full command list and symptom table: INTERNALS §18.
+Full command list and symptom table: INTERNALS §16.
 
 ## 2.11 Funcs
 
-Every func lives on `XoneK3.FUNCS`. Called by `Binding.input()`
+Every func lives on `myCatnip.FUNCS`. Called by `Binding.input()`
 when a binding declares `func:`. Args are passed unchanged as
 `args[0..n]`.
 
@@ -953,7 +977,7 @@ Encoders:
   encLoopMove          ['in', 0.010]
       Loop resize. 'in' moves the IN point (OUT anchored);
       'out' moves the OUT point (IN anchored). Ungated.
-      Stamps _lastLoopTouchMs after the write.
+      Stamps shared.lastLoopTouchMs[ch] after the write.
   encBeatjump
       Beatjump forward/back. Gated by _beatjumpAllowed when in
       loop. Uses _pulseCo.
@@ -969,17 +993,17 @@ Encoders:
 Buttons:
 
   pressSetValue        ['1/4']
-      Writes an absolute value on press. Stamps _lastLoopTouchMs
-      when inKey is `beatloop_size`. Does NOT stamp for
-      `beatjump_size`.
+      Writes an absolute value on press. Stamps
+      shared.lastLoopTouchMs[ch] when inKey is `beatloop_size`.
+      Does NOT stamp for `beatjump_size`.
   beatjumpButton       ['beatjump_1_backward']
       Gated by _beatjumpAllowed. Uses _pulseCo.
   reloopToggleResetAnchor
       Resets loop_anchor then pulses reloop_toggle. Stamps
-      _lastLoopTouchMs.
+      shared.lastLoopTouchMs[ch].
   beatloopActivateResetAnchor
       Resets loop_anchor then pulses beatloop_activate. Stamps
-      _lastLoopTouchMs.
+      shared.lastLoopTouchMs[ch].
   shutdownHold
   bpmPress             pressL release handler for the
                        pressL+encoderL pair. Toggles [Master]
@@ -990,3 +1014,22 @@ Buttons:
   hotcueSetPhraseColor ['N']
       Activates hotcue N; if unset, also writes
       PHRASE_MARKER_COLORS[0] as its colour. Release writes 0.
+```
+
+---
+
+# 3. Behaviour-driven symptoms
+
+Full symptom table is in INTERNALS §16. Behaviour-level ones
+that aren't bugs:
+
+| Symptom | Cause |
+|---|---|
+| LED shows white until you turn the knob | Deviation LED's referenced knob hasn't sent its first event yet — `_normalized` is undefined. Turn it once. |
+| `mixxx` LED is dark in a ramp | `mixxx` is static-only. See §1.5. |
+| Beat LED doesn't pulse | Either the deck is paused (`BEAT_PAUSED_MODE` picks the behaviour) or the scheme has no `beat:` block. |
+| `scheme: FX_COLOR_MAP[n]` + `schemeFromState` → LED shows nothing | Function scheme + schemeFromState triggers `csDoubleDynamic`. Use one or the other, not both. |
+| Phrase colour doesn't change across a loop | The loop clock isn't running (deck paused, or loop not active), so display source is `track`. |
+| Beatjump exits the loop | `BEATJUMP_GAP_MS` too low. See §2.9. |
+
+Full behaviour-driven symptoms: INTERNALS §16.
