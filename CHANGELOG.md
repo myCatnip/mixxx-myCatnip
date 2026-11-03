@@ -5,6 +5,38 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.0] — 2026-11-03
+
+New hardware preset: Hercules DJControl Inpulse 500 (Cat mapping).
+
+## Added
+
+- `hw/inpulse500.js` — full descriptor: palette quantisation (17 velocities), 14-bit CC pairs (volume/EQ×3/gain/pitch), custom jog handler (touch + relative ticks with twos-complement decode + shift multiplier), 8 pad modes × 2 decks (hotcue, loop, slicer, sampler, pitch, roll, effect, beatjump).
+- `config/inpulse500-funcs.js` — all funcs. Transport, momentary loop triggers, loop encoder halve/double, pad modes, assistant-as-shift, browser tunnel, crossfader normal + scratch.
+- `config/inpulse500-vu.js` — `InpulseController` subclass: VU meters (master L/R + per-deck), peak indicators, tempo LEDs (guide and markers modes), deck-assignment indicators, browser LED burst, jog/vinyl state.
+- `config/inpulse500-slicer.js` — slicer state machine (ported).
+- `config/inpulse500-config.js` — layer tree (`master`, `deckABase`, `deckBBase`, 16 pad-mode layers).
+- `config/inpulse500-schemes.js` — palette-named schemes.
+- `inpulse500.js` / `inpulse500.midi.xml` — boot + load order.
+- `myCatnip.IP500_JOG` tunables: `wheelResolution`, `rpm`, `alpha`, `beta`, `shiftMultiplier`, `tickMode`. Override via `applyIP500Jog({...})`.
+- Boot options: `initialVinylMode`, `browserOffFocus`, `beatmatchGuideMode` (`'guide'` | `'markers'`).
+
+## Changed
+
+- `lib/binding.js` — 14-bit CC support. New `_bits` field (`spec.bits === 14`); `_scaleValue` branches on it. 7-bit path unchanged; existing hardware unaffected.
+
+## Fixed
+
+- Momentary COs (`reloop_toggle`, `beatloop_activate`) reset to 0 on button release so the skin button doesn't latch.
+- Cue: goto-and-stop while playing, hold-preview while paused.
+- Note-off registered for all note-on statuses — buttons no longer latch after first press.
+- Hotcue LEDs: `outKey` wires the hotcue colour CO, so LEDs show Mixxx hotcue colour.
+- Loop in/out: explicit `type: 'push'` + release-clear.
+- Browser encoder: press+turn tunnels (`MoveRight`/`MoveLeft`); release without turn cycles focus.
+- Deck indicators: number LEDs 1/2 show primary assignment; beat-align LEDs under jog show alt deck (3/4) in `markers` mode.
+
+---
+
 ## [v2.1.5] — 2026-11-03
 
 HAL decoupling. No behaviour change for shipped presets.
