@@ -1,82 +1,50 @@
-// test/harness.js — loads lib files into a vm sandbox with mocks.
-//
-// Returns the sandbox. No controller is created; tests build
-// their own via helpers.bootCat() / helpers.ctrl().
-//
-// Load order mirrors every preset .midi.xml:
-//   lib-core → lib-schemes → lib-binding → lib-controller →
-//   lib-controller-colour → lib-controller-beat →
-//   lib-controller-render → lib-controller-boot → lib-funcs →
-//   lib-inspect → cat-schemes → cat-fx → cat-top → cat-bottom →
-//   cat-overlays → cat → lab
-//
-// colorlab.js is not loaded — no test needs it, and it overrides
-// myCatnip.init.
+// test/harness.mjs — loads lib modules into the Node ESM runtime.
+// Sets up mocks, imports framework + config + fixtures in order.
+// Returns { engine, midi, print, _printLog }.
 
-'use strict';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
-var fs = require('fs');
-var path = require('path');
-var vm = require('vm');
+export async function load() {
+    const engine   = require('./mocks/engine');
+    const midi     = require('./mocks/midi');
+    const printLog = [];
+    const printFn  = (s) => { printLog.push(String(s)); };
 
-module.exports.load = function() {
-    var engine   = require('./mocks/engine');
-    var midi     = require('./mocks/midi');
-    var printLog = [];
-    var printFn  = function(s) { printLog.push(String(s)); };
+    global.engine    = engine;
+    global.midi      = midi;
+    global.print     = printFn;
+    global._printLog = printLog;
 
-    var sandbox = {
-        console: console,
-        Math: Math, JSON: JSON, Date: Date,
-        Array: Array, Object: Object, String: String, Number: Number,
-        Boolean: Boolean, RegExp: RegExp, Error: Error,
-        WeakMap: WeakMap, Map: Map, Set: Set,
-        isNaN: isNaN, isFinite: isFinite,
-        parseInt: parseInt, parseFloat: parseFloat,
-        Infinity: Infinity, NaN: NaN, undefined: undefined,
-        engine: engine,
-        midi: midi,
-        print: printFn,
-        _printLog: printLog
-    };
-    vm.createContext(sandbox);
+    // Framework
+    await import('../lib/core.mjs');
+    await import('../lib/timing.mjs');
+    await import('../lib/schemes.mjs');
+    await import('../lib/perception.mjs');
+    await import('../lib/binding.mjs');
+    await import('../hw/k3.mjs');
+    await import('../lib/controller.mjs');
+    await import('../lib/controller-colour.mjs');
+    await import('../lib/controller-beat.mjs');
+    await import('../lib/controller-render.mjs');
+    await import('../lib/controller-boot.mjs');
+    await import('../lib/funcs.mjs');
+    await import('../lib/inspect.mjs');
 
-    var dir = path.resolve(__dirname, '..');
-    var files = [
-        'myCatnip-lib-core.js',
-        'myCatnip-lib-timing.js',
-        'myCatnip-lib-schemes.js',
-        'myCatnip-lib-binding.js',
-        'myCatnip-hw-k3.js',
-        'myCatnip-lib-controller.js',
-        'myCatnip-lib-controller-colour.js',
-        'myCatnip-lib-controller-beat.js',
-        'myCatnip-lib-controller-render.js',
-        'myCatnip-lib-controller-boot.js',
-        'myCatnip-lib-funcs.js',
-        'myCatnip-lib-inspect.js',
+    // Config + lab
+    await import('../config/k3-cat-config.mjs');
+    await import('../config/k3-lab.mjs');
 
-        // Cat config
-        'myCatnip-cat-schemes.js',
-        'myCatnip-cat-fx.js',
-        'myCatnip-cat-top.js',
-        'myCatnip-cat-bottom.js',
-        'myCatnip-cat-overlays.js',
-        'myCatnip-cat.js',
+    // Test fixtures
+    await import('./hw-fake.mjs');
+    await import('./hw-custom.mjs');
 
-        // Lab runtime
-        'myCatnip-lab.js'
-    ];
-    for (var i = 0; i < files.length; i++) {
-        var src = fs.readFileSync(path.join(dir, files[i]), 'utf8');
-        vm.runInContext(src, sandbox, { filename: files[i] });
-    }
-
-    sandbox.myCatnip.HW_K3.LED_TRANSFERS.linearTest = {
+    // Legacy: linearTest curve still referenced by pre-perception tests
+    global.myCatnip.HW_K3.LED_TRANSFERS.linearTest = {
         r: [[0, 0], [127, 1]],
         g: [[0, 0], [127, 1]],
         b: [[0, 0], [127, 1]]
     };
 
-    return sandbox;
-};
+    return { engine, midi, print: printFn, _printLog: printLog };
+}

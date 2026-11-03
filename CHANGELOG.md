@@ -5,6 +5,156 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.0] — 2026-11-03
+
+Major restructuring release. File layout reorganised into
+`lib/`, `hw/`, `config/`. Perception model replaces framework-
+owned calibration. Per-HW palette and brightness. Shared
+namespace for cross-controller state. Per-channel time
+signature. K3 sysex output byte-identical to v2.0.0 for
+`sysex: true` presets; K2 mode (`sysex: false`) brightness
+solve is now internally consistent (see Fixed).
+
+## Breaking
+
+- **File layout.** Source files moved into `lib/`, `hw/`,
+  `config/` subdirectories. Old `myCatnip-*` prefixed files
+  removed. Entry modules renamed `k3-<preset>.js` and live at
+  repo root alongside the `.midi.xml` files. All 5 `.midi.xml`
+  files updated to reference the new paths via `<scriptfiles>`.
+  Old presets must be deleted and re-downloaded. Full Mixxx
+  restart required (not just preset reload) to clear the script
+  cache.
+- **HAL.** `hw.writeLED(ctrl, idx, r, g, b, hw)` →
+  `hw.send(ctrl, idx, rgb, hw)`. `rgb` is a `[r,g,b]` array of
+  post-perception wire values. Per-scheme `perception` override
+  is applied in `ctrl.sendLED` before `hw.send`.
+- **DEFAULTS.** `calibration`, `calibrationMode`, `wbGain`,
+  `channelPerceptual`, `hkBoost`, `lumGamma` removed from
+  `DEFAULTS`. Migrate to `hw.PERCEPTION`. Presets that still
+  pass these fields are ignored.
+- **Palette hooks.** `resolveNamedColour(name)` →
+  `resolveNamedColour(name, ctrl)`. `mapMixxxColor(rgb)` →
+  `mapMixxxColor(rgb, ctrl)`. Module-load overrides are no
+  longer used; palette lives on `hw.PALETTE` /
+  `hw.MIXXX_COLORS`.
+- **Per-HW brightness defaults.** `DEFAULT_RGB_BRIGHTNESS` /
+  `_OFF` read from `ctrl.hw` first, fall back to framework
+  110/12.
+- **`_lastLoopTouchMs` per-channel.** Moved from per-controller
+  to `myCatnip.shared.lastLoopTouchMs[ch]`. Two controllers on
+  the same channel now gate each other's beatjumps.
+- **`TIME_SIG` per-channel.** `myCatnip.setTimeSig(bb, pb)`
+  still sets all four channels; `setTimeSig(bb, pb, ch)` scopes
+  to one. Presets that read `myCatnip.TIME_SIG` directly should
+  read `myCatnip.shared.timeSig[ch]`.
+- **`scheme.calibration: false`** translated to
+  `perception: { brightness: 'off' }` at compile time. Still
+  skips brightness solve, still keeps mix. Preserved for
+  filter-scheme byte-identity.
+
+## Added
+
+- **`lib/perception.js`** — perception model as pure data
+  processing: curve derivation, LUT inversion, emit prediction
+  (Model A / Model B), mix application, brightness bisect.
+  Per-HW caches (curves, LUTs, flat target, hw byte) keyed on
+  the hardware descriptor via WeakMap.
+- **`hw.PERCEPTION`** — `{ curves | samples | custom,
+  wbGain?, weights?, gamma?, hkBoost?, mode: { mix, brightness } }`.
+  Data-only; framework derives and applies. K3 supplies full
+  model (WB, weights, gamma, hkBoost) and declares
+  `mode: { mix: 'correct', brightness: 'flat' }`. Simple
+  hardware can supply `samples` only (derived to curves, uses
+  Model B). No `PERCEPTION` = raw output.
+- **Per-scheme `perception` override** — `false` bypasses both
+  mix and brightness; `{ mix: 'off' }` skips mix only;
+  `{ brightness: 'own' }` / `'flat'` / `'off'` overrides just
+  brightness. Omitted = use HW default.
+- **`myCatnip.shared`** — session-scoped namespace:
+  `{ timeSig, lastLoopTouchMs, warned, controllers, rw }`.
+- **`shared.controllers[label]`** — owner-write, everyone-read
+  per-controller block for cross-controller state. Both slot
+  letter (`activeDeck: 'A'`) and resolved channel
+  (`selectedDeckCurrent: 1`) exposed. `shutdown` deletes the
+  block.
+- **`myCatnip.perception`** — public API: `deriveCurves`,
+  `deriveFromSamples`, `deriveLuts`, `applyMix`,
+  `solveBrightness`, plus internal helpers.
+- **`inspect('perception')`** — new probe: mode, curves source,
+  derived curve point count, current fingerprint, ctrl mix
+  state.
+- **`inspect('shared')`** — new probe: timeSig, lastLoopTouchMs,
+  warn key count, per-controller blocks.
+- **`inspect('why')`** — now includes a perception section
+  (HW mode, scheme override, ctrl mix state).
+
+## Changed
+
+- **Print prefix:** `[k3]` → `[myCatnip]` throughout.
+- **Throw prefix:** `Xone K3:` → `myCatnip:`.
+- **Scheme compile cache** is per-HW (WeakMap keyed on HW
+  descriptor). Two descriptors with different `PALETTE` compile
+  schemes independently.
+- **`labToggleWb` → `labToggleMix`.** Toggles
+  `ctrl._perceptionMixActive`, clears `_ledCache` on toggle.
+  Alias `labToggleWb` kept with warn-once.
+- **Lab bake `bakeScheme`** uses `myCatnip.perception._flatTarget`
+  / `_bisectHw` with mix mode threaded; scheme-level perception
+  override respected. Export level bakes WB from
+  `hw.PERCEPTION.wbGain` (only when mix is active).
+- **`hw/k3.js` shrinks** — calibration math removed (moved to
+  `lib/perception.js`). File now declares model as data plus
+  the six HAL methods and protocol primitives.
+
+## Fixed
+
+- **K2 mode brightness solve is now consistent.** v2.0.0 solved
+  brightness predicting with white-balance applied but sent raw
+  rgb to the K2 path — actual brightness differed from
+  prediction. v2.1.0 disables mix for the whole K2 transport
+  (`_perceptionMixActive = (sysex !== false)`), so prediction
+  and send both skip WB. K2 LEDs may be slightly dimmer than
+  v2.0.0 for schemes where WB would have scaled the send.
+- **Per-channel beatjump throttle.** Two controllers on the same
+  channel now gate each other. Without this, Kitten's rapid
+  beatjumps bypassed Cat's throttle on the same CO tree.
+
+## Review notes (no code change)
+
+- **`_emitAt` applies mix internally.** Pre-mix rgb is
+  mix-corrected, then the model formula predicts on post-mix
+  rgb. `applyMix` is called once per render at `sendLED`; the
+  emit model reuses the same mix application for prediction.
+  No double-WB.
+- **`_flatTarget` / `_hwCache` keys include mix mode.** Toggling
+  mix at runtime (`labToggleMix`, or preset change) invalidates
+  caches automatically. `_ledCache` is cleared on toggle so
+  next render re-sends.
+- **`labToggleWb` alias retained** for any user config still
+  referencing it. Warns once, defers to `labToggleMix`.
+- **`scheme.calibration` field is deprecated.** Still read
+  (translated at compile time to `perception: { brightness:
+  'off' }`), but new schemes should use `perception:` directly.
+  Alias scheduled for removal in the next major.
+- **Test harness not updated.** `test/` still has `.mjs` files
+  from the ES module experiment. Not part of the shipped
+  preset — no user impact. Harness conversion deferred to a
+  follow-up commit.
+
+## Compatibility
+
+- Mixxx 2.5
+- **Breaking file layout** (`.js` in subdirectories, `k3-*`
+  entry modules at root, `myCatnip-*` prefixed files removed)
+- **Breaking HAL** (`send` not `writeLED`)
+- Old v2.0.0 presets must be deleted and re-downloaded
+- Full Mixxx restart required after upgrade
+- K2 mode (`sysex: false`) brightness may shift slightly vs v2.0.0
+- `sysex: true` presets byte-identical to v2.0.0
+
+---
+
 ## [2.0.0] — Namespace and filename rename
 
 Breaking for framework extenders. Preset loading (Cat, Kitten, oneK3,
