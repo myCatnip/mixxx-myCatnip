@@ -378,47 +378,16 @@ boot from the transport.
 clear `ctrl._ledCache` so cached wire values don't dedupe
 incorrectly against the new mix behaviour.
 
-### 6.1 What K2 changes and what it doesn't
+### 6.1 K2 is a discrete-colour transport
 
-The K3's K2 fallback (`sysex: false`) is a **coarse
-discrete-colour transport**, not a perception-model wire.
-`hw/k3.js`'s `sendK2Note` picks one of three note buckets
-(red / amber / green) from the r-g difference and sends that
-note with velocity `hw × peak / 127`. The **note** carries the
-colour; the **velocity** is a coarse dim factor within that
-bucket, not a perception-model brightness. The physical K2 uses
-the velocity as "how bright this colour pad glows" on a much
-coarser axis than 0–127.
+The K3's K2 fallback (`sysex: false`) is a discrete-colour
+palette transport — three note buckets (red / amber / green)
+plus a coarse velocity dim. It is not an RGB wire.
 
-`_perceptionMixActive === false` (K2) suppresses **mix only**.
-Brightness solve still runs — `ctrl._solveHw` resolves
-`brightnessMode` from `P.mode.brightness` regardless of
-transport, and `ctrl.sendLED` sends the solved byte to
-`hw.send`. But on the K2 wire, that byte is collapsed to a dim
-scalar alongside a discrete colour choice, and the perception
-model's fine-grained solve is discarded. **Do not describe K2
-output as "the brightness solve being honoured"** — it's
-mechanically true that the byte arrives, but the wire ignores
-what the model computed.
-
-**Why mix is disabled on K2.** v2.0.0's K2 path applied WB to
-the brightness *prediction* but sent raw rgb to the *wire* —
-the prediction assumed post-WB rgb, the wire saw pre-WB rgb.
-v2.1.x fixes the inconsistency by disabling mix for the whole
-transport: prediction and wire both see pre-mix rgb. That is
-the entire K2 change in v2.1.x. Brightness solve behaviour is
-unchanged.
-
-**For hardware that uses velocity as genuine brightness.** A
-hardware whose wire treats velocity as a real 0–127 luminance
-scalar — and wants the perception solve's output faithfully
-delivered — should implement `hw.send` directly. Do not copy
-the K3's K2 code path; that path is a fallback for one
-specific hardware's discrete-palette transport.
-
-⚠ **Code-comment bug.** `hw/k3.js`'s file header still says
-*"In K2 mode, brightness solve is skipped"*. It isn't — only
-mix is. Flagged for the code pass.
+The brightness solve runs and its byte reaches `sendK2Note`,
+but there it becomes a velocity on a 3-bucket palette. The
+model's fine resolution is discarded. Mix is skipped
+(`_perceptionMixActive = false`) so prediction and wire agree.
 
 ---
 

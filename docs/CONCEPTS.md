@@ -359,11 +359,11 @@ within the framework.
   hotcue colour at render time — only the static path has that
   access. In a ramp (deviation LED, multi-stop scheme,
   perception solve), the stop is skipped with a warning.
-- **K2 mode discards the perception model.** The K2 fallback
-  (`sysex: false`) is a coarse discrete-colour transport. Mix
-  is disabled end-to-end (prediction matches wire), and
-  brightness solve technically runs but its byte collapses to a
-  coarse dim scalar. See `PERCEPTION.md` §6.
+- **K2 is a discrete-colour transport.** The K2 fallback
+  (`sysex: false`) is three colour buckets plus velocity, not
+  an RGB wire. Perception's brightness solve reaches it as
+  velocity — coarse, not the model's resolution. See
+  `PERCEPTION.md` §6.
 
 ---
 

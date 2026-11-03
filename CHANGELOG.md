@@ -5,6 +5,40 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.3] — 2026-11-03
+
+Small fix + doc pass. One real bug (lab bake), one real waste of
+work (redundant write), and a lot of cosmetic cleanup.
+
+## Fixed
+
+- **`bakeScheme` honours scheme-level `perception.mix`.** Lab bake
+  resolved `mixMode` from the controller + hardware but ignored
+  `scheme.perception.mix`. A scheme with `perception: { mix: 'off' }`
+  got baked with mix applied — baked stops were post-mix rgb, but
+  the render path would skip mix. Preview and reload diverged.
+  WB is now baked only when `mixMode === 'correct'`.
+
+## Changed
+
+- **K2 described as a discrete-colour transport.** Trimmed
+  overlong K2 sections in PERCEPTION §6.1, CONCEPTS §10, and the
+  GLOSSARY entry. Corrected `hw/k3.js` file header — the
+  brightness solve runs on K2 and its byte reaches `sendK2Note`
+  as velocity; fine resolution is discarded, mix is skipped.
+- **`_onTrackLoaded` writes `shared.lastLoopTouchMs[ch] = 0`
+  once** instead of twice on the load path.
+- **`.mjs` → `.js` in comment headers** across `lib/`, `hw/`,
+  `config/`. 32 occurrences across 16 files. Cosmetic; v2.1.0
+  port leftover.
+
+## Compatibility
+
+- Mixxx 2.5
+- No shipped-preset behaviour change vs v2.1.2
+
+---
+
 ## [v2.1.2] — 2026-11-03
 
 Documentation-only release. **No shipped-preset behaviour change**

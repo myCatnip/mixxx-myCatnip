@@ -1,4 +1,4 @@
-// config/k3-cat-fx.mjs — Cat's FX cell layout tables and a single
+// config/k3-cat-fx.js — Cat's FX cell layout tables and a single
 // unified emitter.
 //
 //   FX_LAYOUTS                 focus, 16 cells per unit

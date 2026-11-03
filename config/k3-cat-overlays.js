@@ -1,4 +1,4 @@
-// config/k3-cat-overlays.mjs — Cat's two routing overlays and the
+// config/k3-cat-overlays.js — Cat's two routing overlays and the
 // chord.
 
 

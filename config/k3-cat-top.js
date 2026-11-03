@@ -1,4 +1,4 @@
-// config/k3-cat-top.mjs — Cat's three top-half base patches and
+// config/k3-cat-top.js — Cat's three top-half base patches and
 // the single shared shift companion.
 
 

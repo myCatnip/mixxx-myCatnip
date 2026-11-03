@@ -1,7 +1,7 @@
-// config/k3-snake.mjs — snake easter egg.
+// config/k3-snake.js — snake easter egg.
 //
-// Loaded by playback entry modules (k3-cat.mjs, k3-kitten.mjs,
-// k3-onek3*.mjs) after k3-cat-config.mjs. Modifies CAT.CHORD.press2
+// Loaded by playback entry modules (k3-cat.js, k3-kitten.js,
+// k3-onek3*.js) after k3-cat-config.js. Modifies CAT.CHORD.press2
 // and adds CAT_LAYERS.snake.
 
 

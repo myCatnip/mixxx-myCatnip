@@ -27,7 +27,7 @@
 | **HAL / hardware descriptor** | The plain-JS object a hardware provides: six methods (`buildBindings`, `wireInputs`, `send`, `blank`, `anyPendingWrites`, `decodeLedCache`) plus optional data blocks (`DEFAULTS`, `PERCEPTION`, `PALETTE`, `LED_TRANSFERS`, `MIXXX_COLORS`, `pacing`, `DEFAULT_RGB_BRIGHTNESS`). See HARDWARE.md. |
 | **Host** | An overlay patch's `_host` field — the patches it may apply over. |
 | **hotcue2 overlay** | Chord + slip overlay on the cue layer: row 2 shows hotcues 9–12 (phrase-colour on create), row 3 shows intro/outro markers (jump on press, set on shift+press). |
-| **K2** | The K3's coarse discrete-colour transport fallback. Enabled with `sysex: false` on the whole controller. Three note buckets (red / amber / green) chosen by the r-g difference, plus a velocity dim scalar — not a perception-model wire. Disables perception mix end-to-end and discards the brightness solve's resolution. |
+| **K2** | The K3's discrete-colour transport fallback. Enabled with `sysex: false`. Three note buckets (red / amber / green) chosen by the r-g difference, plus a velocity dim. Not a perception wire. |
 | **`labToggleMix`** | colorLab func that flips `ctrl._perceptionMixActive`. Clears `_ledCache` on toggle. (Was `labToggleWb` in v2.0.x; alias kept with warn-once.) |
 | **Loop clock** | The virtual timeline. Accumulates the musical progress a loop would have made, seeded from the playhead when the loop starts, through wraps. |
 | **Loop-odd overlay** | Chord + slip overlay on the loop layer: rows 2–3 become odd loop sizes. |

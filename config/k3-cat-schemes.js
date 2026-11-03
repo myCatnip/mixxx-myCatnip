@@ -1,8 +1,8 @@
-// config/k3-cat-schemes.mjs — Cat's THEME, QFX chain list,
+// config/k3-cat-schemes.js — Cat's THEME, QFX chain list,
 // phrase-marker colours, colour ramps, and the scheme-builder
 // helpers that the top / bottom / overlay files consume.
 //
-// Loaded after lib/funcs.mjs. Registers on myCatnip.CAT so later
+// Loaded after lib/funcs.js. Registers on myCatnip.CAT so later
 // cat files pull helpers by name.
 //
 // v2.1.0: countdownScheme reads myCatnip.shared.timeSig[ch] for

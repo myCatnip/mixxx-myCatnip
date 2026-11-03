@@ -1,4 +1,4 @@
-// config/k3-cat-bottom.mjs — Cat's cue / loop layers, their shift
+// config/k3-cat-bottom.js — Cat's cue / loop layers, their shift
 // companions, and the two layer-scoped overlays.
 
 

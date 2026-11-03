@@ -1,4 +1,4 @@
-// config/k3-lab.mjs — colorLab extension: LabController class,
+// config/k3-lab.js — colorLab extension: LabController class,
 // bake machinery, slot browser, per-cell painters.
 //
 // v2.1.0:
@@ -66,7 +66,7 @@ myCatnip.modePrintFirst = function(mode, hint) {
     if (myCatnip._modeSeen[mode]) return;
     myCatnip._modeSeen[mode] = true;
     print('[myCatnip]   ' + hint);
-    print('[myCatnip]   silence: myCatnip.MODE_PRINTS = false  (config/k3-lab.mjs)');
+    print('[myCatnip]   silence: myCatnip.MODE_PRINTS = false  (config/k3-lab.js)');
 };
 
 myCatnip.registerPrintTable({
@@ -171,22 +171,29 @@ myCatnip.bakeScheme = function(ref, ctrl, level) {
     var bakeWb  = (level === 'export');
 
     // Perception mode resolution — same semantics as _solveHw in
-    // controller-render.mjs.
+    // controller-render.js. Scheme-level perception override is
+    // resolved first so a scheme with perception: { mix: 'off' }
+    // bakes without WB baked into the stops.
     var P = ctrl && ctrl.hw && ctrl.hw.PERCEPTION;
-    var mixMode = (ctrl && ctrl._perceptionMixActive === false)
-        ? 'off'
-        : ((P && P.mode && P.mode.mix) || 'off');
     var brightnessMode = (P && P.mode && P.mode.brightness) || 'off';
 
-    // Scheme-level perception override (perception: false or
-    // { brightness: 'off' }) — respects the compiled scheme's
-    // translation of legacy calibration: false.
     var schemePerception = compiled.perception;
     if (schemePerception === false) {
         bakeCal = false;
         bakeWb = false;
     } else if (schemePerception && schemePerception.brightness === 'off') {
         bakeCal = false;
+    }
+
+    var mixMode;
+    if (schemePerception === false) {
+        mixMode = 'off';
+    } else if (schemePerception && schemePerception.mix !== undefined) {
+        mixMode = schemePerception.mix;
+    } else if (ctrl && ctrl._perceptionMixActive === false) {
+        mixMode = 'off';
+    } else {
+        mixMode = (P && P.mode && P.mode.mix) || 'off';
     }
 
     var flatTarget = null;
@@ -197,7 +204,7 @@ myCatnip.bakeScheme = function(ref, ctrl, level) {
     }
 
     var wb = null;
-    if (bakeWb && ctrl && ctrl._perceptionMixActive !== false &&
+    if (bakeWb && mixMode === 'correct' &&
         P && P.wbGain && P.wbGain.length >= 3) {
         wb = P.wbGain;
     }

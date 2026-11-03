@@ -1,4 +1,4 @@
-// hw/k3.mjs — Xone K3 hardware descriptor.
+// hw/k3.js — Xone K3 hardware descriptor.
 //
 // HAL contract:
 //   hw.DEFAULTS             boot defaults (midiChannel, sysex)
@@ -21,11 +21,13 @@
 //
 // Perception math is NOT here — this file only declares the model
 // as data. Framework derives curves, LUTs, and solves brightness
-// via lib/perception.mjs before calling hw.send.
+// via lib/perception.js before calling hw.send.
 //
-// K2 fallback (ctrl.sysex === false) is whole-controller. In K2
-// mode, brightness solve is skipped (perception mix inactive) so
-// prediction matches what the wire actually receives.
+// K2 fallback (ctrl.sysex === false) is whole-controller. RGB
+// folds to a 3-colour palette plus a velocity dim. The perception
+// model's brightness solve byte reaches sendK2Note as velocity —
+// fine resolution is discarded. Mix is disabled
+// (_perceptionMixActive = false) so prediction matches the wire.
 
 
 var K2_RG_THRESHOLD = 60;
@@ -60,7 +62,7 @@ myCatnip.HW_K3 = {
     pacing: {},
 
     // Model inputs — framework-side perception derives curves
-    // and LUTs from these + PERCEPTION.curves via lib/perception.mjs.
+    // and LUTs from these + PERCEPTION.curves via lib/perception.js.
     // All fields kept here for byte-identity with v2.0.0.
     PERCEPTION: {
         curves: 'measuredRGB',
