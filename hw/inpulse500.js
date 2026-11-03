@@ -322,6 +322,9 @@ myCatnip.HW_INPULSE500 = {
                         engine.scratchDisable(chNum);
                     }
                 }
+                // Expose refresh on controller so _ip500ResendSideVU can
+                // re-establish scratch after a deck switch mid-touch.
+                ctrl['_ip500RefreshJogTouch' + side] = refreshTouch;
                 function onTouchSource(key) {
                     return function(ch, cc, v, s) {
                         touchSources[key] = (v > 0x3F);

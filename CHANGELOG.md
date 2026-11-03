@@ -5,6 +5,17 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.1] — 2026-11-03
+
+Inpulse 500 bug fixes. No behavior change for K3 presets.
+
+## Fixed
+
+- Deck-assignment LEDs (notes 1/2): in guide mode, `_ip500ResendSideVU` was overwriting the assignment bit with `play_indicator` at every deck switch, and no observer kept it refreshed. The 1/2 indicator now shows assignment in both modes, consistently.
+- Jog scratch persistence: switching decks mid-touch now re-establishes scratch on the new channel via `_ip500RefreshJogTouch<side>`. Previously the new deck pitched instead of scratching for the remainder of the touch.
+
+---
+
 ## [v2.2.0] — 2026-11-03
 
 New hardware preset: Hercules DJControl Inpulse 500 (Cat mapping).

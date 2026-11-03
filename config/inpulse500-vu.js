@@ -119,13 +119,16 @@ myCatnip.InpulseController.prototype._ip500ResendSideVU = function(side) {
         Math.max(0, Math.min(125, Math.round(engine.getValue(grp, 'vu_meter') * 125))));
     midi.sendShortMsg(noteStatus, 0x39,
         engine.getValue(grp, 'peak_indicator') ? 0x7F : 0x00);
-    if (this._ip500BeatmatchGuideMode !== 'markers') {
-        midi.sendShortMsg(noteStatus, 0x30,
-            engine.getValue(grp, 'play_indicator') ? 0x7F : 0x00);
-    }
+    // Note 0x30 is not touched here — deck-assignment indicators
+    // are set by _ip500UpdateDeckIndicators and never overridden.
     try {
         engine.scratchDisable((side === 'A') ? 1 : 2);
         engine.scratchDisable((side === 'A') ? 3 : 4);
+        // If the jog is still touched, re-establish scratch on the new
+        // channel. Exposed by hw/inpulse500.js wireInputs. No-op on
+        // first boot (wireInputs runs after _initExtra).
+        var refreshFn = this['_ip500RefreshJogTouch' + side];
+        if (refreshFn) refreshFn();
     } catch (e) {}
 };
 
