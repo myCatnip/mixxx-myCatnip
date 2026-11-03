@@ -5,6 +5,91 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.2] — 2026-11-03
+
+Inpulse 500 bug pass. No behaviour change for K3 presets.
+
+## Changed
+
+- **Inpulse tempo LED writes are deduped.** The 250 ms tempo update
+  previously re-sent identical `sendShortMsg` calls every cycle —
+  40–70 MIDI messages/sec at idle. Now routed through
+  `_ip500TempoSend`, which no-ops on unchanged velocity per
+  `(status, note)`. Steady-state traffic collapses to zero.
+
+## Fixed
+
+- **Inpulse PFL / slip / quant buttons were dead on input.** HW
+  descriptor declared them `type: 'toggle'`, which is not a valid
+  `Binding.type` and silently bypassed input dispatch. Renamed to
+  `type: 'button'` — the framework derives `buttonMode: 'toggle'`
+  from `cfg.type !== 'push'`, which is the correct toggle path.
+  Affects `pflA/B`, `slipA/B`, `quantA/B`, plus the two
+  `quantA_shift` / `quantB_shift` keylock bindings.
+- **Inpulse slicer mode never tracked LED position.**
+  `_ip500Slicer.A/B.active` was initialised `false` and never set;
+  the LED-advance branch in `ip500SlicerBeatActive` was
+  unreachable. `F.ip500SetPadMode` now sets `slicer.active` on
+  mode entry and clears it (plus `slicer.button`) on exit.
+- **Inpulse effect pads 1–3 had no LED feedback.** `noLED: true`
+  was applied uniformly across the eight effect pads, discarding
+  the community script's white-on / yellow-off state. Restored via
+  the effect's `enabled` CO. Pads 4–8 remain `noLED` (stateless
+  actions in the original too).
+- **Inpulse crossfader active at boot when switch was OFF.**
+  Physical enable switch (note `0x18`) reports no state at boot,
+  so `_ip500XfaderEnabled` defaulted `true`. Now `false` — toggle
+  the switch once to sync.
+- **Inpulse loop encoder blocked halving at 1 bar.** Prior guard
+  `beatloop_size < 8` was the wrong threshold (2 bars) and fragile
+  against sample rounding. Replaced with a hard floor at 1/32 beat
+  (`0.03125`), matching the smallest pad-shift-fraction size.
+  `loop_halve` / `loop_double` run at every size down to the floor.
+- **`Binding._isOn` trusted a stale CO cache.** Preferred
+  `_lastOutKeyValue` over a live `engine.getValue`. The outKey
+  observer does not fire synchronously in every environment (test
+  harness; some boot-order scenarios), so the cache could return
+  the bind-time seed. Now live-read. The observer in `_bindConns`
+  still triggers `_refresh()` on real CO change — that is the
+  repaint path, not the cache. Framework-wide fix; no user-visible
+  change for the K3 workflow (observer fires synchronously there).
+
+## Removed
+
+- **Inpulse beatmatch markers mode.** The port added
+  `beatmatchGuideMode: 'markers'`, which repurposed the beat-align
+  LEDs for alt-deck state — duplicating the number and browser
+  LEDs. Removed; guide mode (the community-script behaviour) is
+  the only tempo display.
+- **Inpulse dead config / state.** `F.ip500Quant`,
+  `F.ip500QuantShift`, `_ip500PadMode`, `pacing` on
+  `HW_INPULSE500`, the `autoDJ` config binding (no HW control),
+  `padSelect<n>` colorSchemes (HW idx `-1`, colour never renders),
+  and the `padSelect` / `autoDJOn` scheme names.
+
+## Tests
+
+- `test/lifecycle.test.js` — new: `_isOn` reads live when the
+  outKey CO changes without observer fire.
+- `test/misc-hooks.test.js` — `_isOn` cache test corrected to
+  match harness contract (`engine._set` writes the CO,
+  `engine._trigger` fires observers — both needed to model a real
+  CO change).
+
+## Review notes (no code change)
+
+- `engine.brake(ch, 1, 54)` in `F.ip500Play` — verified matches
+  the community script's call signature.
+- Browser-LED burst (`_ip500BrowserLedBurst`, five sends over
+  ~1 s) — deliberate, matches community script; the retry comment
+  explains why (shared MIDI buffer drops short messages during
+  sysex drains).
+- `Binding._lastOutKeyValue` is now write-only dead state
+  (observer still fires, value never read). Deferred to a future
+  cleanup pass.
+
+---
+
 ## [v2.2.1] — 2026-11-03
 
 Inpulse 500 bug fixes. No behavior change for K3 presets.

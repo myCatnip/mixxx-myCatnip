@@ -116,16 +116,35 @@ F.ip500Filter = function(args, ch, c, v, s) {
     }
 };
 
+// Loop encoder: halve/double the loop size, but never below 1 bar
+// (4 beats in 4/4) via the encoder. Loop sizes below 1 bar can
+// produce zero-length or near-zero-length loops when combined with
+// rapid loop_in/loop_out presses, which Mixxx interprets as "exit
+// loop". Pads still set any size, including fractional values.
+//
+// Threshold: `size < 8` blocks halve when the current size would
+// produce a result below 4 (1 bar). 16→8→4 allowed; 4→2 blocked.
 F.ip500LoopEncoder = function(args, ch, c, v, s) {
-    if (v >= 0x40) engine.setValue(this.group, 'loop_halve', 1);
-    else           engine.setValue(this.group, 'loop_double', 1);
+    if (v >= 0x40) {
+        var size = engine.getValue(this.group, 'beatloop_size');
+        if (size < 8) return;
+        engine.setValue(this.group, 'loop_halve', 1);
+    } else {
+        engine.setValue(this.group, 'loop_double', 1);
+    }
 };
 
 F.ip500SetPadMode = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
     var deck = args[0], mode = args[1];
     var ctrl = this._ctrl;
-    ctrl._ip500PadMode[deck] = mode;
+
+    var slicer = ctrl._ip500Slicer && ctrl._ip500Slicer[deck];
+    if (slicer) {
+        slicer.active = (mode === 'slicer');
+        if (!slicer.active) slicer.button = -1;
+    }
+
     ctrl._batchPatches(function(patches) {
         for (var i = patches.length - 1; i >= 0; i--) {
             if (patches[i].indexOf('deck' + deck + '_') === 0) {

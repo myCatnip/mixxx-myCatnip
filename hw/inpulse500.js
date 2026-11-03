@@ -74,7 +74,9 @@ myCatnip.HW_INPULSE500 = {
         perceptionMixActive: false
     },
 
-    pacing: { sysexThrottleMs: 5 },
+    // No `pacing` field — the Inpulse transport uses 3-byte short
+    // messages (midi.sendShortMsg), which don't require throttling.
+    // A pacer is never constructed for this hardware.
 
     PALETTE: {
         off:         [  0,   0,   0],
@@ -133,15 +135,19 @@ myCatnip.HW_INPULSE500 = {
             bindings[name] = new myCatnip.Binding(name, spec, ctrl);
         }
 
+        // pfl / slip / quant are toggle buttons: type 'button' with
+        // the default buttonMode ('toggle') is the correct path.
+        // 'toggle' as a spec.type is not a valid Binding.type and
+        // would silently drop input dispatch.
         var deckDefs = [
             [0x07, 'play',   'push'],
             [0x06, 'cue',    'push'],
             [0x05, 'sync',   'push'],
-            [0x0C, 'pfl',    'toggle'],
+            [0x0C, 'pfl',    'button'],
             [0x0D, 'load',   'push'],
             [0x03, 'vinyl',  'push'],
-            [0x01, 'slip',   'toggle'],
-            [0x02, 'quant',  'toggle'],
+            [0x01, 'slip',   'button'],
+            [0x02, 'quant',  'button'],
             [0x09, 'loopIn', 'push'],
             [0x0A, 'loopOut','push'],
             [0x2C, 'loopPush','push']

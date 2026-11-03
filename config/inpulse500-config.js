@@ -119,13 +119,10 @@ function deckBase(side) {
     out['pitch' + side]  = { group: g, inKey: 'rate' };
     out['loopEncoder' + side] = { func: F.ip500LoopEncoder, group: g };
 
+    // Pad-mode selector buttons: no colorScheme — HW idx is -1.
     for (var i = 0; i < 8; i++) {
         out['padSelect' + side + (i + 1)] = {
-            func: F.ip500SetPadMode, args: [side, MODES[i]],
-            colorScheme: {
-                scheme: 'padSelect',
-                on: { patchActive: 'deck' + side + '_' + MODES[i] }
-            }
+            func: F.ip500SetPadMode, args: [side, MODES[i]]
         };
     }
     return out;
@@ -195,31 +192,46 @@ function padLayer(side, mode) {
                 def.noLED = true; defShift.noLED = true;
                 break;
             case 'effect':
+                // Effect pad 1/2/3 toggles the corresponding effect's
+                // enabled CO; the LED tracks that CO (white on, yellow
+                // off — matching the community script). Pads 4..8 are
+                // stateless actions, no LED in the original either.
+                //
+                // effectUnit is derived from side, mirroring
+                // F.ip500PadEffect's group→unit check: A→1 (ch1|3),
+                // B→2 (ch2|4). Diverges only if a user manually maps
+                // deck A to ch2 — same divergence F.ip500PadEffect has.
+                var effectUnit = (side === 'A') ? 1 : 2;
                 var effectMap = [
-                    { func: F.ip500PadEffect, args: [1] },
-                    { func: F.ip500PadEffect, args: [2] },
-                    { func: F.ip500PadEffect, args: [3] },
+                    { func: F.ip500PadEffect, args: [1], effectIndex: 1 },
+                    { func: F.ip500PadEffect, args: [2], effectIndex: 2 },
+                    { func: F.ip500PadEffect, args: [3], effectIndex: 3 },
                     { func: F.ip500PadFXRoute, args: [1] },
                     { func: F.ip500PadQFXCycle, args: [-1] },
                     { func: F.ip500PadQFXCycle, args: [1] },
-                    { func: F.ip500PadQFXEnable, args: [] },
+                    { func: F.ip500PadQFXEnable },
                     { func: F.ip500PadFXRoute, args: [2] }
                 ];
-                var effectShiftMap = [
-                    { func: F.ip500PadEffectShift, args: [1] },
-                    { func: F.ip500PadEffectShift, args: [2] },
-                    { func: F.ip500PadEffectShift, args: [3] },
-                    { func: F.ip500PadNoopShift },
-                    { func: F.ip500PadNoopShift },
-                    { func: F.ip500PadNoopShift },
-                    { func: F.ip500PadNoopShift },
-                    { func: F.ip500PadNoopShift }
-                ];
                 var un = effectMap[p - 1];
-                var sh = effectShiftMap[p - 1];
-                def.func = un.func; def.args = un.args;
-                defShift.func = sh.func; defShift.args = sh.args;
-                def.noLED = true; defShift.noLED = true;
+                def.func = un.func;
+                if (un.args !== undefined) def.args = un.args;
+                if (un.effectIndex) {
+                    def.colorScheme = {
+                        scheme: {
+                            colors: ['white, 127'],
+                            offScheme: ['yellow']
+                        },
+                        on: {
+                            co: 'enabled',
+                            group: '[EffectRack1_EffectUnit' + effectUnit +
+                                   '_Effect' + un.effectIndex + ']'
+                        }
+                    };
+                } else {
+                    def.noLED = true;
+                }
+                defShift.func = F.ip500PadNoopShift;
+                defShift.noLED = true;
                 break;
             case 'beatjump':
                 def.func = F.ip500PadBeatjump;
@@ -243,9 +255,6 @@ myCatnip.IP500_LAYERS = {
         browserKnob:   { func: F.ip500BrowserTurn, noLED: true },
         assistant:     { func: F.ip500Assistant, noLED: true },
         crossfader:    { func: F.ip500Crossfader, noLED: true },
-        autoDJ:        { group: '[AutoDJ]', inKey: 'enabled', outKey: 'enabled',
-                         type: 'push',
-                         colorScheme: { scheme: 'autoDJOn' } },
         fxSel1:        { func: F.ip500DeckSel, args: ['A', 1],
                          colorScheme: { scheme: 'fxSelOn',
                              on: { state: 'selectedDeckA', equals: 1 } } },

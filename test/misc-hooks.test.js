@@ -225,12 +225,17 @@ test('outKey cache: updated on listener fire', function(t) {
     t.eq(c.bindings.button0_0._lastOutKeyValue, 0);
 });
 
-test('outKey cache: _isOn reflects cached value', function(t) {
+test('outKey cache: _isOn reflects CO value after change', function(t) {
     var c = H.ctrl();
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl', outKey: 'pfl',
         colorScheme: {scheme: 'red, 100, 20'}
     });
+    // _set writes the CO; _trigger fires the observer. Both are
+    // needed to model a real CO change in this harness. _isOn is a
+    // live read (see lifecycle 'reads live when outKey CO changes
+    // without observer fire'), so the _set is the load-bearing call.
+    engine._set('[Channel1]', 'pfl', 1);
     engine._trigger('[Channel1]', 'pfl', 1);
     t.eq(c.bindings.button0_0._isOn(), 1);
 });

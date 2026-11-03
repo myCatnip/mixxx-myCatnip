@@ -10,9 +10,7 @@ Object.assign(myCatnip.SCHEMES, {
     loopOn:      { colors: ['yellowgreen, 127'] },
     hotcueColor: { colors: ['mixxx'] },
     deleteHotcue:{ colors: ['red, 80'] },
-    padSelect:   { colors: ['white, 127'] },
     padLoop:     { colors: ['yellowgreen, 127'] },
     padSampler:  { colors: ['magenta, 127'] },
-    fxSelOn:     { colors: ['white, 127'] },
-    autoDJOn:    { colors: ['red, 127'] }
+    fxSelOn:     { colors: ['white, 127'] }
 });

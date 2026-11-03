@@ -247,3 +247,12 @@ test('shutdown: held transaction does not fire captured release', function(t) {
     H.release(c, 'press0');  // short-circuited by _shuttingDown guard
     t.eq(fired, [127], 'release after shutdown must be suppressed');
 });
+
+test('_isOn: reads live when outKey CO changes without observer fire', function(t) {
+    var c = H.ctrl();
+    c._applyBinding('button0_0', {
+        group: '[Channel1]', inKey: 'pfl', outKey: 'pfl'
+    });
+    engine._set('[Channel1]', 'pfl', 1);
+    t.eq(c.bindings.button0_0._isOn(), 1);
+});

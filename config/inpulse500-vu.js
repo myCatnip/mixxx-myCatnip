@@ -1,10 +1,9 @@
-// config/inpulse500-vu.js — VU, tempo LEDs (guide/markers), deck
+// config/inpulse500-vu.js — VU, tempo LEDs (guide only), deck
 // indicators, browser LED burst (deck-selection readout).
 
 myCatnip.InpulseController = function(cfg) {
     myCatnip.Controller.call(this, cfg);
 
-    this._ip500PadMode = { A: 'hotcue', B: 'hotcue' };
     this._ip500Slicer  = { A: myCatnip._ip500SlicerFresh(),
                            B: myCatnip._ip500SlicerFresh() };
     this._ip500VinylA = (cfg.initialVinylMode !== false);
@@ -12,7 +11,12 @@ myCatnip.InpulseController = function(cfg) {
     this._ip500SlowPause = { A: false, B: false };
     this._ip500PitchRange = { A: 0, B: 0 };
     this._ip500XfaderScratch = false;
-    this._ip500XfaderEnabled = true;
+    // The physical crossfader-enable switch sends no state report at
+    // boot (note 0x18, not covered by the 0xB0/0x7F CC dump request).
+    // Default to disabled: safer than the alternative, where the
+    // crossfader would move even with the switch physically OFF.
+    // User toggles the switch to sync.
+    this._ip500XfaderEnabled = false;
     this._ip500BrowserOffFocus = (cfg.browserOffFocus === true);
     this._ip500AssistHeld = false;
     this._ip500AssistConsumed = false;
@@ -20,11 +24,14 @@ myCatnip.InpulseController = function(cfg) {
     this._ip500BrowserPressConsumed = false;
     this._ip500VUConns = [];
     this._ip500TempoTimer = null;
-    this._ip500BeatmatchGuideMode = cfg.beatmatchGuideMode || 'guide';
 
     this._ip500BrowserLedTimer = null;
     this._ip500BrowserLedRetriesLeft = 0;
     this._ip500BrowserLedPending = 0x00;
+
+    // Dedupe cache for tempo-LED writes. 4 Hz updates that produce
+    // the same value become no-ops — steady-state traffic collapses.
+    this._ip500TempoState = {};
 };
 myCatnip.InpulseController.prototype = Object.create(myCatnip.Controller.prototype);
 myCatnip.InpulseController.prototype.constructor = myCatnip.InpulseController;
@@ -106,6 +113,7 @@ myCatnip.InpulseController.prototype._shutdownExtra = function() {
         engine.stopTimer(this._ip500BrowserLedTimer);
         this._ip500BrowserLedTimer = null;
     }
+    this._ip500TempoState = {};
     try { engine.scratchDisable(this.selectedDeckA); } catch (e) {}
     try { engine.scratchDisable(this.selectedDeckB); } catch (e) {}
 };
@@ -174,41 +182,23 @@ myCatnip.InpulseController.prototype._ip500UpdateBrowserLed = function() {
     this._ip500BrowserLedBurst(color);
 };
 
+// Tempo-LED writer with dedupe. Every tempo path goes through
+// here so identical consecutive values are dropped on the wire.
+// Bounded key set (≈18 statuses × notes), no cache eviction needed.
+myCatnip.InpulseController.prototype._ip500TempoSend = function(status, note, vel) {
+    var key = status + ':' + note;
+    if (this._ip500TempoState[key] === vel) return;
+    this._ip500TempoState[key] = vel;
+    midi.sendShortMsg(status, note, vel);
+};
+
 myCatnip.InpulseController.prototype._ip500TempoUpdate = function() {
-    if (this._ip500BeatmatchGuideMode === 'markers') {
-        this._ip500TempoMarkers();
-    } else {
-        this._ip500TempoGuide();
-    }
+    this._ip500TempoGuide();
 };
 
-myCatnip.InpulseController.prototype._ip500TempoMarkers = function() {
-    // Number LEDs: 1 = deck A on ch1, 2 = deck B on ch2.
-    midi.sendShortMsg(0x91, 0x30, this.selectedDeckA === 1 ? 0x7F : 0x00);
-    midi.sendShortMsg(0x92, 0x30, this.selectedDeckB === 2 ? 0x7F : 0x00);
-
-    // Beat-align LEDs under each jog: solid when that side is on its
-    // alt deck (A=3, B=4). These are the same notes the tempo guide
-    // uses; markers mode repurposes them.
-    var altA = this.selectedDeckA === 3;
-    var altB = this.selectedDeckB === 4;
-    var ON = 0x7F, OFF = 0x00;
-    midi.sendShortMsg(0x91, 0x1C, altA ? ON : OFF);
-    midi.sendShortMsg(0x91, 0x1D, altA ? ON : OFF);
-    midi.sendShortMsg(0x91, 0x2D, altA ? ON : OFF);
-    midi.sendShortMsg(0x92, 0x1C, altB ? ON : OFF);
-    midi.sendShortMsg(0x92, 0x1D, altB ? ON : OFF);
-    midi.sendShortMsg(0x92, 0x2D, altB ? ON : OFF);
-
-    // Other tempo LEDs off in markers mode.
-    midi.sendShortMsg(0x91, 0x1E, OFF);
-    midi.sendShortMsg(0x91, 0x1F, OFF);
-    midi.sendShortMsg(0x92, 0x1E, OFF);
-    midi.sendShortMsg(0x92, 0x1F, OFF);
-    midi.sendShortMsg(0x91, 0x2C, OFF);
-    midi.sendShortMsg(0x92, 0x2C, OFF);
-};
-
+// Tempo guide — matches the community script's tempoLEDsGuide
+// exactly. Uses the four beat-align LEDs (0x1C, 0x1D, 0x1E, 0x1F),
+// the center LED (0x2C = matched), and the beat phase LED (0x2D).
 myCatnip.InpulseController.prototype._ip500TempoGuide = function() {
     var dA = this.selectedDeckA, dB = this.selectedDeckB;
     var gA = '[Channel' + dA + ']', gB = '[Channel' + dB + ']';
@@ -225,28 +215,29 @@ myCatnip.InpulseController.prototype._ip500TempoGuide = function() {
     }
 
     var dAaddr = 0x91, dBaddr = 0x92;
+    var send = this._ip500TempoSend.bind(this);
 
     if (diff < -0.25) {
-        midi.sendShortMsg(dAaddr, 0x1E, 0x00); midi.sendShortMsg(dAaddr, 0x1F, 0x7F);
-        midi.sendShortMsg(dBaddr, 0x1F, 0x00); midi.sendShortMsg(dBaddr, 0x1E, 0x7F);
-        midi.sendShortMsg(dAaddr, 0x2C, 0x00); midi.sendShortMsg(dBaddr, 0x2C, 0x00);
-        midi.sendShortMsg(dAaddr, 0x1C, 0x00); midi.sendShortMsg(dAaddr, 0x1D, 0x00);
-        midi.sendShortMsg(dAaddr, 0x2D, 0x00);
-        midi.sendShortMsg(dBaddr, 0x1C, 0x00); midi.sendShortMsg(dBaddr, 0x1D, 0x00);
-        midi.sendShortMsg(dBaddr, 0x2D, 0x00);
+        send(dAaddr, 0x1E, 0x00); send(dAaddr, 0x1F, 0x7F);
+        send(dBaddr, 0x1F, 0x00); send(dBaddr, 0x1E, 0x7F);
+        send(dAaddr, 0x2C, 0x00); send(dBaddr, 0x2C, 0x00);
+        send(dAaddr, 0x1C, 0x00); send(dAaddr, 0x1D, 0x00);
+        send(dAaddr, 0x2D, 0x00);
+        send(dBaddr, 0x1C, 0x00); send(dBaddr, 0x1D, 0x00);
+        send(dBaddr, 0x2D, 0x00);
     } else if (diff > 0.25) {
-        midi.sendShortMsg(dAaddr, 0x1F, 0x00); midi.sendShortMsg(dAaddr, 0x1E, 0x7F);
-        midi.sendShortMsg(dBaddr, 0x1E, 0x00); midi.sendShortMsg(dBaddr, 0x1F, 0x7F);
-        midi.sendShortMsg(dAaddr, 0x2C, 0x00); midi.sendShortMsg(dBaddr, 0x2C, 0x00);
-        midi.sendShortMsg(dAaddr, 0x1C, 0x00); midi.sendShortMsg(dAaddr, 0x1D, 0x00);
-        midi.sendShortMsg(dAaddr, 0x2D, 0x00);
-        midi.sendShortMsg(dBaddr, 0x1C, 0x00); midi.sendShortMsg(dBaddr, 0x1D, 0x00);
-        midi.sendShortMsg(dBaddr, 0x2D, 0x00);
+        send(dAaddr, 0x1F, 0x00); send(dAaddr, 0x1E, 0x7F);
+        send(dBaddr, 0x1E, 0x00); send(dBaddr, 0x1F, 0x7F);
+        send(dAaddr, 0x2C, 0x00); send(dBaddr, 0x2C, 0x00);
+        send(dAaddr, 0x1C, 0x00); send(dAaddr, 0x1D, 0x00);
+        send(dAaddr, 0x2D, 0x00);
+        send(dBaddr, 0x1C, 0x00); send(dBaddr, 0x1D, 0x00);
+        send(dBaddr, 0x2D, 0x00);
     } else {
-        midi.sendShortMsg(dAaddr, 0x1E, 0x00); midi.sendShortMsg(dAaddr, 0x1F, 0x00);
-        midi.sendShortMsg(dAaddr, 0x2C, 0x7F);
-        midi.sendShortMsg(dBaddr, 0x1E, 0x00); midi.sendShortMsg(dBaddr, 0x1F, 0x00);
-        midi.sendShortMsg(dBaddr, 0x2C, 0x7F);
+        send(dAaddr, 0x1E, 0x00); send(dAaddr, 0x1F, 0x00);
+        send(dAaddr, 0x2C, 0x7F);
+        send(dBaddr, 0x1E, 0x00); send(dBaddr, 0x1F, 0x00);
+        send(dBaddr, 0x2C, 0x7F);
 
         if (engine.getValue(gA, 'play_latched') && engine.getValue(gB, 'play_latched')) {
             var b1 = engine.getValue(gA, 'beat_distance');
@@ -258,26 +249,26 @@ myCatnip.InpulseController.prototype._ip500TempoGuide = function() {
             var d = b1 - b2;
             if (d < 0) d = 1 + d;
             if ((d < 0.02) || (d > 1 - 0.02)) {
-                midi.sendShortMsg(dAaddr, 0x1C, 0x00); midi.sendShortMsg(dAaddr, 0x1D, 0x00);
-                midi.sendShortMsg(dAaddr, 0x2D, 0x7F);
-                midi.sendShortMsg(dBaddr, 0x1C, 0x00); midi.sendShortMsg(dBaddr, 0x1D, 0x00);
-                midi.sendShortMsg(dBaddr, 0x2D, 0x7F);
+                send(dAaddr, 0x1C, 0x00); send(dAaddr, 0x1D, 0x00);
+                send(dAaddr, 0x2D, 0x7F);
+                send(dBaddr, 0x1C, 0x00); send(dBaddr, 0x1D, 0x00);
+                send(dBaddr, 0x2D, 0x7F);
             } else if (d < 0.5) {
-                midi.sendShortMsg(dAaddr, 0x1C, 0x00); midi.sendShortMsg(dAaddr, 0x1D, 0x7F);
-                midi.sendShortMsg(dAaddr, 0x2D, 0x00);
-                midi.sendShortMsg(dBaddr, 0x1D, 0x00); midi.sendShortMsg(dBaddr, 0x1C, 0x7F);
-                midi.sendShortMsg(dBaddr, 0x2D, 0x00);
+                send(dAaddr, 0x1C, 0x00); send(dAaddr, 0x1D, 0x7F);
+                send(dAaddr, 0x2D, 0x00);
+                send(dBaddr, 0x1D, 0x00); send(dBaddr, 0x1C, 0x7F);
+                send(dBaddr, 0x2D, 0x00);
             } else {
-                midi.sendShortMsg(dAaddr, 0x1D, 0x00); midi.sendShortMsg(dAaddr, 0x1C, 0x7F);
-                midi.sendShortMsg(dAaddr, 0x2D, 0x00);
-                midi.sendShortMsg(dBaddr, 0x1C, 0x00); midi.sendShortMsg(dBaddr, 0x1D, 0x7F);
-                midi.sendShortMsg(dBaddr, 0x2D, 0x00);
+                send(dAaddr, 0x1D, 0x00); send(dAaddr, 0x1C, 0x7F);
+                send(dAaddr, 0x2D, 0x00);
+                send(dBaddr, 0x1C, 0x00); send(dBaddr, 0x1D, 0x7F);
+                send(dBaddr, 0x2D, 0x00);
             }
         } else {
-            midi.sendShortMsg(dAaddr, 0x1C, 0x00); midi.sendShortMsg(dAaddr, 0x1D, 0x00);
-            midi.sendShortMsg(dAaddr, 0x2D, 0x00);
-            midi.sendShortMsg(dBaddr, 0x1C, 0x00); midi.sendShortMsg(dBaddr, 0x1D, 0x00);
-            midi.sendShortMsg(dBaddr, 0x2D, 0x00);
+            send(dAaddr, 0x1C, 0x00); send(dAaddr, 0x1D, 0x00);
+            send(dAaddr, 0x2D, 0x00);
+            send(dBaddr, 0x1C, 0x00); send(dBaddr, 0x1D, 0x00);
+            send(dBaddr, 0x2D, 0x00);
         }
     }
 };
