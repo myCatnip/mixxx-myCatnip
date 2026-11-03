@@ -174,9 +174,6 @@ myCatnip.bakeScheme = function(ref, ctrl, level) {
     // controller-render.js. Scheme-level perception override is
     // resolved first so a scheme with perception: { mix: 'off' }
     // bakes without WB baked into the stops.
-    var P = ctrl && ctrl.hw && ctrl.hw.PERCEPTION;
-    var brightnessMode = (P && P.mode && P.mode.brightness) || 'off';
-
     var schemePerception = compiled.perception;
     if (schemePerception === false) {
         bakeCal = false;
@@ -185,20 +182,14 @@ myCatnip.bakeScheme = function(ref, ctrl, level) {
         bakeCal = false;
     }
 
-    var mixMode;
-    if (schemePerception === false) {
-        mixMode = 'off';
-    } else if (schemePerception && schemePerception.mix !== undefined) {
-        mixMode = schemePerception.mix;
-    } else if (ctrl && ctrl._perceptionMixActive === false) {
-        mixMode = 'off';
-    } else {
-        mixMode = (P && P.mode && P.mode.mix) || 'off';
-    }
+    var brightnessMode = ctrl._resolveBrightnessMode(schemePerception);
+    var mixMode = ctrl._resolveMixMode(schemePerception);
 
+    // Flat bake only when the runtime will flat-solve. 'own' previously
+    // fell through to the HW default and got flat-baked against intent.
     var flatTarget = null;
     if (bakeCal && compiled.calibration !== false &&
-        ctrl && brightnessMode !== 'off') {
+        brightnessMode === 'flat') {
         flatTarget = myCatnip.perception._flatTarget(segs, ctrl.hw, mixMode);
         flatTarget = myCatnip.scaleTarget(flatTarget, raw.brightnessScale);
     }
@@ -236,6 +227,12 @@ myCatnip.bakeScheme = function(ref, ctrl, level) {
         reverse: raw.reverse,
         beat: raw.beat
     };
+    // Preserve perception on round-trip. Non-null only — setting null
+    // would defeat the calibration:false → { brightness: 'off' }
+    // translation and cause a double solve on baked stops.
+    if (raw.perception !== undefined && raw.perception !== null) {
+        out.perception = raw.perception;
+    }
 
     if (level === 'bakedInterp') out.interp = true;
     if (level === 'baked')       out.interp = false;

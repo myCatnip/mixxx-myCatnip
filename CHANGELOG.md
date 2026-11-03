@@ -5,6 +5,30 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.4] — 2026-11-03
+
+Bug pass + simplification. No behaviour change for shipped presets.
+
+## Fixed
+
+- `Binding._evaluateScheme`: a scheme function returning a fresh-but-value-equal object no longer recompiles on every render. Warns once (`csSchemeFresh`), reuses the compiled memo.
+- Lab `bakeScheme`: `perception.brightness === 'own'` sources no longer get a flat-target bake applied against intent. Flat bake is now gated on `brightnessMode === 'flat'`.
+- Lab `bakeScheme`: the scheme's `perception` field is now preserved on round-trip (non-null only — `null` is left unset so the `calibration: false` → `{ brightness: 'off' }` legacy translation still applies).
+
+## Changed
+
+- `perceptionOverride` → `mixMode` / `brightnessMode` resolution consolidated into `Controller._resolveMixMode` / `Controller._resolveBrightnessMode`. Used by `sendLED`, `_solveHw`, and Lab `bakeScheme` (three copies → one).
+- `perception._fingerprint(hw)` is now cached per HW (`_fpCache` WeakMap). Removes a string build per `_flatTarget` call. `_invalidate(hw)` clears it.
+- `EMPTY_META` is frozen. `lib/controller-beat.js` is now `'use strict';`.
+
+## Review notes (no code change)
+
+- B5 (deviation LED + beat brightness inheritance): documented in INTERNALS §20.7 as a latent limitation. Full fix needs an `applyBeat` return-shape change; deferred.
+- B1 (co-match perception — parent vs co-scheme): confirmed as designed. Parent wins. No shipped scheme exercises a non-default co-scheme perception.
+- B7 (unbind orphans an active transaction): behaviour confirmed correct. Inline comment added to `_applyBinding`'s unbind branch.
+
+---
+
 ## [v2.1.3] — 2026-11-03
 
 Small fix + doc pass. One real bug (lab bake), one real waste of
