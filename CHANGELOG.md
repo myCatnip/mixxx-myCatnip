@@ -5,6 +5,70 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.5] — 2026-11-04
+
+Inpulse 500 config cleanup + framework per-device Ctor. No
+behaviour change for K3 or Inpulse.
+
+## Changed
+
+- **Framework:** `_bootWith` honours an optional per-device `Ctor`
+  override. Falls back to the second `_bootWith` argument when
+  `d.Ctor` is unset, so all existing single-Ctor callers
+  (K3, Kitten, oneK3, miniFX, colorLab, Inpulse 500) are
+  unchanged. Enables a single preset to boot mixed Controller
+  subclasses (e.g. K3 Cat + Inpulse 500 in one preset for shared
+  `myCatnip.shared` state) — the plumbing for a future dual
+  preset, no dual preset shipped in this release.
+
+## Removed
+
+- **Inpulse 500:** `F.ip500Filter` — byte-identical to the
+  framework's default knob input path (`_defaultInput` →
+  `setParameter(group, 'super1', _normalized)`). Filter binding
+  now relies on the framework default. Same behaviour.
+- **Inpulse 500:** `F.ip500PadBeatjump` — replaced by the canonical
+  `F.beatjumpButton` from `lib/funcs.js`. Same `_isPress` guard,
+  same `_beatjumpAllowed` gate, same arg format; uses `_pulseCo`
+  instead of raw `setValue(1)`, so the trigger CO resets after
+  `PULSE_CO_MS` (30 ms) rather than staying latched. Latent
+  robustness win for Mixxx builds where the beatjump CO does not
+  self-reset. On current Mixxx the CO self-resets, so no
+  user-visible difference.
+- **Inpulse 500:** `F.ip500PadNoop` / `F.ip500PadNoopShift` —
+  framework already no-ops on missing `_func` via `_defaultInput`'s
+  `!this.inKey` guard. Pitch pad 8 and effect shift pads 4–8 now
+  fall through to a true no-op without an explicit placeholder
+  func. Same behaviour.
+
+## Docs
+
+- **HANDOVER §12:** added the two-part contract — stateless HAL
+  (HW descriptor) vs stateful lifecycle (Controller subclass).
+  Explicitly states which side owns timers, CO observers, and
+  device-specific send helpers. `InpulseController` and
+  `LabController` are the two reference implementations.
+
+## Review notes (no code change)
+
+- **`sendRaw(idx, r, g, b, hw)` framework method** — considered and
+  rejected. The `_ip500Send` shim (4 lines, correctly gated on
+  `_shuttingDown`, lives in `InpulseController` where it belongs)
+  is the right shape. Replacing it with a framework method that
+  takes RGB instead of raw palette bytes would be more verbose at
+  the call site for no framework benefit. The shim is not on any
+  generic code path — no HAL leak worth closing.
+- **`colorScheme.activeScheme`** — considered and rejected. LED-
+  while-held semantics don't survive assist delegation (shift +
+  pitch-noop would light the LED for a no-op). Device-specific
+  problem, correctly solved by the `_ip500Send` shim inside the
+  funcs, not by a framework concept.
+- **`shiftFunc` on bindings** — considered and rejected. No
+  second device needs assist-style delegation; speculative
+  abstraction over the more central `_dispatchInput` path.
+
+---
+
 ## [v2.2.4] — 2026-11-04
 
 Inpulse 500 fidelity + regression pass. No behaviour change for K3

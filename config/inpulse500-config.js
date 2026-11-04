@@ -1,6 +1,11 @@
 // config/inpulse500-config.js
 // Loop buttons are explicit type:'push'. Assistant and browser
 // are handled by the funcs file. Deck select binds to setSelectedFor.
+//
+// Pads whose shift variant has no action simply omit `defShift.func` —
+// _defaultInput's `!inKey` guard makes them true no-ops. Same for the
+// filter knob: group + inKey + default knob input cover it, no func
+// needed.
 
 var F = myCatnip.FUNCS;
 var MODES = myCatnip.HW_INPULSE500.IP500_MODE_NAMES;
@@ -108,7 +113,6 @@ function deckBase(side) {
 
     out['volume' + side] = { group: g, inKey: 'volume' };
     out['filter' + side] = {
-        func: F.ip500Filter,
         group: '[QuickEffectRack1_' + g + ']',
         inKey: 'super1'
     };
@@ -178,10 +182,9 @@ function padLayer(side, mode) {
                     F.ip500PadPitchDownTone, F.ip500PadPitchDownSemi,
                     F.ip500PadPitchUpSemi, F.ip500PadPitchUpTone,
                     F.ip500PitchRangeReset, F.ip500PitchRangeDown,
-                    F.ip500PitchRangeUp, F.ip500PadNoop
+                    F.ip500PitchRangeUp
                 ];
-                def.func = pitchFuncs[p - 1] || F.ip500PadNoop;
-                defShift.func = F.ip500PadNoopShift;
+                if (p <= pitchFuncs.length) def.func = pitchFuncs[p - 1];
                 def.noLED = true; defShift.noLED = true;
                 break;
             case 'roll':
@@ -196,6 +199,9 @@ function padLayer(side, mode) {
                 // enabled CO; the LED tracks that CO (white on, yellow
                 // off — matching the community script). Pads 4..8 are
                 // stateless actions, no LED in the original either.
+                //
+                // Shift+effect pad 1-3 cycles effect_selector on the
+                // bound effect. Pads 4-8 have no shift action.
                 //
                 // effectUnit is derived from side, mirroring
                 // F.ip500PadEffect's group→unit check: A→1 (ch1|3),
@@ -227,21 +233,18 @@ function padLayer(side, mode) {
                                    '_Effect' + un.effectIndex + ']'
                         }
                     };
-                    // Shift+effect pad 1-3 cycles effect_selector on the
-                    // bound effect. Pads 4-8 have no shift action (noop).
                     defShift.func = F.ip500PadEffectShift;
                     defShift.args = [un.effectIndex];
                 } else {
                     def.noLED = true;
-                    defShift.func = F.ip500PadNoopShift;
                 }
                 defShift.noLED = true;
                 break;
             case 'beatjump':
-                def.func = F.ip500PadBeatjump;
                 var mv = (p % 2 === 0) ? '_forward' : '_backward';
+                def.func = F.beatjumpButton;
                 def.args = ['beatjump_' + IP500_JUMP_VALUES[p - 1] + mv];
-                defShift.func = F.ip500PadBeatjump;
+                defShift.func = F.beatjumpButton;
                 defShift.args = ['beatjump_' + IP500_JUMP_SHIFT_VALUES[p - 1] + mv];
                 def.noLED = true; defShift.noLED = true;
                 break;

@@ -10,6 +10,10 @@
 // Loop actions call `_touchLoop(group)` so beatjump is gated per
 // channel for BEATJUMP_GAP_MS (130 ms) after the last loop touch —
 // same mechanism as K3's _beatjumpAllowed gate.
+//
+// Pads with no func and no inKey fall through _defaultInput's
+// `!this.inKey` guard — true no-op, no explicit placeholder func
+// needed.
 
 var F = myCatnip.FUNCS;
 
@@ -125,12 +129,6 @@ F.ip500LoopPushShift = function(args, ch, c, v, s) {
     else       engine.setValue(this.group, 'beatloop_4_activate', 0);
 };
 
-F.ip500Filter = function(args, ch, c, v, s) {
-    if (this.type === 'knob' && this._normalized !== undefined) {
-        engine.setParameter(this.group, 'super1', this._normalized);
-    }
-};
-
 // Loop encoder. Two modes, selected by myCatnip.IP500_LOOP.fineMode:
 //
 //   fineMode: false (default) — faithful to the community script.
@@ -220,9 +218,6 @@ F.ip500SetPadMode = function(args, ch, c, v, s) {
         patches.push('deck' + deck + '_' + mode);
     });
 };
-
-F.ip500PadNoop      = function() {};
-F.ip500PadNoopShift = function() {};
 
 F.ip500PadHotcue = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
@@ -390,12 +385,6 @@ F.ip500PadQFXEnable = function(args, ch, c, v, s) {
     var grp = '[QuickEffectRack1_' + this.group + ']';
     var cur = engine.getValue(grp, 'enabled');
     engine.setValue(grp, 'enabled', cur ? 0 : 1);
-};
-
-F.ip500PadBeatjump = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    if (!this._ctrl._beatjumpAllowed(this.group)) return;
-    engine.setValue(this.group, args[0], 1);
 };
 
 // Assistant: press sets assistHeld (global shift for decks),
