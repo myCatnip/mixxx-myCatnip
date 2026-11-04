@@ -5,6 +5,12 @@ myCatnip.init = function() {
     myCatnip.applyPacing(myCatnip.HW_INPULSE500.pacing);
     myCatnip.applyIP500Jog({});
 
+    // Loop-encoder mode. Default (fineMode: false) is faithful to the
+    // community script — unconditional halve/double, no floor. Uncomment
+    // for fine control below 1 bar (4 beats in 4/4).
+    // myCatnip.IP500_LOOP.fineMode      = true;
+    // myCatnip.IP500_LOOP.fineStepBeats = 0.01;
+
     myCatnip._bootWith([{
         label: 'Inpulse 500',
         hw: myCatnip.HW_INPULSE500,

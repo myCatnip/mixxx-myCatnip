@@ -59,6 +59,7 @@ myCatnip.ip500SlicerButton = function(ctrl, side, group, index) {
 };
 
 myCatnip.ip500SlicerBeatActive = function(ctrl, ch, value) {
+    if (ctrl._shuttingDown) return;
     var side = (ch === 1 || ch === 3) ? 'A' : 'B';
     var st = ctrl._ip500Slicer[side];
     var group = '[Channel' + ch + ']';

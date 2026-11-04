@@ -227,10 +227,14 @@ function padLayer(side, mode) {
                                    '_Effect' + un.effectIndex + ']'
                         }
                     };
+                    // Shift+effect pad 1-3 cycles effect_selector on the
+                    // bound effect. Pads 4-8 have no shift action (noop).
+                    defShift.func = F.ip500PadEffectShift;
+                    defShift.args = [un.effectIndex];
                 } else {
                     def.noLED = true;
+                    defShift.func = F.ip500PadNoopShift;
                 }
-                defShift.func = F.ip500PadNoopShift;
                 defShift.noLED = true;
                 break;
             case 'beatjump':

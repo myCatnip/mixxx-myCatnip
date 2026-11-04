@@ -1,12 +1,21 @@
 // config/inpulse500-funcs.js — custom funcs.
 // Assist-held delegates shift-able funcs to their shift variants.
 // Browser funcs follow pasted script's active behavior.
+//
+// Assist-as-modifier helper `_ip500UseAssist()` (defined on
+// InpulseController in config/inpulse500-vu.js) marks assist as
+// consumed on any delegation so releasing assist does not also
+// toggle the maximized-library state.
+//
+// Loop actions call `_touchLoop(group)` so beatjump is gated per
+// channel for BEATJUMP_GAP_MS (130 ms) after the last loop touch —
+// same mechanism as K3's _beatjumpAllowed gate.
 
 var F = myCatnip.FUNCS;
 
 F.ip500Play = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
-    if (this._ctrl._ip500AssistHeld) return F.ip500PlayShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500PlayShift.call(this, args, ch, c, v, s);
     var side = args[0];
     var ctrl = this._ctrl;
     var playing = engine.getValue(this.group, 'play_latched');
@@ -24,7 +33,7 @@ F.ip500PlayShift = function(args, ch, c, v, s) {
 };
 
 F.ip500Cue = function(args, ch, c, v, s) {
-    if (this._ctrl._ip500AssistHeld) return F.ip500CueShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500CueShift.call(this, args, ch, c, v, s);
     if (v > 0) {
         if (engine.getValue(this.group, 'play_indicator')) {
             engine.setValue(this.group, 'cue_gotoandstop', 1);
@@ -42,7 +51,7 @@ F.ip500CueShift = function(args, ch, c, v, s) {
 
 F.ip500Sync = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
-    if (this._ctrl._ip500AssistHeld) return F.ip500SyncShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500SyncShift.call(this, args, ch, c, v, s);
     var cur = engine.getValue(this.group, 'sync_enabled');
     engine.setValue(this.group, 'sync_enabled', cur ? 0 : 1);
 };
@@ -53,7 +62,7 @@ F.ip500SyncShift = function(args, ch, c, v, s) {
 
 F.ip500Load = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
-    if (this._ctrl._ip500AssistHeld) return F.ip500LoadShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500LoadShift.call(this, args, ch, c, v, s);
     engine.setValue(this.group, 'LoadSelectedTrack', 1);
 };
 F.ip500LoadShift = function(args, ch, c, v, s) {
@@ -67,7 +76,7 @@ F.ip500LoadShift = function(args, ch, c, v, s) {
 
 F.ip500Vinyl = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
-    if (this._ctrl._ip500AssistHeld) return F.ip500VinylShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500VinylShift.call(this, args, ch, c, v, s);
     var side = args[0];
     var ctrl = this._ctrl;
     if (side === 'A') ctrl._ip500VinylA = !ctrl._ip500VinylA;
@@ -81,7 +90,8 @@ F.ip500VinylShift = function(args, ch, c, v, s) {
 };
 
 F.ip500LoopIn = function(args, ch, c, v, s) {
-    if (this._ctrl._ip500AssistHeld) return F.ip500LoopInShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500LoopInShift.call(this, args, ch, c, v, s);
+    if (v > 0) this._ctrl._touchLoop(this.group);
     engine.setValue(this.group, 'loop_in', v > 0 ? 1 : 0);
 };
 F.ip500LoopInShift = function(args, ch, c, v, s) {
@@ -89,7 +99,8 @@ F.ip500LoopInShift = function(args, ch, c, v, s) {
     engine.setValue(this.group, 'loop_in_goto', 1);
 };
 F.ip500LoopOut = function(args, ch, c, v, s) {
-    if (this._ctrl._ip500AssistHeld) return F.ip500LoopOutShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500LoopOutShift.call(this, args, ch, c, v, s);
+    if (v > 0) this._ctrl._touchLoop(this.group);
     engine.setValue(this.group, 'loop_out', v > 0 ? 1 : 0);
 };
 F.ip500LoopOutShift = function(args, ch, c, v, s) {
@@ -97,11 +108,15 @@ F.ip500LoopOutShift = function(args, ch, c, v, s) {
     engine.setValue(this.group, 'loop_out_goto', 1);
 };
 F.ip500LoopPush = function(args, ch, c, v, s) {
-    if (this._ctrl._ip500AssistHeld) return F.ip500LoopPushShift.call(this, args, ch, c, v, s);
+    if (this._ctrl._ip500UseAssist()) return F.ip500LoopPushShift.call(this, args, ch, c, v, s);
     // reloop_toggle is a trigger, but the CO value must be
     // reset to 0 on release or the skin button stays latched.
-    if (v > 0) engine.setValue(this.group, 'reloop_toggle', 1);
-    else       engine.setValue(this.group, 'reloop_toggle', 0);
+    if (v > 0) {
+        this._ctrl._touchLoop(this.group);
+        engine.setValue(this.group, 'reloop_toggle', 1);
+    } else {
+        engine.setValue(this.group, 'reloop_toggle', 0);
+    }
 };
 F.ip500LoopPushShift = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
@@ -116,21 +131,72 @@ F.ip500Filter = function(args, ch, c, v, s) {
     }
 };
 
-// Loop encoder: halve/double the loop size, but never below 1 bar
-// (4 beats in 4/4) via the encoder. Loop sizes below 1 bar can
-// produce zero-length or near-zero-length loops when combined with
-// rapid loop_in/loop_out presses, which Mixxx interprets as "exit
-// loop". Pads still set any size, including fractional values.
+// Loop encoder. Two modes, selected by myCatnip.IP500_LOOP.fineMode:
 //
-// Threshold: `size < 8` blocks halve when the current size would
-// produce a result below 4 (1 bar). 16→8→4 allowed; 4→2 blocked.
+//   fineMode: false (default) — faithful to the community script.
+//     Unconditional loop_halve / loop_double. Mixxx clamps internally;
+//     no floor. The v2.2.2 `if (size < 8) return;` guard is gone — it
+//     blocked shrinking below 4 beats and was not in the original.
+//
+//   fineMode: true — above IP500_LOOP.fineBelowBeats, native halve /
+//     double (live resize, anchor preserved). Below that threshold,
+//     nudge loop_end_position directly by IP500_LOOP.fineStepBeats.
+//     Falls back to writing beatloop_size when no loop is active
+//     (nothing to resize; size applies on the next activation).
+//
+// Every tick calls _touchLoop, so beatjump on the same channel is
+// gated for BEATJUMP_GAP_MS after the last encoder click.
+//
+// Threshold is in beats (beatloop_size units). Defaults to 4.0 —
+// 1 bar in 4/4. Tune via myCatnip.IP500_LOOP before boot.
+myCatnip.IP500_LOOP = myCatnip.IP500_LOOP || {
+    fineMode:       false,
+    fineBelowBeats: 4.0,
+    fineStepBeats:  0.01,
+    minBeats:       0.03125
+};
+
 F.ip500LoopEncoder = function(args, ch, c, v, s) {
-    if (v >= 0x40) {
-        var size = engine.getValue(this.group, 'beatloop_size');
-        if (size < 8) return;
-        engine.setValue(this.group, 'loop_halve', 1);
+    var group = this.group;
+    var ctrl = this._ctrl;
+    var cfg = myCatnip.IP500_LOOP;
+    var grow = (v < 0x40);
+
+    ctrl._touchLoop(group);
+
+    if (!cfg.fineMode) {
+        if (grow) engine.setValue(group, 'loop_double', 1);
+        else      engine.setValue(group, 'loop_halve', 1);
+        return;
+    }
+
+    var size = engine.getValue(group, 'beatloop_size');
+
+    if (size >= cfg.fineBelowBeats) {
+        if (grow) engine.setValue(group, 'loop_double', 1);
+        else      engine.setValue(group, 'loop_halve', 1);
+        return;
+    }
+
+    var step    = grow ? cfg.fineStepBeats : -cfg.fineStepBeats;
+    var newSize = size + step;
+    if (newSize < cfg.minBeats) return;
+
+    if (engine.getValue(group, 'loop_enabled')) {
+        var beatNext       = engine.getValue(group, 'beat_next');
+        var beatClosest    = engine.getValue(group, 'beat_closest');
+        var samplesPerBeat = beatNext - beatClosest;
+        if (!(samplesPerBeat > 0)) {
+            engine.setValue(group, 'beatloop_size', newSize);
+            return;
+        }
+        var loopStart = engine.getValue(group, 'loop_start_position');
+        var loopEnd   = engine.getValue(group, 'loop_end_position');
+        var newEnd    = loopEnd + step * samplesPerBeat;
+        if (newEnd <= loopStart + 1) return;
+        engine.setValue(group, 'loop_end_position', newEnd);
     } else {
-        engine.setValue(this.group, 'loop_double', 1);
+        engine.setValue(group, 'beatloop_size', newSize);
     }
 };
 
@@ -169,6 +235,7 @@ F.ip500PadHotcueShift = function(args, ch, c, v, s) {
 
 F.ip500PadLoop = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
+    this._ctrl._touchLoop(this.group);
     engine.setValue(this.group, 'beatloop_' + args[0] + '_toggle', 1);
 };
 
@@ -194,61 +261,102 @@ F.ip500PadSamplerShift = function(args, ch, c, v, s) {
     }
 };
 
+// Pitch pads. Colours match DJCi500.colors:
+//   cyan 0x1F / dimCyan 0x12  (down-semi, down-tone)
+//   red  0x60 / darkRed 0x40  (up-semi, up-tone, range-reset)
+//   blue 0x03 / dimBlue 0x02  (range-down)
+//   pink 0x63 / magenta 0x42  (range-up)
+//
+// "Tone" = whole tone = 2 semitones, not an octave. Original calls
+// pitch_up / pitch_down twice for tone pads.
+//
+// All seven pads send their off colour on release (v === 0); the
+// community script does the same (LED latches are re-asserted by the
+// next on-press, so no off-only pattern needed).
 F.ip500PadPitchDownTone = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    for (var i = 0; i < 12; i++) engine.setValue(this.group, 'pitch_down', 1);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x1F);
+    var ctrl = this._ctrl;
+    if (v > 0) {
+        engine.setValue(this.group, 'pitch_down', 1);
+        engine.setValue(this.group, 'pitch_down', 1);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x1F);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x12);
+    }
 };
 F.ip500PadPitchDownSemi = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    engine.setValue(this.group, 'pitch_down', 1);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x1F);
+    var ctrl = this._ctrl;
+    if (v > 0) {
+        engine.setValue(this.group, 'pitch_down', 1);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x1F);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x12);
+    }
 };
 F.ip500PadPitchUpSemi = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    engine.setValue(this.group, 'pitch_up', 1);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x1F);
+    var ctrl = this._ctrl;
+    if (v > 0) {
+        engine.setValue(this.group, 'pitch_up', 1);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x60);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x40);
+    }
 };
 F.ip500PadPitchUpTone = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    for (var i = 0; i < 12; i++) engine.setValue(this.group, 'pitch_up', 1);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x1F);
+    var ctrl = this._ctrl;
+    if (v > 0) {
+        engine.setValue(this.group, 'pitch_up', 1);
+        engine.setValue(this.group, 'pitch_up', 1);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x60);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x40);
+    }
 };
 
 var IP500_PITCH_RANGES = [0.08, 0.10, 0.15, 0.16, 0.24, 0.50, 0.90];
 F.ip500PitchRangeUp = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
     var ctrl = this._ctrl;
-    if (ctrl._ip500PitchRange[side] < 6) ctrl._ip500PitchRange[side]++;
-    engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[ctrl._ip500PitchRange[side]]);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x42);
+    if (v > 0) {
+        var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
+        if (ctrl._ip500PitchRange[side] < 6) ctrl._ip500PitchRange[side]++;
+        engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[ctrl._ip500PitchRange[side]]);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x63);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x42);
+    }
 };
 F.ip500PitchRangeDown = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
     var ctrl = this._ctrl;
-    if (ctrl._ip500PitchRange[side] > 0) ctrl._ip500PitchRange[side]--;
-    engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[ctrl._ip500PitchRange[side]]);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x02);
+    if (v > 0) {
+        var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
+        if (ctrl._ip500PitchRange[side] > 0) ctrl._ip500PitchRange[side]--;
+        engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[ctrl._ip500PitchRange[side]]);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x03);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x02);
+    }
 };
 F.ip500PitchRangeReset = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
     var ctrl = this._ctrl;
-    ctrl._ip500PitchRange[side] = 0;
-    engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[0]);
-    midi.sendShortMsg(this.midi[0], this.midi[1], 0x42);
+    if (v > 0) {
+        var side = (this.group === '[Channel1]' || this.group === '[Channel3]') ? 'A' : 'B';
+        ctrl._ip500PitchRange[side] = 0;
+        engine.setValue(this.group, 'rateRange', IP500_PITCH_RANGES[0]);
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x60);
+    } else {
+        ctrl._ip500Send(this.midi[0], this.midi[1], 0x40);
+    }
 };
 
 F.ip500PadRoll = function(args, ch, c, v, s) {
     var status = this.midi[0], note = this.midi[1];
+    var ctrl = this._ctrl;
     if (v === 0x7F) {
+        ctrl._touchLoop(this.group);
         engine.setValue(this.group, 'beatlooproll_' + args[0] + '_activate', 1);
-        midi.sendShortMsg(status, note, 0x1F);
+        ctrl._ip500Send(status, note, 0x1F);
     } else {
         engine.setValue(this.group, 'beatlooproll_' + args[0] + '_activate', 0);
-        midi.sendShortMsg(status, note, 0x12);
+        ctrl._ip500Send(status, note, 0x12);
     }
 };
 
@@ -291,8 +399,8 @@ F.ip500PadBeatjump = function(args, ch, c, v, s) {
 };
 
 // Assistant: press sets assistHeld (global shift for decks),
-// release clears it and (if not consumed by browser turn) toggles
-// the library maximized state.
+// release clears it and (if not consumed by any assist-delegated
+// action during the hold) toggles the library maximized state.
 F.ip500Assistant = function(args, ch, c, v, s) {
     var ctrl = this._ctrl;
     if (v > 0) {
@@ -336,8 +444,7 @@ F.ip500BrowserTurn = function(args, ch, c, v, s) {
     }
 
     // Assist held: horizontal browse (existing shift behaviour).
-    if (ctrl._ip500AssistHeld) {
-        ctrl._ip500AssistConsumed = true;
+    if (ctrl._ip500UseAssist()) {
         engine.setValue('[Library]', dir > 0 ? 'MoveLeft' : 'MoveRight', 1);
         return;
     }

@@ -267,6 +267,7 @@ myCatnip.HW_INPULSE500 = {
             if (b && b.input) b.input(ch, cc, v, s);
         }
         midi.makeInputHandler(0xB0, 0x01, browserKnobHandler);
+        midi.makeInputHandler(0xB0, 0x02, browserKnobHandler);
         midi.makeInputHandler(0xB3, 0x01, browserKnobHandler);
 
         var ctrl14 = [

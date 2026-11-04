@@ -37,6 +37,26 @@ myCatnip.InpulseController = function(cfg) {
 myCatnip.InpulseController.prototype = Object.create(myCatnip.Controller.prototype);
 myCatnip.InpulseController.prototype.constructor = myCatnip.InpulseController;
 
+// Shutdown gate. Every direct midi.sendShortMsg from the Inpulse layer
+// routes through here. sendLED already gates on _shuttingDown; this
+// covers the paths that bypass it — timer callbacks and CO observers
+// firing during the async drain between shutdown() and _shutdownExtra().
+myCatnip.InpulseController.prototype._ip500Send = function(status, note, vel) {
+    if (this._shuttingDown) return;
+    midi.sendShortMsg(status, note, vel);
+};
+
+// Assist-as-modifier helper. Returns true if assist is held (caller
+// should delegate to the shift variant) and marks assist as consumed
+// so releasing assist does not also toggle the library. Use in place
+// of `if (ctrl._ip500AssistHeld)` in every func that delegates to a
+// shift variant.
+myCatnip.InpulseController.prototype._ip500UseAssist = function() {
+    if (!this._ip500AssistHeld) return false;
+    this._ip500AssistConsumed = true;
+    return true;
+};
+
 myCatnip.InpulseController.prototype._initExtra = function() {
     var self = this;
 
@@ -52,18 +72,18 @@ myCatnip.InpulseController.prototype._initExtra = function() {
     }
 
     connect('[Main]', 'vu_meter_left', function(v) {
-        midi.sendShortMsg(0xB0, 0x40,
+        self._ip500Send(0xB0, 0x40,
             Math.max(0, Math.min(124, Math.round(v * 124))));
     });
     connect('[Main]', 'vu_meter_right', function(v) {
-        midi.sendShortMsg(0xB0, 0x41,
+        self._ip500Send(0xB0, 0x41,
             Math.max(0, Math.min(124, Math.round(v * 124))));
     });
     connect('[Main]', 'peak_indicator_left', function(v) {
-        midi.sendShortMsg(0x90, 0x0A, v ? 0x7F : 0x00);
+        self._ip500Send(0x90, 0x0A, v ? 0x7F : 0x00);
     });
     connect('[Main]', 'peak_indicator_right', function(v) {
-        midi.sendShortMsg(0x90, 0x0F, v ? 0x7F : 0x00);
+        self._ip500Send(0x90, 0x0F, v ? 0x7F : 0x00);
     });
 
     for (var ch = 1; ch <= 4; ch++) {
@@ -71,13 +91,13 @@ myCatnip.InpulseController.prototype._initExtra = function() {
             var grp = '[Channel' + c + ']';
             connect(grp, 'vu_meter', function(v) {
                 var mapped = Math.max(0, Math.min(125, Math.round(v * 125)));
-                if (self.selectedDeckA === c) midi.sendShortMsg(0xB1, 0x40, mapped);
-                if (self.selectedDeckB === c) midi.sendShortMsg(0xB2, 0x40, mapped);
+                if (self.selectedDeckA === c) self._ip500Send(0xB1, 0x40, mapped);
+                if (self.selectedDeckB === c) self._ip500Send(0xB2, 0x40, mapped);
             });
             connect(grp, 'peak_indicator', function(v) {
                 var val = v ? 0x7F : 0x00;
-                if (self.selectedDeckA === c) midi.sendShortMsg(0x91, 0x39, val);
-                if (self.selectedDeckB === c) midi.sendShortMsg(0x92, 0x39, val);
+                if (self.selectedDeckA === c) self._ip500Send(0x91, 0x39, val);
+                if (self.selectedDeckB === c) self._ip500Send(0x92, 0x39, val);
             });
             // Number LEDs are deck-assignment indicators (1/2),
             // not play indicators. Set from _ip500UpdateDeckIndicators.
@@ -97,8 +117,6 @@ myCatnip.InpulseController.prototype._initExtra = function() {
     }, false);
 
     this._ip500UpdateDeckIndicators();
-    midi.sendShortMsg(0x90, 0x14, 0x7F);
-    midi.sendShortMsg(0x90, 0x15, 0x7F);
 
     // Ask the controller to dump all current CC values. Without
     // this, Mixxx doesn't learn physical pot positions at boot,
@@ -130,9 +148,9 @@ myCatnip.InpulseController.prototype._ip500ResendSideVU = function(side) {
     var ccStatus = (side === 'A') ? 0xB1 : 0xB2;
     var noteStatus = (side === 'A') ? 0x91 : 0x92;
     var grp = '[Channel' + ch + ']';
-    midi.sendShortMsg(ccStatus, 0x40,
+    this._ip500Send(ccStatus, 0x40,
         Math.max(0, Math.min(125, Math.round(engine.getValue(grp, 'vu_meter') * 125))));
-    midi.sendShortMsg(noteStatus, 0x39,
+    this._ip500Send(noteStatus, 0x39,
         engine.getValue(grp, 'peak_indicator') ? 0x7F : 0x00);
     // Note 0x30 is not touched here — deck-assignment indicators
     // are set by _ip500UpdateDeckIndicators and never overridden.
@@ -150,8 +168,8 @@ myCatnip.InpulseController.prototype._ip500ResendSideVU = function(side) {
 myCatnip.InpulseController.prototype._ip500UpdateDeckIndicators = function() {
     // Number LEDs always show primary assignment: 1 = deck A on ch1,
     // 2 = deck B on ch2. (Replaces play-indicator mode.)
-    midi.sendShortMsg(0x91, 0x30, this.selectedDeckA === 1 ? 0x7F : 0x00);
-    midi.sendShortMsg(0x92, 0x30, this.selectedDeckB === 2 ? 0x7F : 0x00);
+    this._ip500Send(0x91, 0x30, this.selectedDeckA === 1 ? 0x7F : 0x00);
+    this._ip500Send(0x92, 0x30, this.selectedDeckB === 2 ? 0x7F : 0x00);
     this._ip500ResendSideVU('A');
     this._ip500ResendSideVU('B');
     this._ip500UpdateBrowserLed();
@@ -159,6 +177,7 @@ myCatnip.InpulseController.prototype._ip500UpdateDeckIndicators = function() {
 };
 
 myCatnip.InpulseController.prototype._ip500BrowserLedBurst = function(color) {
+    if (this._shuttingDown) return;
     var ctrl = this;
     var BURST = 5;
     var RETRY_MS = 200;
@@ -168,6 +187,7 @@ myCatnip.InpulseController.prototype._ip500BrowserLedBurst = function(color) {
     ctrl._ip500BrowserLedRetriesLeft = BURST - 1;
     if (ctrl._ip500BrowserLedTimer) return;
     ctrl._ip500BrowserLedTimer = engine.beginTimer(RETRY_MS, function() {
+        if (ctrl._shuttingDown) return;
         if (ctrl._ip500BrowserLedRetriesLeft > 0) {
             midi.sendShortMsg(0x90, 0x05, ctrl._ip500BrowserLedPending);
             ctrl._ip500BrowserLedRetriesLeft--;
@@ -193,6 +213,7 @@ myCatnip.InpulseController.prototype._ip500UpdateBrowserLed = function() {
 // here so identical consecutive values are dropped on the wire.
 // Bounded key set (≈18 statuses × notes), no cache eviction needed.
 myCatnip.InpulseController.prototype._ip500TempoSend = function(status, note, vel) {
+    if (this._shuttingDown) return;
     var key = status + ':' + note;
     if (this._ip500TempoState[key] === vel) return;
     this._ip500TempoState[key] = vel;

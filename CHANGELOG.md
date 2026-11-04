@@ -5,6 +5,156 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.4] — 2026-11-04
+
+Inpulse 500 fidelity + regression pass. No behaviour change for K3
+presets. Default Inpulse behaviour now matches the community script
+byte for byte; fine-mode loop encoder and assist consumption are
+opt-in extensions, off by default.
+
+## Fixed
+
+- **Inpulse 500:** loop encoder now matches the community script —
+  unconditionally calls `loop_halve` / `loop_double`, no artificial
+  1-bar floor. The v2.2.2 `if (size < 8) return;` guard blocked
+  shrinking below 4 beats and was not present in the original.
+  Optional fine-resolution mode below 1 bar available via
+  `myCatnip.IP500_LOOP.fineMode` (default off — faithful path is the
+  default). Fine mode nudges `loop_end_position` directly so the
+  active loop resizes live; falls back to `beatloop_size` when no loop
+  is active.
+- **Inpulse 500:** shift + effect pads 1–3 now cycle `effect_selector`
+  again. v2.2.2 unified all eight pads to `ip500PadNoopShift`; the
+  community script wires pads 1–3 to `effect_selector` and pads 4–8
+  to noop. Regression reverted; `F.ip500PadEffectShift` re-wired.
+- **Inpulse 500:** pitch "tone" pads (pad 1 and pad 4 in pitch mode)
+  shift by two semitones (one whole tone), not twelve (one octave).
+  Multiplier corrected 12 → 2, matching the community script.
+- **Inpulse 500:** pitch pad colours corrected against the community
+  palette. `pitchUpSemi` and `pitchUpTone` send red (0x60), not cyan
+  (0x1F). `pitchRangeReset` sends red (0x60), not magenta (0x42).
+  `pitchRangeDown` sends blue (0x03), not dimBlue (0x02).
+  `pitchRangeUp` sends pink (0x63), not magenta (0x42). All seven
+  pitch pads now send their off colour on release; previously they
+  latched bright after press.
+- **Inpulse 500:** browser knob now responds to CC 0xB0/0x02 as well
+  as 0xB0/0x01. The community XML registers both; the port only
+  registered 0x01, so the second CC was dropped.
+
+## Changed
+
+- **Inpulse 500:** beatjump is now gated by recent loop activity,
+  matching K3. Every loop_in / loop_out / loop_push press, loop
+  encoder click, loop-pad and roll-pad press calls
+  `_touchLoop(group)`, which sets `shared.lastLoopTouchMs[ch]`.
+  `F.ip500PadBeatjump` already calls `_beatjumpAllowed(group)`, so
+  pad-8 beatjumps on the same channel are suppressed for
+  `BEATJUMP_GAP_MS` (130 ms) after the last loop action. Per-channel:
+  A's loop work does not gate B's beatjump. Fixes: rapidly pressing
+  loop_in / loop_out could create a 1/32 loop and the very next pad-8
+  press would beatjump out of it. Now the first beatjump press is
+  dropped and the next (after 130 ms) works normally.
+- **Inpulse 500:** releasing the Assist button no longer toggles the
+  maximized-library state if assist was used as a shift modifier
+  during the hold. Previously, holding assist and pressing any
+  deck-side button (play, cue, sync, load, vinyl, loop in / out /
+  push) delegated to the shift variant on press **and** toggled the
+  library on assist release — so assist+load onto the alt deck also
+  closed the browser. Now any assist-delegated action marks assist as
+  consumed, and the release toggle is suppressed. Assist-as-shortcut
+  (tap and release with no other action) still toggles the library,
+  matching prior behaviour.
+- **Inpulse 500:** shutdown hardening. All Inpulse MIDI sends now
+  gate on `_shuttingDown` via a `_ip500Send` helper. Fixes
+  timer-driven writes (tempo 250 ms tick, browser LED burst) and
+  CO-callback writes (VU meters, slicer beat tracking) firing during
+  the async drain window between `shutdown()` and `_shutdownExtra()`.
+  `_ip500BrowserLedBurst`'s timer callback also checks
+  `_shuttingDown` on each tick, so a burst started just before
+  shutdown stops cleanly.
+- **Inpulse 500:** removed two redundant manual `fxSel1` / `fxSel2`
+  LED sends at boot. `_refreshAllLeds` already lights these via their
+  colorScheme; the manual sends were only correct for the shipped
+  A=1 / B=2 mapping and overrode the correct state for any
+  non-default deck assignment.
+- **Inpulse 500:** `F.ip500PadRoll` now routes through `_ip500Send`
+  for consistency with the rest of the Inpulse layer. No behavioural
+  change in the shipped case.
+
+## Removed
+
+- Dead 1-bar floor guard in `F.ip500LoopEncoder` (superseded by the
+  `IP500_LOOP` config object; both faithful and fine modes bypass it).
+
+## Tests
+
+- Loop encoder floor: set `beatloop_size` to 4, fire encoder CCW,
+  assert `loop_halve` is called (old code returned early).
+- Loop encoder fine mode: set `fineMode: true`, active 2-beat loop,
+  CCW tick, assert `loop_end_position` shrinks by
+  `fineStepBeats × samplesPerBeat`; assert `loop_start_position`
+  unchanged.
+- Loop encoder fine-mode collapse guard: at `minBeats`, additional
+  CCW ticks are no-ops.
+- Loop encoder `_touchLoop`: every encoder tick sets
+  `shared.lastLoopTouchMs[ch]` for the bound channel.
+- Beatjump gate: `F.ip500LoopIn` press → immediate
+  `F.ip500PadBeatjump` press → assert no `beatjump_*` CO write;
+  wait `BEATJUMP_GAP_MS` → assert write proceeds. Repeat for
+  `_touchLoop` on loop encoder, loop pad, roll pad, loop push.
+  Assert per-channel isolation: A's loop touch does not gate B's
+  beatjump.
+- `F.ip500PadEffectShift`: config-inspection test asserting effect
+  pads 1–3 have `defShift.func === F.ip500PadEffectShift` and pads
+  4–8 have `defShift.func === F.ip500PadNoopShift`.
+- Shutdown gate: trigger `_ip500BrowserLedBurst`, call `shutdown()`,
+  fire remaining burst ticks, assert no `midi.sendShortMsg`. Same
+  for `_ip500TempoSend`, `ip500SlicerBeatActive`, VU callbacks.
+- Pitch tone multiplier: stub `engine.setValue`, fire
+  `F.ip500PadPitchDownTone` (press), assert `pitch_down` called
+  exactly twice; fire release, assert no additional `pitch_down`.
+- Pitch off-send: for each pitch func, fire press → assert on colour;
+  fire release → assert off colour.
+- Assist consumption: press assist + press play + release assist →
+  assert library state unchanged; press assist + release assist
+  (no other action) → assert library toggled.
+
+## Review notes (no code change)
+
+- **Inpulse assist consumption** is a deliberate deviation from the
+  community script, which only consumes assist on browser-knob turn.
+  Every deck-side shift-delegated function in the original falls
+  through, so shift+load, shift+play, etc. all toggled the library on
+  assist release there too. Port now consumes on every delegation —
+  a deliberate UX improvement, not a bug fix. Credit to Ev3nt1ne,
+  DJ Phatso, resetreboot, Kerrick Staley, Bentheshrubber,
+  ThatOneRuffian for the original mapping.
+- **Cross-side scratch within a single Inpulse** (raised during the
+  v2.2.3 audit cycle) is **not** a bug: `_ip500UpdateDeckIndicators`
+  always calls `_ip500ResendSideVU('A')` and `_ip500ResendSideVU('B')`
+  in the same synchronous tick, and each re-enables its own side's
+  jog touch if still held, so a transient disable on the peer side
+  self-heals within the same tick. No change needed.
+- **Pitch range values** (`[0.08, 0.10, 0.15, 0.16, 0.24, 0.50,
+  0.90]`) match the original community script. No change.
+- **Browser turn direction** matches the original. No change.
+- **Browser push on both `0x90` and `0x93`** matches the original
+  XML. No change.
+- **`_ip500TempoGuide` else-if branch**: the community script has a
+  duplicate `midi.sendShortMsg(0x91, 0x2D, 0x0)` where the second
+  should target `0x92`. The port sends the correct `0x92` — behaviour
+  differs from the original here, but is the fix. Noted for
+  parity-aware readers.
+- **Cross-controller scratch conflict** (HANDOVER §5a) unchanged —
+  deferred to v2.3.0 with the second-controller milestone.
+- **Cross-preset `shared.lastLoopTouchMs`** does not gate across
+  presets — K3 and Inpulse each boot their own JS context, so K3
+  loop touches do not gate Inpulse beatjumps. Only becomes possible
+  when both controllers boot from one preset (v2.3.0). Within
+  Inpulse alone, the gate is fully functional per channel.
+
+---
+
 ## [v2.2.3] — 2026-11-03
 
 Inpulse 500 patch on v2.2.2. No behaviour change for K3 presets.
