@@ -55,7 +55,7 @@ myCatnip.ip500SlicerButton = function(ctrl, side, group, index) {
     if (loopEnabled) engine.setValue(group, 'reloop_toggle', true);
 
     var padStatus = (side === 'A') ? 0x96 : 0x97;
-    midi.sendShortMsg(padStatus, 0x20 + index, 0x62);
+    ctrl._ip500Send(padStatus, 0x20 + index, 0x62);
 };
 
 myCatnip.ip500SlicerBeatActive = function(ctrl, ch, value) {
@@ -80,10 +80,10 @@ myCatnip.ip500SlicerBeatActive = function(ctrl, ch, value) {
         if (st.button !== slicerPosInSection) {
             for (var i = 0; i < 8; i++) {
                 var active = ((slicerPosInSection === i) ? false : true) ? 0x03 : 0x7F;
-                midi.sendShortMsg(padStatus, 0x20 + i, active);
+                ctrl._ip500Send(padStatus, 0x20 + i, active);
             }
         } else {
-            midi.sendShortMsg(padStatus, 0x20 + st.button, 0x62);
+            ctrl._ip500Send(padStatus, 0x20 + st.button, 0x62);
         }
     } else {
         st.alreadyJumped = false;

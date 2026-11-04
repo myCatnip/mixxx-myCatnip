@@ -37,10 +37,14 @@ myCatnip.InpulseController = function(cfg) {
 myCatnip.InpulseController.prototype = Object.create(myCatnip.Controller.prototype);
 myCatnip.InpulseController.prototype.constructor = myCatnip.InpulseController;
 
-// Shutdown gate. Every direct midi.sendShortMsg from the Inpulse layer
-// routes through here. sendLED already gates on _shuttingDown; this
-// covers the paths that bypass it — timer callbacks and CO observers
-// firing during the async drain between shutdown() and _shutdownExtra().
+// Shutdown gate for every direct midi.sendShortMsg from
+// config/inpulse500-*.js. Covers timer callbacks and CO observers
+// firing during the async drain between shutdown() and
+// _shutdownExtra().
+//
+// The hardware descriptor (hw/inpulse500.js) is deliberately
+// separate: `send` is gated upstream by Controller.sendLED, and
+// `blank` intentionally fires during shutdown to clear LEDs.
 myCatnip.InpulseController.prototype._ip500Send = function(status, note, vel) {
     if (this._shuttingDown) return;
     midi.sendShortMsg(status, note, vel);
@@ -122,7 +126,7 @@ myCatnip.InpulseController.prototype._initExtra = function() {
     // this, Mixxx doesn't learn physical pot positions at boot,
     // and soft-takeover forces a physical touch before each
     // fader/knob "catches." Matches the community script's init().
-    midi.sendShortMsg(0xB0, 0x7F, 0x7F);
+    this._ip500Send(0xB0, 0x7F, 0x7F);
 };
 
 myCatnip.InpulseController.prototype._shutdownExtra = function() {
@@ -182,14 +186,13 @@ myCatnip.InpulseController.prototype._ip500BrowserLedBurst = function(color) {
     var BURST = 5;
     var RETRY_MS = 200;
 
-    midi.sendShortMsg(0x90, 0x05, color);
+    ctrl._ip500Send(0x90, 0x05, color);
     ctrl._ip500BrowserLedPending = color;
     ctrl._ip500BrowserLedRetriesLeft = BURST - 1;
     if (ctrl._ip500BrowserLedTimer) return;
     ctrl._ip500BrowserLedTimer = engine.beginTimer(RETRY_MS, function() {
-        if (ctrl._shuttingDown) return;
         if (ctrl._ip500BrowserLedRetriesLeft > 0) {
-            midi.sendShortMsg(0x90, 0x05, ctrl._ip500BrowserLedPending);
+            ctrl._ip500Send(0x90, 0x05, ctrl._ip500BrowserLedPending);
             ctrl._ip500BrowserLedRetriesLeft--;
         } else {
             engine.stopTimer(ctrl._ip500BrowserLedTimer);
@@ -213,11 +216,10 @@ myCatnip.InpulseController.prototype._ip500UpdateBrowserLed = function() {
 // here so identical consecutive values are dropped on the wire.
 // Bounded key set (≈18 statuses × notes), no cache eviction needed.
 myCatnip.InpulseController.prototype._ip500TempoSend = function(status, note, vel) {
-    if (this._shuttingDown) return;
     var key = status + ':' + note;
     if (this._ip500TempoState[key] === vel) return;
     this._ip500TempoState[key] = vel;
-    midi.sendShortMsg(status, note, vel);
+    this._ip500Send(status, note, vel);
 };
 
 myCatnip.InpulseController.prototype._ip500TempoUpdate = function() {

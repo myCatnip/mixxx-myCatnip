@@ -5,7 +5,44 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v2.3.0] — 2026-11-XX
+## [v2.3.1] — 2026-11-04
+
+Correctness fixes, doc drift cleanup, Inpulse shutdown invariant. No wire-behaviour change to shipped presets.
+
+## Added
+
+## Changed
+- Route every `midi.sendShortMsg` from `config/inpulse500-*.js` through `_ip500Send`: `_ip500TempoSend`, `_ip500BrowserLedBurst`, `ip500SlicerButton`/`ip500SlicerBeatActive`, and the boot CC dump in `_initExtra`. Three paths previously bypassed the helper with local `_shuttingDown` guards. Behaviour on the wire is unchanged (shutdown already blocked these); the invariant is now enforced at one point for the Inpulse config layer. Hardware descriptor (`hw/inpulse500.js`) unchanged: `send` is gated upstream by `Controller.sendLED`; `blank` intentionally fires during shutdown to clear LEDs.
+- HANDOVER §4: `_ip500Send` claim restated as an enforced invariant.
+- HANDOVER §6.4: corrected `_ip500PitchRange` description — it's the source of truth, `rateRange` is derived, not the other way around.
+- `perception.custom` doc: now `custom: true` (disables framework curve derivation). Not a curve source. Code unchanged.
+
+## Fixed
+- `applyBeat` now sets `type: 'rgb'` when the cascade supplies a new rgb. Previously a `mixxx`-typed base stop kept `type: 'mixxx'` and the beat colour was silently dropped. Latent — no shipped scheme combines mixxx stops with beat overrides.
+- `setTimeSig` rejects non-integer `ch`. Previously `setTimeSig(4, 4, 1.5)` silently created `shared.timeSig['1.5']`.
+- `_inspectWhy` reads `perception` from the live scheme (`_evaluateScheme` output), not just `_csScheme`. Function-only schemes previously showed "(none)" even when a perception override was set.
+- `cfg.timeSig` at boot is no longer a silent no-op. `_bootWith` seeds `shared.timeSig` per-channel from each device's `cfg.timeSig` (per-channel form `{1: {barBeats, phraseBars}, ...}`). Flat `{barBeats, phraseBars}` accepted for all channels with a warn-once. No shipped preset passes `timeSig`, so no runtime change.
+
+## Removed
+- `Binding._lastOutKeyValue` — write-only dead field since v2.2.2. Removed from constructor and `_bindConns`. OutKey connection unchanged.
+- `Binding._warnIfFreshScheme` — dead helper, never wired, and incorrect as designed (short-circuit on `_warned[key]` could skip a needed recompile if the scheme function returned fresh objects with different values). The inline warn in `_evaluateScheme` handles the correct case.
+
+## Tests
+- `node test/run.js` — baseline unchanged, all green.
+- Inpulse shutdown smoke test: no MIDI after `_shuttingDown = true` (helper-mediated paths verified).
+- `inspect('shared')` shows `timeSig` unchanged on Inpulse.
+- Temporarily pass `timeSig: {1: {barBeats: 3, phraseBars: 8}}` in a preset, confirm `shared.timeSig[1]` seeds correctly. Revert.
+- `grep -rn 'midi\.sendShortMsg' config/inpulse500-*.js` → only the one inside `_ip500Send`.
+
+## Review notes (no code change)
+- K2 off-transition (`sendK2Note` clears only the base note): frozen by v2.0.0 byte-identity policy. User confirmed intentional.
+- Encoder polarity (`F.ip500BrowserTurn` vs `F.ip500LoopEncoder` opposite tick directions): user confirmed looks right on hardware; verification deferred.
+- `_ip500ResendSideVU` hard-coded A ∈ {1,3}, B ∈ {2,4}: matches hardware design. User confirmed "best way."
+- `TWO_DECK_MINI` as `{ patch: ['twoDeck'] }`: intentional. Distinct patch name for `_host` targeting; body inherited from twoDeck.
+
+---
+
+## [v2.3.0] — 2026-11-04
 
 Preset consolidation. Two presets removed, three renamed in the
 Mixxx preset dropdown (filenames unchanged). Framework API
