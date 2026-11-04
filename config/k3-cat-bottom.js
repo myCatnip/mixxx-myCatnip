@@ -1,10 +1,30 @@
 // config/k3-cat-bottom.js — Cat's cue / loop layers, their shift
 // companions, and the two layer-scoped overlays.
+//
+// CUE and LOOP are siblings — no inheritance between them.
+// Loads after cat-schemes.js (needs countdownScheme, slipScheme,
+// PLAY_LED_SCHEME).
+//
+// Layer button is push-mode so the modifier system captures a
+// transaction on press. Chord (shift+layer) activates via
+// modifiers.chord — see bootCat's modifierStates.
+//
+// pressR (CUE) is a modifier-holder: push-mode, no func, no
+// group/inKey. modifiers.loadArm derives from its transaction.
+// Its old F.loadSelectedTrack has moved to the transaction model.
+//
+// CUE's pressL / encoderL are unbound in this pass (paired-hold
+// removal — F.bpmPress / F.encBpmPressedHeadMix gone). Rebinds
+// deferred. CUE_SHIFT.encoderL (master gain) is preserved.
 
 
 var F = myCatnip.FUNCS;
 var B = myCatnip.builders;
 var CAT = myCatnip.CAT;
+
+// ============================================================
+// SHARED CELL FACTORIES
+// ============================================================
 
 function eqRamp() {
     return B.composeScheme({ scheme: 'myCatnipSpread', markerWidth: 0 });
@@ -29,6 +49,8 @@ function playCell() {
              colorScheme: CAT.PLAY_LED_SCHEME };
 }
 
+// Push-mode — the transaction system uses this to derive the
+// chord modifier (heldBy: ['shift', 'layer']).
 function layerButton(from, to) {
     return { func: F.layerButton, args: [from, to],
              type: 'push',
@@ -75,6 +97,12 @@ function hotcuePhraseClear(n) {
         type: 'push'
     };
 }
+// Intro / outro marker cell — direct CO binding, exactly the
+// same shape as hotcue() / hotcueClear(). Mixxx's `_activate`
+// does jump-if-set, set-if-unset, matching hotcue `_activate`.
+// `_clear` deletes, matching hotcue `_clear`. `_enabled` is
+// the read-only on/off (0 = unset, 1 = set), matching hotcue
+// `_status`.
 function markerCell(base, color) {
     return {
         group: '$DECK_ACTIVE$',
@@ -104,8 +132,13 @@ function beatjumpSize(size, scheme) {
              colorScheme: { scheme: scheme } };
 }
 
+// ============================================================
+// CUE
+// ============================================================
 var CUE = {
     layer: layerButton('cue', 'loop'),
+    // pressR / pressL — modifier-holders only. modifiers.loadArm
+    // / modifiers.bpmPressHeld derive from their transactions.
     pressR:   { type: 'push' },
     pressL:   { type: 'push', func: F.bpmPress },
     encoderL: { func: F.encBpmOrHeadMix, args: [0.1, 0.05],
@@ -141,6 +174,12 @@ var CUE_SHIFT = {
     grid2_0: { group: '$DECK_ACTIVE$',
                colorScheme: { knob: 'fader2', scheme: eqRamp(), on: false } },
     grid2_1: {
+        // Slip LED is shared with CHORD.grid2_1's old layer-overlay
+        // toggle. Under chord this dispatches that toggle (so
+        // chord+slip still flips hotcue2 / loopOdd); otherwise it
+        // flips the active deck. When an overlay is active,
+        // SELECT_AB_SHIFT / FX_ROUTING_SHIFT's grid2_1 shadows
+        // this one and does the correct thing.
         func: function(args, ch, c, v, s) {
             if (!this._ctrl._isPress(v, s)) return;
             var ctrl = this._ctrl;
@@ -168,6 +207,13 @@ var CUE_SHIFT = {
 };
 CUE._shift = 'cueShift';
 
+// ============================================================
+// hotcue2 — chord + slip overlay
+// ============================================================
+// Row 2: hotcues 9-12, phrase colour set on create (PHRASE_HOTCUE_SLOTS).
+// Row 3: intro / outro markers. Same press/clear CO pattern as
+// hotcues — _activate on press, _clear on shift+press, _enabled
+// drives the LED.
 var CUE_2 = {
     _host: 'cue',
     grid0_1: { func: F.beatjumpButton, args: ['beatjump_16_backward'],
@@ -204,6 +250,9 @@ var CUE_2_SHIFT = {
     grid3_3: markerCellShift('outro_end')
 };
 
+// ============================================================
+// LOOP
+// ============================================================
 var LOOP = {
     layer: layerButton('loop', 'cue'),
     encoderL: { func: F.encLoopMove, args: ['in', 0.010],
@@ -248,6 +297,12 @@ var LOOP_SHIFT = {
     grid2_0: { group: '$DECK_ACTIVE$',
                colorScheme: { knob: 'fader2', scheme: eqRamp(), on: false } },
     grid2_1: {
+        // Slip LED is shared with CHORD.grid2_1's old layer-overlay
+        // toggle. Under chord this dispatches that toggle (so
+        // chord+slip still flips hotcue2 / loopOdd); otherwise it
+        // flips the active deck. When an overlay is active,
+        // SELECT_AB_SHIFT / FX_ROUTING_SHIFT's grid2_1 shadows
+        // this one and does the correct thing.
         func: function(args, ch, c, v, s) {
             if (!this._ctrl._isPress(v, s)) return;
             var ctrl = this._ctrl;
@@ -275,6 +330,9 @@ var LOOP_SHIFT = {
 };
 LOOP._shift = 'loopShift';
 
+// ============================================================
+// LOOP odd-sizes — chord + slip overlay
+// ============================================================
 var LOOP_ODD = {
     _host: 'loop',
     grid0_1: { func: F.beatjumpButton, args: ['beatjump_backward'],
@@ -299,6 +357,9 @@ var LOOP_ODD_SHIFT = {
     grid2_3: beatjumpSize('3/8',  'sky2'), grid3_3: beatjumpSize('1/2',  'cyan')
 };
 
+// ============================================================
+// EXPORTS
+// ============================================================
 CAT.CUE = CUE;
 CAT.CUE_SHIFT = CUE_SHIFT;
 CAT.CUE_2 = CUE_2;
@@ -307,4 +368,3 @@ CAT.LOOP = LOOP;
 CAT.LOOP_SHIFT = LOOP_SHIFT;
 CAT.LOOP_ODD = LOOP_ODD;
 CAT.LOOP_ODD_SHIFT = LOOP_ODD_SHIFT;
-

@@ -1,5 +1,20 @@
 // config/k3-cat-top.js — Cat's three top-half base patches and
 // the single shared shift companion.
+//
+//   TOP_SHARED        focus mode base
+//   TWO_DECK          twoDeck mode base
+//   TWO_DECK_MINI     mini mode base (inherits twoDeck entirely)
+//   TOP_SHIFT         shared shift companion for all three
+//
+// Layout patches (fxLayout<n> etc.) come from cat-fx.js. This
+// file only defines the shared top-half scaffolding.
+//
+// Loads after cat-schemes.js (needs fxSchemeFor, FX_COLOR_MAP,
+// countdownScheme).
+//
+// The shift binding is now `type: 'push'` with no func — the
+// modifier system (modifierStates.shift) reads its transaction
+// state directly. Its outKey drives the track-end countdown LED.
 
 
 var F = myCatnip.FUNCS;
@@ -42,6 +57,9 @@ function topRowBase() {
     };
 }
 
+// Shift binding — push-mode, no func. The modifier system
+// (modifierStates.shift in boot config) derives shift state
+// from the transaction. outKey drives the LED countdown.
 function shiftBinding() {
     return {
         type: 'push',
@@ -51,6 +69,9 @@ function shiftBinding() {
     };
 }
 
+// ============================================================
+// TOP_SHARED — focus mode base
+// ============================================================
 var TOP_SHARED = Object.assign(topRowBase(), {
     encoder1: { func: F.encQuickFxCycle, group: QFX },
     encoder2: null,
@@ -89,6 +110,9 @@ var TOP_SHARED = Object.assign(topRowBase(), {
 });
 TOP_SHARED._shift = 'topShift';
 
+// ============================================================
+// TWO_DECK — twoDeck mode base
+// ============================================================
 var TWO_DECK = Object.assign(topRowBase(), {
     shift: shiftBinding(),
 
@@ -151,10 +175,16 @@ var TWO_DECK = Object.assign(topRowBase(), {
 });
 TWO_DECK._shift = 'topShift';
 
+// ============================================================
+// TWO_DECK_MINI — inherits twoDeck entirely
+// ============================================================
 var TWO_DECK_MINI = {
     patch: ['twoDeck']
 };
 
+// ============================================================
+// TOP_SHIFT — shared shift companion for every top-half base.
+// ============================================================
 var TOP_SHIFT = {
     encoder0: { func: F.encKeySync,  group: '$DECK_A$' },
     encoder1: { func: F.encKeyReset, group: '$DECK_A$' },
@@ -171,8 +201,10 @@ var TOP_SHIFT = {
               colorScheme: { scheme: 'syncOn' } }
 };
 
+// ============================================================
+// EXPORTS
+// ============================================================
 CAT.TOP_SHARED = TOP_SHARED;
 CAT.TOP_SHIFT = TOP_SHIFT;
 CAT.TWO_DECK = TWO_DECK;
 CAT.TWO_DECK_MINI = TWO_DECK_MINI;
-

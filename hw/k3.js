@@ -38,6 +38,10 @@ function _sendSysex(msg) {
     midi.sendSysexMsg(msg, msg.length);
 }
 
+// Logical LED idxes reachable by the K2 fallback. Covers the 32
+// matrix LEDs, the layer button, the shift button, and the four
+// encoder-adjacent LEDs. Anything outside this list has no
+// physical K2 counterpart and is a silent no-op in sendK2Note.
 var BLANK_NOTES = [
     0x0C, 0x0D, 0x0E, 0x0F,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -73,6 +77,13 @@ myCatnip.HW_K3 = {
         mode: { mix: 'correct', brightness: 'flat' }
     },
 
+    // Measured [hw, luminance] transfer curves per channel.
+    // Inputs are the 0..127 hw byte the wire carries; outputs are
+    // raw luminance (arbitrary units). Normalised to [0..1]
+    // against each channel's own peak by lib/perception.js —
+    // red peaks low, blue peaks high, green between. The three
+    // curves diverge heavily in shape, which is why weights and
+    // wbGain are also per-channel.
     LED_TRANSFERS: {
         measuredRGB: {
             r: [
@@ -203,6 +214,11 @@ myCatnip.HW_K3 = {
                 function cb(_ch, _cc, v, s) {
                     if (b.input) b.input(_ch, _cc, v, s);
                 }
+                // Every note-on binding gets a paired note-off
+                // handler on the same note — hardware sends the
+                // release as 0x80+ch, not as note-on with velocity 0.
+                // CC bindings (encoders, faders, knobs, pitch) are
+                // single-message; no release variant exists.
                 midi.makeInputHandler(b.midi[0], b.midi[1], cb);
                 if ((b.midi[0] & 0xF0) === 0x90) {
                     midi.makeInputHandler(noteOff, b.midi[1], cb);
@@ -238,6 +254,16 @@ myCatnip.HW_K3 = {
         pacer.start();
     },
 
+    // Two-sweep blank. Short-message sweep runs unconditionally —
+    // a previous session may have left K2 notes lit (running with
+    // sysex:false on this or a peer preset), and sysex blanks can't
+    // reach K2 notes. Sysex sweep is skipped entirely in K2 mode
+    // (sysex === false): the short-message sweep already covers
+    // every reachable K2 note.
+    //
+    // K2 indices are also skipped in the sysex sweep — those slots
+    // have a dedicated K2 note in the hardware, and lighting them
+    // via sysex would fight the K2 fallback's own emissions.
     blank: function(ctrl) {
         for (var bi = 0; bi < BLANK_NOTES.length; bi++) {
             midi.sendShortMsg(0x90 + ctrl.midiChannel, BLANK_NOTES[bi], 0x00);
@@ -256,11 +282,17 @@ myCatnip.HW_K3 = {
         pacer.start();
     },
 
+    // Drain status for shutdown polling. Controller.shutdown()
+    // reschedules _finalize while this returns true, so pacer
+    // queue depth is the write-completion signal for sysex.
     anyPendingWrites: function(ctrl) {
         var p = ctrl._pacers && ctrl._pacers.led;
         return p ? p.length() > 0 : false;
     },
 
+    // Decode the packed 28-bit int used for _ledCache dedupe.
+    // Layout: r<<21 | g<<14 | b<<7 | hw. Used by inspect() and any
+    // debug dump that wants to see what a cached frame contained.
     decodeLedCache: function(val) {
         if (typeof val !== 'number') return String(val);
         var r  = (val >>> 21) & 0x7F;
@@ -273,6 +305,12 @@ myCatnip.HW_K3 = {
     // ============================================================
     // PROTOCOL PRIMITIVES
     // ============================================================
+    // Physical MIDI note → logical LED idx. Grid + encoder-adjacent
+    // LEDs are laid out in physical order in config; the sysex
+    // protocol indexes them differently. This is the sole translator
+    // — every binding's idx is derived from this at build time, and
+    // config never sees physical notes. Returns -1 for notes with no
+    // LED (pressL, pressR, encoder itself).
     noteToLEDIndex: function(n) {
         if (n >= 0x28 && n <= 0x33) {
             var i = n - 0x28, r = 2 - (i >> 2);
@@ -288,6 +326,14 @@ myCatnip.HW_K3 = {
         return -1;
     },
 
+    // 14-byte sysex frame. Bytes 0..7 are fixed — K3
+    // manufacturer/sysex header (F0 00 00 1A 50 15 00 0E). The
+    // same header is used for both the RGB-write command
+    // (implemented here) and the LED-release command (not
+    // implemented — the RGB write to (0,0,0) is what blanks an
+    // LED). Bytes 8..13 are idx + r + g + b + hw + F7. All values
+    // are 7-bit clamped — the wire would garbage a byte with the
+    // high bit set.
     buildSysExLED: function(idx, r, g, b, hw) {
         return [ 0xF0,0x00,0x00,0x1A,0x50,0x15,0x00,0x0E,
                  idx & 0x7F,
@@ -295,6 +341,14 @@ myCatnip.HW_K3 = {
                  0xF7 ];
     },
 
+    // K2 palette discretisation. The K2 has 3 physical colours per
+    // LED (red, green, blue) plus off. `drg` is R-vs-G divergence:
+    //   drg >  K2_RG_THRESHOLD → R bucket
+    //   drg < -K2_RG_THRESHOLD → B bucket
+    //   else                   → G bucket
+    // Peak < 8 (very dim) or hw <= 0 → off. The threshold is
+    // empirical — 60 matches the perceptual midpoint between
+    // warm and cool colours at 7-bit hw.
     rgbToK2: function(r, g, b, hw) {
         if (hw <= 0) return -1;
         var peak = Math.max(r, g, b);
@@ -305,6 +359,11 @@ myCatnip.HW_K3 = {
         return 1;
     },
 
+    // Logical LED idx → K2 physical note. The K2's MIDI note
+    // layout differs from the sysex-idx layout the RGB side uses.
+    // `base` is the K2's R-bucket note; `step` is the stride to
+    // the G bucket (36) or B bucket (72). `step: 4` on the
+    // layer/shift LEDs is the smaller gap for those two.
     idxToK2: function(idx) {
         if (idx >= 0x00 && idx <= 0x0B) {
             var r = idx >> 2, c = idx & 3;
@@ -321,6 +380,11 @@ myCatnip.HW_K3 = {
         return null;
     },
 
+    // K2 fallback transport. Discretise post-mix rgb into a
+    // bucket, velocity = hw × peak / 127 (floor 4 — the K2's LED
+    // driver needs a non-zero note-on to light). Off sends base
+    // note with velocity 0 — the K2's note layout has no explicit
+    // off note, so velocity 0 is the standard.
     sendK2Note: function(ch, idx, r, g, b, hw) {
         var pos = myCatnip.HW_K3.idxToK2(idx); if (!pos) return;
         var bucket = myCatnip.HW_K3.rgbToK2(r, g, b, hw);
@@ -330,4 +394,3 @@ myCatnip.HW_K3 = {
         midi.sendShortMsg(0x90 + ch, pos.base + bucket * pos.step, vel);
     }
 };
-

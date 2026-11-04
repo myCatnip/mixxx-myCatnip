@@ -1,5 +1,15 @@
 // config/k3-cat-overlays.js — Cat's two routing overlays and the
 // chord.
+//
+// Shift companions are shallow clones of their base, so grid
+// cells don't get shadowed by cueShift / loopShift when shift
+// is held. Chord sits on top of everything — see _buildStack.
+//
+// Chord patch is added/removed by the modifier system
+// (modifierStates.chord with patchActivate: 'chord'). The CHORD
+// patch itself declares no `layer` binding — layer's press does
+// nothing under chord (F.layerButton returns early when
+// modifiers.chord is true).
 
 
 var F = myCatnip.FUNCS;
@@ -30,16 +40,24 @@ function routeTo(unit, ch) {
     return {
         group: '[EffectRack1_EffectUnit' + unit + ']',
         inKey: key, outKey: key,
+        // themeScheme content-keys the slice so an in-place
+        // THEME.fx mutation propagates on the next repaint
+        // instead of getting short-circuited by the scheme
+        // ref-identity memo in _evaluateScheme.
         colorScheme: {
             scheme: function() { return CAT.themeScheme('fx', unit); }
         }
     };
 }
 
+// ============================================================
+// SELECT_AB — deck / FX assignment grid
+// ============================================================
 var SELECT_AB = {
     _host: ['twoDeck', 'twoDeckMini', 'topShared'],
     layer: { func: F.layerExitOverlay, args: ['selectAB'],
              colorScheme: { scheme: 'overlayWhite' } },
+    // pressR inherited from CUE — modifier-holder for loadArm.
 
     grid0_0: deckSelect('A', 1), grid1_0: deckSelect('A', 2),
     grid2_0: deckSelect('A', 3), grid3_0: deckSelect('A', 4),
@@ -52,6 +70,9 @@ var SELECT_AB = {
     grid2_3: fxSelect('B', 3),   grid3_3: fxSelect('B', 4)
 };
 
+// ============================================================
+// FX_ROUTING — FX unit group enables
+// ============================================================
 var FX_ROUTING = {
     _host: ['twoDeck', 'twoDeckMini', 'topShared'],
     layer: { func: F.layerExitOverlay, args: ['fxRouting'],
@@ -67,11 +88,19 @@ var FX_ROUTING = {
     grid2_3: routeTo(4, 3), grid3_3: routeTo(4, 4)
 };
 
+// Shift companions are shallow clones so their grid cells
+// don't get shadowed by cueShift / loopShift when shift is held.
 var SELECT_AB_SHIFT  = Object.assign({}, SELECT_AB);
 var FX_ROUTING_SHIFT = Object.assign({}, FX_ROUTING);
 SELECT_AB._shift  = 'selectABShift';
 FX_ROUTING._shift = 'fxRoutingShift';
 
+// ============================================================
+// CHORD
+// ============================================================
+// Added / removed by modifiers.chord (see bootCat's
+// modifierStates). No `layer` binding — layer's press is a
+// no-op under chord (F.layerButton returns early).
 var CHORD = {
     press0: { func: F.toggleOverlay, args: ['fxRouting', ['selectAB']],
               colorScheme: { scheme: 'overlayChord' } },
@@ -86,9 +115,11 @@ var CHORD = {
                              on: { patchActive: 'twoDeckMini' } } }
 };
 
+// ============================================================
+// EXPORTS
+// ============================================================
 CAT.SELECT_AB = SELECT_AB;
 CAT.SELECT_AB_SHIFT = SELECT_AB_SHIFT;
 CAT.FX_ROUTING = FX_ROUTING;
 CAT.FX_ROUTING_SHIFT = FX_ROUTING_SHIFT;
 CAT.CHORD = CHORD;
-

@@ -5,6 +5,145 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.6] — 2026-11-04
+
+Documentation-only comment restoration pass. No code change,
+no behaviour change.
+
+## Changed
+
+Comments restored across the entire tree from the pre-split
+sources. Every file in `lib/`, `hw/k3.js`, and every Cat config
+file that lost comment coverage during the v2.2.1 framework
+split now carries its original rationale back. "Nothing works
+differently, but the reasons everything is the way it is are
+back."
+
+Twenty files, all comment-only:
+
+`lib/core.js`, `lib/timing.js`, `lib/schemes.js`,
+`lib/binding.js`, `lib/controller-render.js`,
+`lib/perception.js`, `hw/k3.js`, `lib/controller.js`,
+`lib/controller-beat.js`, `lib/controller-colour.js`,
+`lib/controller-boot.js`, `lib/funcs.js`,
+`config/k3-cat-schemes.js`, `config/k3-cat-fx.js`,
+`config/k3-cat-top.js`, `config/k3-cat-bottom.js`,
+`config/k3-cat-overlays.js`, `config/k3-cat-config.js`,
+`config/k3-lab.js`, `k3-colorlab.js`.
+
+Highlights — the rationale that was missing and is now back:
+
+- **`lib/binding.js`** — transaction state diagram
+  (`idle → active → active+orphaned → idle`, `* → shutdown →
+  abandoned`), 8-step `input()` pipeline, `_armOwnConn`'s
+  `getParameter` vs raw-`v` trap (using `v` directly would
+  break ranged COs like `rate`), `_isBounce` pre-capture
+  rationale (testing `_transaction.active` instead of
+  snapshotted `wasActive` would block the first press),
+  `_postInputRefresh` spurious-co-match gradient rationale.
+- **`lib/controller-beat.js`** — `_shouldSkipPulse` guard
+  full rationale: why the guard exists (double-writer
+  flicker between `_onBeatActive` and `_repaintFromPosition`),
+  why backward motion bypasses it (the "held bar" symptom),
+  why `beat_active`'s silence releases it, why it isn't
+  loop-gated (continuous vs wrap discontinuity).
+  `_trackMeta` three-state load model. `track_samples` vs
+  `track_loaded` rationale (track_samples fires reliably on
+  every load, track_loaded doesn't on load-over-current).
+  `duration`/`file_bpm` queued main-thread emission rationale.
+  `_wireHotcueObservers` "1024 CO reads per channel in a
+  burst" explainer.
+- **`lib/controller.js`** — modifier-state system header with
+  the "Replaces: `isShifted`, `_chordActive`,
+  `loadState.pressed`, `pressHeld`, `_bpmHeldEncoder`,
+  `_bpmHeldOwner`" audit trail, two-axis shape, idempotent
+  patch enforcement (snake removes chord out of band),
+  `freshDeckState` per-field walk, `_batchPatches` 5-step
+  pipeline, `_applyBinding` 7-step bind pipeline.
+- **`lib/perception.js`** — `_sampleTransfer` binary-search
+  first-match-wins semantic (matches the old linear scan's
+  duplicate-hw-entry behaviour exactly), `applyMix` WB-vs-LUT
+  branch rationale, `_flatTarget` eviction-not-clear rationale
+  (clear-all triggered a 1024-entry recompute burst on the
+  next render), `_fingerprint` mixMode-inclusion rationale.
+- **`lib/core.js`** — `_BINDING_FIELDS` full row-shape doc
+  (`name`/`hash`/`token`/`snapshot`/`ignored`), `TIME_SIG`
+  invalid-value gotcha (direct assignment bypasses
+  `setTimeSig`'s coercion), `beatLevel` "prePhraseBeats is a
+  start point, not a zone" gotcha.
+- **`lib/timing.js`** — every TIMING field's rationale: sysex
+  10 ms ("~1.3 s for a full 128-LED repaint"), beatRepaint
+  30 ms ("15× oversampled at 128 BPM"), beatjump 130 ms
+  ("empirically confirmed: 120 worked, 60 leaked"), meta
+  settle ("Mixxx doesn't guarantee ordering between these
+  COs"), boot settle ("silent-stale bug on slow CO trees").
+- **`config/k3-cat-fx.js`** — `MINI_LAYOUTS`
+  physical-position diagrams for split and echo,
+  `emitFxCell` 7-form vocabulary
+  (`displayOnly`/`fxRoute`/`enabled`/`buttonParam`/`unit`/
+  `effect+param`/`null`).
+- **`config/k3-cat-schemes.js`** — `PHRASE_MARKER_COLORS`
+  full 12-line explanation (origin derives positionally,
+  frozen during loop, set on beat boundaries, feature off
+  when empty), `countdownScheme` phase walk, QFX scheme
+  colours "avoid cyan/magenta/yellow/orange" note.
+- **`config/k3-lab.js`** — `bakeScheme` 4-level matrix
+  (structural/bakedInterp/baked/export), `_buildCellIndex`
+  `_funcId`-not-`fn` trap, `_cloneScheme` "single hook that
+  keeps `colorSet` inside `_lab.edit`", `_editSegmentTarget`
+  off-brightness array-format gotcha
+  (`[r,g,b,on,off]` requires writing `on` explicitly even
+  when it equals the default, or `off` lands in position 3),
+  `ledSelectTarget` delete-cascade vs gap-splice rationale.
+- **`config/k3-cat-top.js`, `k3-cat-bottom.js`,
+  `k3-cat-overlays.js`** — these three had their comments
+  largely stripped during the v2.2.1 split. Full file
+  headers restored (focus/twoDeck/mini structure, CUE/LOOP
+  siblings, shift-companion shallow clones, chord
+  modifier-driven activation), `shiftBinding` push-mode
+  no-func modifier-holder rationale, `markerCell` intro/outro
+  jump-if-set semantics, `CUE_SHIFT.grid2_1` shared-slip-LED
+  trap, `routeTo` `themeScheme` content-key rationale,
+  `CHORD` modifier-driven add/remove note.
+
+## Tests
+
+No test changes. `node test/run.js` baseline unchanged —
+verified comment-only per file via
+`git diff <file> | grep -vE '^[+-]\s*(//|\*|/\*)'` (empty
+output for every file).
+
+## Review notes (no code change)
+
+- The three Cat config files
+  (`k3-cat-top.js`, `k3-cat-bottom.js`, `k3-cat-overlays.js`)
+  had their comments largely stripped during the v2.2.1
+  framework split. My earlier "already complete" call during
+  the grouping pass was wrong; they're included here. The
+  full-tree check at the end of the restoration pass caught
+  the miss.
+
+- **Do not restore cache-preferred `_isOn`.** The restored
+  `lib/binding.js` comment explicitly documents that
+  `_lastOutKeyValue` is write-only dead state after v2.2.2,
+  retained for §5d cleanup. `_isOn` and `_renderOutKey`
+  both do live CO reads; the observer (connection, not
+  value) still triggers the repaint.
+
+- **Do not remove `_updateShared` from `_updateModifiers`.**
+  Added in v2.2.5 for cross-controller modifier visibility.
+  A reader diving into the restored modifier-system comments
+  might not see why it's there — the answer is cross-controller
+  `shared.controllers[label].modifiers`, not local rendering.
+
+- **Two "looks redundant, isn't" cases the restored comments
+  settle:** `_advanceVirtualClock`'s forward-only real-seconds
+  accumulation (wall time doesn't reverse), and
+  `_resolveDisplaySource`'s no-change-no-repaint (readers are
+  already up to date).
+
+---
+
 ## [v2.2.5] — 2026-11-04
 
 Inpulse 500 config cleanup + framework per-device Ctor. No

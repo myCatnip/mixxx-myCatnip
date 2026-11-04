@@ -3,6 +3,20 @@
 // Standalone preset. Replaces the entire layer tree with the lab
 // editor. Does NOT load config/k3-cat-config.js or k3-snake.js.
 // Loaded last by k3-colorlab.midi.xml <scriptfiles>.
+//
+// Two modes, switched by the layer button:
+//   EDIT  (patch 'colorLab')     segment / marker / ratio / beat edits
+//   SLOTS (patch 'slots')        grid previews & saves; edits are no-ops
+//
+// Overlays declare _host — they only apply while their host patch
+// is active. The flag persists in activePatches across switches.
+//
+// Chord: shift + layer held, then press3 held 2s → shutdown.
+// Releasing shift, layer, or press3 kills the timer.
+//
+// Shift state comes from the modifier system — the shift binding
+// is push-mode with no func; modifierStates.shift derives the
+// state from its transaction.
 
 'use strict';
 
@@ -12,6 +26,9 @@ var F = myCatnip.FUNCS;
 // TOP — editor, unshifted
 // ============================================================
 var COLORLAB_TOP = {
+    // Push-mode modifier-holder. No func — modifierStates.shift
+    // derives the state from this binding's transaction. LED
+    // tracks modifiers.shift directly.
     shift: { type: 'push',
         colorScheme: {
             scheme: { colors: ['red, 80, 16'] },
@@ -158,6 +175,8 @@ var COLORLAB_BOTTOM = {
 // ============================================================
 // BOTTOM — editor, shifted
 // ============================================================
+// pressR loads the current preview into edit without leaving
+// the mode. Shutdown lives on the chord (shift+layer+press3).
 var COLORLAB_BOTTOM_SHIFT = {
     encoderL: { func: F.labSchemeScroll },
     pressR:   { func: F.labLoadPreview }

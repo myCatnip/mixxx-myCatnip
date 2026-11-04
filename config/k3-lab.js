@@ -1,6 +1,25 @@
 // config/k3-lab.js — colorLab extension: LabController class,
 // bake machinery, slot browser, per-cell painters.
 //
+// Editor + slot browser for building LED colour schemes.
+//
+// State (`_lab`):
+//   edit           — working buffer. Starts as { colors: [[0,0,0]] }.
+//   slots[0..15]   — saved schemes. 0/1/2/3 are on/off/co/co-off.
+//   previewSource  — 'edit' | 0..15 | registry-name string.
+//   previewing     — true when edit mode should show previewSource
+//                    on the strip instead of the edit buffer.
+//   saveArmed      — next slot press writes preview into that slot.
+//
+// Renderers discover which cells they own by scanning the applied
+// bindings for known func names — no hardcoded grid-to-meaning
+// map. Rebinding a cell in config moves the painter with it.
+// See `_findCellsByFunc`.
+//
+// Beat edit overlay: 'colorLabBeat'. _host = 'colorLab'. Preview
+// LED pulses through the cascade when the beat is playing; shows
+// the selected target's colour solid otherwise.
+//
 // v2.1.0:
 // - bakeScheme uses myCatnip.perception._flatTarget / _bisectHw
 //   with mixMode threaded; scheme.perception override respected.
@@ -10,7 +29,10 @@
 // - compileScheme threaded with ctrl for per-HW compile cache.
 
 
-// Curated scroll order for the lab editor.
+// Curated scroll order for the lab editor. When defined,
+// shift + encoderL iterates this list instead of scanning
+// myCatnip.SCHEMES. Use it to control order and hide test schemes.
+// Requires cat-schemes.js to be loaded before colorlab.js.
 myCatnip.SCHEME_REGISTRY = [
     'myCatnip',
     'myCatnipSpread',
@@ -43,6 +65,12 @@ myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.BAKED_INTERP] = [0, 127, 127];
 myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.BAKED]        = [127, 0, 127];
 myCatnip.LAB_SLOT_COLOURS[myCatnip.LAB_SLOT.EXPORT]       = [127, 40, 0];
 
+// Segment-grid cell names, in segment-index order. The
+// renderer paints CALIB_TARGETS[i] with compiled segment i —
+// positional, not by discovery. _findCellsByFunc is used by
+// _claimedCells only, to skip cells another painter (slot
+// grid, beat-edit targets) owns. Rebinding a cell moves the
+// LED but breaks the segment mapping — do not rebind these.
 myCatnip.CALIB_TARGETS = [
     'button3_0',
     'button0_1','button1_1','button2_1','button3_1',
@@ -130,6 +158,16 @@ myCatnip._applyFieldEdit = function(rgb, br, field, mode, value) {
     return { br: br, val: v };
 };
 
+// ── colorSet helpers ───────────────────────────────────────
+// `scheme.colorSet` is a parallel boolean array to
+// `scheme.colors`: true = real stop, false = gap.
+//
+// Lab editing state, not persisted — _cloneScheme strips it,
+// so save / bake / load / dump drop it. Reloaded schemes
+// are all-true (correct: saved as fully-realised stops).
+//
+// Cascade delete and fill both read this flag. Only black
+// cells can be false; non-black implies true.
 function _csArray(scheme) {
     if (!scheme.colorSet) {
         scheme.colorSet = [];
@@ -159,6 +197,20 @@ function _isColorSet(scheme, idx) {
 // ============================================================
 // BAKE
 // ============================================================
+// Bake levels:
+//   'structural'   — source stops, calibration live on reload.
+//                    curve / schemePosition / ratio /
+//                    brightnessScale kept as fields. Editable
+//                    after paste.
+//   'bakedInterp'  — source stops, calibration bisected into
+//                    brightness at bake time. interp forced
+//                    true. Reloads here with calibration off;
+//                    curve / schemePosition / ratio live.
+//   'baked'        — same, interp forced false.
+//   'export'       — same, plus white balance baked into rgb.
+//                    calibration off, brightnessScale absent.
+//                    Reloading here double-applies wb — for
+//                    external raw-sysex hand-off only.
 myCatnip.bakeScheme = function(ref, ctrl, level) {
     var raw = myCatnip.resolveScheme(ref);
     if (!raw || !raw.colors) return null;
@@ -293,6 +345,15 @@ myCatnip.LabController.prototype.constructor = myCatnip.LabController;
 // ============================================================
 // BINDING DISCOVERY
 // ============================================================
+// Reverse index: func id -> { cell: args }. Built lazily,
+// invalidated by _applied identity (reassigned on every
+// recompute).
+//
+// Keys are myCatnip._funcId(fn), NOT `fn` itself. Using `fn` as an
+// object key coerces through Function.prototype.toString(), and
+// every closure returned by the same expression (e.g. all the
+// _makeFieldEditor instances) stringifies identically — one
+// bucket, wrong cells painted.
 myCatnip.LabController.prototype._buildCellIndex = function() {
     var idx = {};
     var resolved = this._applied || {};
@@ -332,6 +393,10 @@ myCatnip.LabController.prototype._claimedCells = function() {
 // ============================================================
 // STATE HELPERS
 // ============================================================
+// Deep clone, and strip lab editing state (colorSet) so it can
+// never leak into a slot, a bake, or a loaded scheme. This is
+// the single hook that keeps colorSet inside _lab.edit —
+// every save / load path uses _cloneScheme.
 myCatnip.LabController.prototype._cloneScheme = function(s) {
     if (!s) return null;
     var clone = JSON.parse(JSON.stringify(s));
@@ -544,6 +609,10 @@ myCatnip.LabController.prototype._editSegmentTarget = function(scheme, field, mo
     var segIdx = this._lab.selectedSegment;
     if (!scheme.colors || segIdx < 0) return false;
 
+    // Edit beyond the array extends it (all new cells are gaps).
+    // Recreate-after-delete: user deleted N (cascade), then
+    // turned a knob; extend brings N back as a gap, edit fills
+    // it, non-black makes it colorSet true.
     if (segIdx >= scheme.colors.length) _extendTo(scheme, segIdx);
     if (segIdx >= scheme.colors.length) return false;
 
@@ -555,12 +624,17 @@ myCatnip.LabController.prototype._editSegmentTarget = function(scheme, field, mo
     var res = myCatnip._applyFieldEdit(rgb, source.brightness, field, mode, value);
     if (!res) return false;
 
+    // Preserve existing off-brightness. Format is
+    // [r,g,b,on,off] — if off is set we must write on
+    // explicitly even when it equals the default, so the
+    // off value lands in position 4, not 3.
     var offBr = (typeof source.brightnessOff === 'number')
         ? source.brightnessOff : null;
     var entry = [rgb[0], rgb[1], rgb[2]];
     if (res.br !== defaultBr || offBr !== null) entry.push(res.br);
     if (offBr !== null) entry.push(offBr);
     scheme.colors[segIdx] = entry;
+    // Invariant: non-black implies colorSet true.
     if (rgb[0] !== 0 || rgb[1] !== 0 || rgb[2] !== 0) {
         _setColorSet(scheme, segIdx, true);
     }
@@ -583,6 +657,11 @@ myCatnip.LabController.prototype._editBeatColor = function(field, delta, absValu
 
         var cur = myCatnip.resolveColorEntry(tgt.color || 'off', undefined, this);
         var rgb = (cur && cur.rgb) ? cur.rgb.slice() : [0, 0, 0];
+        // Brightness may be embedded in the color spec
+        // ('green, 60') or stored alongside it (brightness: 60).
+        // The separate field wins when set; otherwise fall back
+        // to the embedded value so an RGB edit doesn't zero it
+        // to the default 127.
         var br  = (typeof tgt.brightness === 'number')
             ? tgt.brightness
             : ((cur && typeof cur.brightness === 'number') ? cur.brightness : 127);
@@ -692,6 +771,18 @@ myCatnip.LabController.prototype._initExtra = function() {
             function() { self._labRenderPreview(); });
     }
 
+    // Fires on every beat_active transition for every open
+    // channel. Only the compiled preview's own beat deck can
+    // change what the preview LED shows — the previewPos,
+    // marker, and markerBand are single-channel scalars. A
+    // beat on channel 3 with a preview scheme bound to
+    // channel 1 repaints an identical frame. Runtime
+    // _onBeatActive already syncs the count via _repaintBeat
+    // on every rising edge (throttle only trips above ~2000
+    // BPM), so skipping the lab-side sync for non-preview
+    // channels leaves deck state correct. beatCh === null
+    // (unresolvable deck ref) falls through and does the
+    // work — same as before.
     this._onBeat = function(ch) {
         var compiled = self._compiledPreview().compiled;
         if (!compiled || !compiled.beat) return;
@@ -839,6 +930,8 @@ myCatnip.LabController.prototype._renderSegmentGrid = function(compiled, onColor
     }
 };
 
+// Resolve one segment cell's paint decision. Returns
+// { rgb, br } to paint, or null for black.
 myCatnip.LabController.prototype._segmentCellPaint = function(name, i, compiled, onColorLab) {
     var applied = this._applied[name];
     if (applied == null || Object.keys(applied).length === 0) return null;
@@ -1233,6 +1326,15 @@ myCatnip.FUNCS.ledSelectTarget = function(args, ch, c, v, s) {
     if (!scheme.colors) scheme.colors = [[0, 0, 0]];
 
     if (ctrl.modifiers.shift) {
+        // Delete (shift+press).
+        //
+        //   real stop → cascade: remove the stop and every gap
+        //               cell between its real neighbours, so
+        //               the neighbours become adjacent.
+        //   gap cell  → splice just that cell. Subsequent
+        //               cells shift down by one. No cascade.
+        //
+        // Cell 0 protected. Selection jumps to cell 0.
         if (idx === 0) return;
         if (idx >= scheme.colors.length) return;
 
@@ -1245,6 +1347,8 @@ myCatnip.FUNCS.ledSelectTarget = function(args, ch, c, v, s) {
             for (var r = idx + 1; r < scheme.colors.length; r++) {
                 if (_isColorSet(scheme, r)) { nextTrue = r; break; }
             }
+            // Cell 0 is always true, so prevTrue >= 0 when
+            // idx > 0.
             var start = prevTrue + 1;
             var end = (nextTrue === -1) ? scheme.colors.length : nextTrue;
             var removeCount = end - start;
@@ -1320,6 +1424,8 @@ myCatnip.FUNCS.ledFillGaps = function(args, ch, c, v, s) {
     var scheme = ctrl._commitPreview();
     if (!scheme || !scheme.colors || scheme.colors.length === 0) return;
     var defaultBr = (typeof scheme.brightness === 'number') ? scheme.brightness : 127;
+    // Anchors are colorSet cells only. Gaps (colorSet false) are
+    // painted. colorSet blacks anchor; gap blacks don't.
     var anchors = [];
     for (var i = 0; i < scheme.colors.length; i++) {
         var r = myCatnip.resolveColorEntry(scheme.colors[i], defaultBr, ctrl);
@@ -1342,6 +1448,11 @@ myCatnip.FUNCS.ledFillGaps = function(args, ch, c, v, s) {
                 Math.round(A.rgb[2] * (1 - t) + B.rgb[2] * t),
                 Math.round(A.br * (1 - t) + B.br * t)
             ];
+            // Painted cells are committed stops — mark set so
+            // re-fill skips them. To re-fill a range, delete
+            // those cells first (gap-splice back to blank), or
+            // black them (which un-commits via edit auto-set
+            // since black doesn't set the flag).
             _setColorSet(scheme, idx, true);
         }
     }
@@ -1544,6 +1655,10 @@ myCatnip.FUNCS.labBeatPrePhraseBeats = function(args, ch, c, v, s) {
 // ============================================================
 // DUMP HELPERS
 // ============================================================
+// Emit format is valid JavaScript, ready to paste into
+// cat-schemes.js. Only non-default fields appear. Trailing
+// commas on scalar lines, none on the last array element —
+// valid JS, matches the codebase style.
 function _fmtDumpValue(v) {
     if (v === null || v === undefined) return 'null';
     if (Array.isArray(v)) return '[' + v.join(', ') + ']';
@@ -1684,5 +1799,9 @@ myCatnip.LAB_PAINTER_FUNCS = [
     myCatnip.FUNCS.labSlotPress
 ];
 
+// Boot seed for slot 0 (the "on" slot). Black by design — the
+// slot grid paints slot 0 green regardless of contents, and
+// slot 0 needs to exist so it can be saved over without a
+// create step first. Lab-scoped: registered here so lib-schemes
+// stays engine-only.
 myCatnip.SCHEMES.labDefault = { colors: [[0, 0, 0]] };
-

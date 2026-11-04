@@ -68,6 +68,14 @@ var BOOT_DEFAULTS = {
     initialPatches: ['topShared', 'fxLayout1', 'cue'],
     timeSig: null,
 
+    // Modifier-state system (see lib/controller.js).
+    //   heldBy        — modifier is active while EVERY listed
+    //                   binding has an active transaction.
+    //   recompute     — trigger _recompute on state change.
+    //   patchActivate — idempotently add/remove this patch on
+    //                   state change (and enforce on every
+    //                   event, so out-of-band removals by
+    //                   config funcs are corrected).
     modifierStates: {
         shift:   { heldBy: ['shift'], recompute: true },
         chord:   { heldBy: ['shift', 'layer'], patchActivate: 'chord' },

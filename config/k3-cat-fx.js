@@ -10,6 +10,15 @@ var B = myCatnip.builders;
 var CAT = myCatnip.CAT;
 var fxScheme = CAT.fxScheme;
 
+// Unified cell emitter. Cell `spec` shapes (one per row of the
+// layout tables below):
+//   null              → no cell (unbound)
+//   { displayOnly }   → LED tracks knobRef; press is noop
+//   { fxRoute }       → group-enable of focused FX into active deck
+//   { enabled }       → FX effect enable button
+//   { buttonParam }   → FX button_parameter<N>
+//   { unit }          → FX-unit-level knob (param: e.g. 'mix')
+//   { effect, param } → FX effect parameter knob
 function emitFxCell(spec, unit, knobRef, schemeFn, slotMap) {
     if (spec === null) return null;
     if (spec === undefined) {
@@ -19,6 +28,9 @@ function emitFxCell(spec, unit, knobRef, schemeFn, slotMap) {
         return null;
     }
     if (spec.displayOnly) {
+        // `ledTracks` overrides the tracked knob; abstract slot
+        // names resolve through slotMap (twoDeck column layout).
+        // Non-slotMap literal names pass through unchanged.
         var want = spec.ledTracks !== undefined ? spec.ledTracks : knobRef;
         var target = (slotMap && slotMap[want] !== undefined)
             ? slotMap[want]
@@ -29,6 +41,10 @@ function emitFxCell(spec, unit, knobRef, schemeFn, slotMap) {
         return cell;
     }
     if (spec.fxRoute) {
+        // Route the focused FX unit into the active deck.
+        // LED on/off follows the route CO; deviation position
+        // samples the knob above it; scheme colours from the
+        // current FX column theme.
         return B.fxGroupEnable('$FX_ACTIVE_N$', '$DECK_ACTIVE$',
             Object.assign({ knob: knobRef },
                         CAT.fxSchemeFor('selectedFxCurrent')));
@@ -51,13 +67,20 @@ function emitFxCell(spec, unit, knobRef, schemeFn, slotMap) {
     return B.fxKnob(unit, spec.effect, spec.param);
 }
 
+// ============================================================
+// FOCUS — FX_LAYOUTS
+// ============================================================
 function fxLayoutTable(overrides) {
+    // moog - echo - moog
     return Object.assign({
+        //moog now 2 btn knob thing only!
         knob2_0:   { effect: 1, param: 2 },
         knob3_0:   { effect: 1, param: 'meta' },
         button2_0: { displayOnly: true, on: false, marker: 'mid', schemePosition: 63.5 },
         button3_0: { effect: 1, enabled: true },
 
+        //echo
+        // extra button + knob from moog row
         knob1_0:   { effect: 2, param: 1 },
         button1_0: { displayOnly: true, on: false },
 
@@ -68,17 +91,33 @@ function fxLayoutTable(overrides) {
         button2_1: { effect: 2, buttonParam: 2 },
         button3_1: { effect: 2, enabled: true, marker: 'low', schemePosition: 0 },
 
+        //moog
         knob2_2:   { effect: 3, param: 2 },
         knob3_2:   { effect: 3, param: 'meta' },
+        // Display-only echo of knob2_2 (FX3.p2). Routing for
+        // the focused FX moved to button0_2 (TOP_SHARED).
         button2_2: { displayOnly: true, on: false },
         button3_2: { effect: 3, enabled: true },
     }, overrides);
 }
 
 var FX_LAYOUTS = {
+    // moog - echo - moog
     1: fxLayoutTable(),
-    2: fxLayoutTable({}),
+    // 2nd moog - echo - moog
+    2: fxLayoutTable({
+        // bit - echo - moog
+        //knob2_0:   { effect: 1, param: 1 },
+        //knob3_0:   { effect: 1, param: 2 },
+        //button2_0: { displayOnly: true, on: false, marker: 'high', schemePosition: 127 },
+        //button3_0: { effect: 1, enabled: true, marker: 'high', schemePosition: 127 },
+
+        //knob1_0:   { effect: 2, param: 1 },
+    }),
+    // moog - flanger - moog
     3: fxLayoutTable({
+        //flanger
+        //extra button + knob from moog row
         knob1_0:   { effect: 2, param: 2 },
         button1_0: { displayOnly: true, on: false, marker: 'low', schemePosition: 0 },
 
@@ -89,13 +128,17 @@ var FX_LAYOUTS = {
         button2_1: { displayOnly: true, on: false, marker: 'mid', schemePosition: 63.5 },
         button3_1: { effect: 2, enabled: true, marker: 'low', schemePosition: 0 },
     }),
+    //  autopan - TREMELO - moog
     4: fxLayoutTable({
+        //autopan
         knob2_0:   { effect: 1, param: 1 },
         knob3_0:   { effect: 1, param: 3 },
 
         button2_0: { displayOnly: true, on: false },
         button3_0: { effect: 1, enabled: true, marker: 'low', schemePosition: 0 },
 
+        //tremelo
+        //extra button + knob from autopan row
         knob1_0:   { effect: 2, param: 2 },
         button1_0: { displayOnly: true, on: false, marker: 'mid', schemePosition: 63.5 },
 
@@ -138,6 +181,13 @@ function fxLayout(n) {
     return Object.assign({ patch: ['topShared'] }, fxCells(n));
 }
 
+// ============================================================
+// TWODECK — TWO_DECK_FX_LAYOUTS
+// ============================================================
+// 4 cells per column, per unit, in rows 0–1. Column 1 emits
+// into knob1_0 / knob1_1 / button1_0 / button1_1 and follows
+// $FX_A_N$. Column 2 emits into the *2_* cells and follows
+// $FX_B_N$.
 function twoDeckFxTable(overrides) {
     return Object.assign({
         knob0:   { effect: 1, param: 'meta' },
@@ -174,7 +224,21 @@ function twoDeckFxLayout(side, n) {
     return Object.assign({ patch: ['twoDeck'] }, twoDeckFxColumn(side, n));
 }
 
+// ============================================================
+// MINI — TWO_DECK_MINI_FX_LAYOUTS
+// ============================================================
+// Named layouts keyed by cell slot (0..3), mapping to the
+// physical positions:
+//
+//     1  2       knob1_0 / button1_0  = slot 0
+//     3  4       knob2_0 / button2_0  = slot 1
+//                knob1_1 / button1_1  = slot 2
+//                knob2_1 / button2_1  = slot 3
 var MINI_LAYOUTS = {
+    // Two effects, split across the four positions. Each
+    // effect gets one parameter + one button on the top row,
+    // meta + enable on the bottom. This is the generic
+    // default and what ships on unit 1.
     split: {
         knob0:   { effect: 1, param: 1 },
         knob2:   { effect: 1, param: 'meta' },
@@ -186,6 +250,15 @@ var MINI_LAYOUTS = {
         button1: { effect: 2, buttonParam: 1, marker: 'low' },
         button3: { effect: 2, enabled: true, marker: 'low' }
     },
+
+    // Single-effect Echo driven from all 8 cells. Pairs with
+    // `1.miniEcho.xml` in fx-presets/ — load that on each
+    // FX unit this layout drives.
+    //
+    //   pos 1  time      + quantize
+    //   pos 2  pingpong  + triplets
+    //   pos 3  feedback  + (display only)
+    //   pos 4  send      + enable
     echo: {
         knob0:   { effect: 1, param: 1 },
         button0: { effect: 1, buttonParam: 1 },
@@ -241,4 +314,3 @@ CAT.fxLayout = fxLayout;
 CAT.twoDeckFxLayout = twoDeckFxLayout;
 CAT.twoDeckMiniFxLayout = twoDeckMiniFxLayout;
 CAT.MINI_LAYOUTS = MINI_LAYOUTS;
-
