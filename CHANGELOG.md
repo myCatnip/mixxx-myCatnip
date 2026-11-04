@@ -5,6 +5,93 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.3.0] — 2026-11-XX
+
+Preset consolidation. Two presets removed, three renamed in the
+Mixxx preset dropdown (filenames unchanged). Framework API
+unchanged. Layer tree unchanged. Anyone on Cat / Kitten /
+colorLab is unaffected apart from the dropdown label changing.
+Anyone on oneK3 or oneK3 miniFX must switch to Cat (chord
+access) or add their own preset file per the new README section.
+
+## Added
+
+- **README:** new "Making your own preset" section — concise
+  walkthrough for anyone who wants to boot straight into
+  `twoDeck` or `twoDeckMini`. Copy-rename-edit flow,
+  `initialPatches` values for each boot mode, `<controller id>`
+  / `midiChannel` notes for running alongside another K3 preset.
+
+## Changed
+
+- **Preset display names in Mixxx controller preferences** now
+  carry a `myCatnip - ` prefix. The `<name>` field in each
+  `.midi.xml` is the dropdown label; `<controller id>` and
+  filenames are unchanged.
+  - "Allen&Heath Xone K3 Cat" → "myCatnip - Xone K3 Cat"
+  - "Allen&Heath Xone K3 Kitten" → "myCatnip - Xone K3 Kitten"
+  - "Allen&Heath Xone K3 colorLab" → "myCatnip - Xone K3 colorLab"
+
+- **Cat / Kitten descriptions** in `.midi.xml` now note
+  "chord access to twoDeck / twoDeckMini" — so users of the
+  removed presets can find the replacement path in the
+  dropdown without opening the README.
+
+- **README preset table** reduced from five entries to three,
+  with a `> As of v2.3.0…` callout under the table pointing at
+  chord and the new "Making your own preset" section.
+
+- **README mode references** — "oneK3" / "oneK3 miniFX" renamed
+  to "twoDeck" / "twoDeckMini" throughout (QFX cycle, faders,
+  FX cell layout table, single-effect layout section, FX-preset
+  pairing notes, twoDeck Mini header). These are top modes that
+  chord switches into, not presets; the old naming was making
+  the distinction fuzzy.
+
+## Removed
+
+- **`k3-onek3.js` / `k3-onek3.midi.xml`** — replaced by
+  chord+pressR from Cat (boots into twoDeck). Boot-time
+  replacement via new README section.
+- **`k3-onek3-minifx.js` / `k3-onek3-minifx.midi.xml`** —
+  replaced by chord+pressL from Cat (boots into twoDeckMini).
+  Boot-time replacement via new README section.
+
+## Tests
+
+No framework test changes — API unchanged. If `test/run.js`
+references `k3-onek3.js` or `k3-onek3-minifx.js` by path those
+references need removing. Cat / Kitten / colorLab paths are
+unchanged.
+
+## Review notes (no code change)
+
+- **Semver call:** removing shipped presets is technically
+  breaking at the preset-file level (major). Chose v2.3.0
+  (minor) because framework API is unchanged, layer tree and
+  boot config path are unchanged, and the fix for affected
+  users is trivial (one chord press, or a five-minute preset
+  file per the README). Audit trail logged here.
+
+- **Layer tree / boot config path fully intact.**
+  `CAT_LAYERS.twoDeck`, `.twoDeckMini`, `.fxLayoutA1-4`,
+  `.fxLayoutB1-4`, `.fxMini1-4` all present and still
+  reachable. `bootCat({initialPatches: ['twoDeck', ...]})`
+  works exactly as it did in the old oneK3 entry module.
+  Only the entry points that booted straight into a sub-mode
+  were removed.
+
+- **Filenames unchanged** — `k3-cat.js`, `k3-cat.midi.xml`,
+  `k3-kitten.js`, `k3-kitten.midi.xml`, `k3-colorlab.js`,
+  `k3-colorlab.midi.xml`. The `myCatnip - ` prefix is a
+  Mixxx dropdown label only.
+
+- **`<controller id>` unchanged** — `XONE:K3 Cat MIDI 1` etc.
+  match the physical MIDI device name Mixxx binds to, not the
+  dropdown label. Only `<name>` in `<info>` changed.
+
+---
+
 ## [v2.2.6] — 2026-11-04
 
 Documentation-only comment restoration pass. No code change,

@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <MixxxControllerPreset mixxxVersion="2.5" schemaVersion="1">
     <info>
-        <name>Allen&amp;Heath Xone K3 Kitten</name>
+        <name>myCatnip - A&amp;H Xone K3 Kitten</name>
         <author>myCatnip</author>
-        <description>Xone K3 "Kitten" (ch 0x0D).</description>
+        <description>Xone K3 "Kitten" (ch 0x0D). Focus mode with chord access to twoDeck / twoDeckMini.</description>
     </info>
     <controller id="XONE:K3 Kitten MIDI 1">
         <scriptfiles>

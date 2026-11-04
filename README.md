@@ -2,9 +2,10 @@
 
 Custom Mixxx mapping for the Allen & Heath Xone K3.
 
-One runtime, two layer trees, five presets. Four playback presets
-share one layer tree and differ only in boot config; colorLab is
-a separate editor preset.
+One runtime, two layer trees, three presets. Two playback presets
+(Cat, Kitten) share one layer tree; colorLab is a separate editor
+preset. Both playback presets reach the twoDeck and twoDeckMini
+top modes via chord — no reload required.
 
 `midiChannel` in each preset's boot config controls **input
 routing** (MIDI note-on/note-off) and the K2 fallback output
@@ -16,20 +17,23 @@ command-header byte, shared by the RGB write and release
 commands and invariant across LED indices, not a channel).
 
 Consequence: two presets on the same `midiChannel` share input
-bindings. If Cat hardware sends on `0x0E` and both Cat and
-oneK3 listen on `0x0E`, both presets respond to Cat's hardware;
-oneK3's port receives LED state driven by Cat's buttons. Cat,
-oneK3, oneK3 miniFX, and colorLab all ship on `0x0E` — change
-one before running them together on separate physical units.
-Kitten ships on `0x0D` and pairs with Cat without conflict.
+bindings. Cat and colorLab both ship on `0x0E` — they're
+alternative presets, not simultaneous ones; load one or the
+other. Kitten ships on `0x0D` and pairs with Cat without
+conflict.
 
 | Preset | Channel | Boot mode | Layer tree | Use case |
 |---|---|---|---|---|
-| **Cat** | 0x0E | focus | CAT_LAYERS | Main preset. Decks 1/3. Re-pointable single-deck top half. |
-| **Kitten** | 0x0D | focus | CAT_LAYERS | Second unit. Decks 2/4. No overlap with Cat. |
-| **oneK3** | 0x0E | twoDeck | CAT_LAYERS | Single K3, both decks visible. |
-| **oneK3 miniFX** | 0x0E | twoDeckMini | CAT_LAYERS | Both decks, one focused FX unit in the middle. |
-| **colorLab** | 0x0E | n/a | lab | No playback. LED colour ramp editor. |
+| **myCatnip - Xone K3 Cat** | 0x0E | focus | CAT_LAYERS | Main preset. Decks 1/3. Chord switches to twoDeck / twoDeckMini. |
+| **myCatnip - Xone K3 Kitten** | 0x0D | focus | CAT_LAYERS | Second unit. Decks 2/4. Same chord access. |
+| **myCatnip - Xone K3 colorLab** | 0x0E | n/a | lab | No playback. LED colour ramp editor. |
+
+> **As of v2.3.0, the `oneK3` and `oneK3 miniFX` presets are gone.**
+> They booted straight into the `twoDeck` / `twoDeckMini` top
+> modes. Both modes are still in the layer tree — Cat reaches
+> them at runtime via chord+pressR (twoDeck) and chord+pressL
+> (twoDeckMini). To boot straight into either, see "Making your
+> own preset" below.
 
 ---
 
@@ -42,7 +46,7 @@ Kitten ships on `0x0D` and pairs with Cat without conflict.
 
    The `<scriptfiles>` in each `.midi.xml` reference the
    subdirectory paths directly (`lib/core.js`, `hw/k3.js`,
-   `config/k3-cat.js`), so the tree must be preserved. A flat
+   `config/k3-cat-config.js`), so the tree must be preserved. A flat
    layout (every file at the top level) is not supported by the
    shipped `.midi.xml` files — if you need one, edit every
    `filename="..."` entry to drop the directory prefix.
@@ -54,6 +58,46 @@ Kitten ships on `0x0D` and pairs with Cat without conflict.
    `hw/` changes — the preset reload doesn't re-read `.js`.
 
 ---
+
+## Making your own preset
+
+Three boot modes exist in the layer tree: **focus** (Cat, Kitten),
+**twoDeck**, and **twoDeckMini**. The latter two are reachable at
+runtime from Cat via chord+pressR / chord+pressL; they're not
+shipped as their own presets. To boot straight into one:
+
+1. Copy `k3-cat.js` → `k3-<name>.js`.
+2. Copy `k3-cat.midi.xml` → `k3-<name>.midi.xml`.
+3. Edit the new `.js` — replace the `myCatnip.init` body with the
+   `initialPatches` for the target mode:
+
+   ```js
+   // twoDeck boot
+   myCatnip.init = function() {
+       myCatnip.bootCat({
+           label: '<name>',
+           initialPatches: ['twoDeck', 'fxLayoutA1', 'fxLayoutB1', 'cue']
+       });
+   };
+
+   // twoDeckMini boot
+   myCatnip.init = function() {
+       myCatnip.bootCat({
+           label: '<name>',
+           initialPatches: ['twoDeckMini', 'fxMini1', 'cue']
+       });
+   };
+   ```
+
+4. Edit the new `.midi.xml` — update `<name>` and the
+   `<file filename="k3-<name>.js" ...>` reference. The
+   `<controller id="...">` must match Mixxx's view of your K3's
+   MIDI device name; copy it verbatim from `k3-cat.midi.xml` if
+   Cat works for you. To pair with an existing Cat on ch `0x0E`,
+   add `midiChannel: 0x0D` to the `bootCat` config (Kitten does
+   this).
+
+Layer tree, FX layouts, keybindings — everything else is shared.
 
 ## Focus: active deck and active FX
 
@@ -91,6 +135,7 @@ slip LED, QFX buttons, and so on.
 | See the physical layout and what each control does | this file |
 | Look up an FX cell by unit and mode | this file, §FX cell layouts |
 | Change a colour, rebind a button, add a mode | `CUSTOMISE.md` |
+| Add a preset for a different boot mode | this file, §Making your own preset |
 | Write a hardware descriptor | `HARDWARE.md` |
 | Tune how an LED looks on the wire | `PERCEPTION.md` |
 | Understand the runtime, tune internals, tuning performance | `INTERNALS.md` |
@@ -143,10 +188,10 @@ the middle FX cells differ. Encoders target pinned decks A / B
 (not the active deck). Press row selects active deck and active
 FX slot.
 
-QFX cycle differs between families:
-  focus (Cat / Kitten):  enc1 cycles the active deck's QFX chain,
+QFX cycle differs between top modes:
+  focus:                 enc1 cycles the active deck's QFX chain,
                          enc2 is off.
-  oneK3 / mini:          enc1 cycles deck A's chain,
+  twoDeck / twoDeckMini: enc1 cycles deck A's chain,
                          enc2 cycles deck B's chain.
 
 focus (Cat / Kitten)
@@ -155,7 +200,7 @@ enc1: QFX cycle active deck  +shift: keyReset A
 enc2: —                      +shift: keyReset B
 enc3: pregain B              +shift: keySync  B
 
-oneK3 / oneK3 miniFX
+twoDeck / twoDeckMini
 enc0: pregain A              +shift: keySync  A
 enc1: QFX cycle A            +shift: keyReset A
 enc2: QFX cycle B            +shift: keyReset B
@@ -179,7 +224,7 @@ twoDeck/mini: button0_2         FX-A → deck A        (LED follows selectedFxA)
               button3_2         FX-B → deck B        (LED follows selectedFxB)
 
 In focus mode, button3_2 is FX3 enable (from the layout patch);
-only twoDeck / mini have button3_2 as a route.
+only twoDeck / twoDeckMini have button3_2 as a route.
 
 QFX enable cells (button1_2 / button2_2)
 focus:        button1_2         QFX-A enable + chain LED
@@ -199,13 +244,13 @@ fader1: FX-act mix
 fader2: —
 fader3: —
 
-twoDeck  (oneK3)
+twoDeck
 fader0: deck A volume
 fader1: FX-A mix
 fader2: FX-B mix
 fader3: deck B volume
 
-twoDeckMini  (oneK3 miniFX)
+twoDeckMini
 inherits twoDeck — faders do NOT follow focus. fader1/fader2 always mix the
 pinned A/B units, never $FX_ACTIVE_N$.
 
@@ -384,7 +429,7 @@ patch automatically. You don't rebind by hand.
 |---|---|---|---|---|
 | focus | `FX_LAYOUTS` | 16 | `fxCells(n)` | `fxLayout1..4` |
 | twoDeck | `TWO_DECK_FX_LAYOUTS` | 4 per column | `twoDeckFxColumn(side, n)` | `fxLayoutA1..4`, `fxLayoutB1..4` |
-| mini | `TWO_DECK_MINI_FX_LAYOUTS` | 8 | `twoDeckMiniFxCells(n)` | `fxMini1..4` |
+| twoDeckMini | `TWO_DECK_MINI_FX_LAYOUTS` | 8 | `twoDeckMiniFxCells(n)` | `fxMini1..4` |
 
 QFX is **not** in these tables. `knob1_2` / `button1_2` (and, in
 twoDeck, `knob2_2` / `button2_2`) are plain bindings in the
@@ -466,7 +511,7 @@ Row 2 comes from `TWO_DECK`, not this table: `knob1_2` /
 super/enable. `button0_2` / `button3_2` are the low-EQ route
 cells: `button0_2` = FX-A → deck A, `button3_2` = FX-B → deck B.
 
-### twoDeck mini — `TWO_DECK_MINI_FX_LAYOUTS`
+### twoDeckMini — `TWO_DECK_MINI_FX_LAYOUTS`
 
 8 cells in rows 0–1, all pointing at `$FX_ACTIVE_N$`:
 
@@ -492,8 +537,8 @@ All four units share the same table:
 | `button2_1` | FX2.enable (lo) |
 
 `twoDeckMini` inherits everything else from `twoDeck` — encoders,
-press row, shift row, faders, low-EQ route cells, QFX. The only
-difference between oneK3 and oneK3 mini is this middle layout.
+press row, shift row, faders, low-EQ route cells, QFX. The only 
+difference between twoDeck and twoDeckMini is this middle layout.
 
 ### Editing a layout
 
@@ -514,8 +559,8 @@ CUSTOMISE §2.9.
 the layouts here:
 
 **Full-size chains** — pairs with the focus-mode `fxLayout<n>`
-layout. Also works with oneK3 twoDeck columns as-is (they only
-touch each effect's meta + enable, so any of the four is fine):
+layout. Also works with twoDeck columns as-is (they only touch
+each effect's meta + enable, so any of the four is fine):
 
 | File | Layout |
 |---|---|
@@ -524,7 +569,7 @@ touch each effect's meta + enable, so any of the four is fine):
 | `3-FlangerMoog.xml` | Moog → Flanger → Moog |
 | `4-TremeloAutopan.xml` | Autopan → Tremolo → Moog |
 
-**Mini chains** — pairs with the mini `echo` layout (units 2–4):
+**Mini chains** — pairs with the twoDeckMini `echo` layout (units 2–4):
 
 | File | Layout |
 |---|---|
@@ -551,7 +596,7 @@ reload and pick the chain from the preset menu. Paths:
 `~/.mixxx/` on Linux, `~/Library/Application Support/Mixxx/`
 on macOS, `%LOCALAPPDATA%\Mixxx\` on Windows.
 
-### Making a single-effect layout (oneK3 + mini)
+### Making a single-effect layout (twoDeck + twoDeckMini)
 
 Shipped defaults drive two effects per FX unit. To drive one
 effect from all the controls instead (e.g. an Echo with time /
@@ -562,7 +607,7 @@ enable on buttons), override the layout table.
 Mixxx — the status bar shows the CO name (`parameter2`,
 `button_parameter1`). That's the `param:` / `buttonParam:` value.
 
-**oneK3 — column A on effect 1:**
+**twoDeck — column A on effect 1:**
 
 ```js
 // in config/k3-cat-fx.js
@@ -580,8 +625,8 @@ var TWO_DECK_FX_LAYOUTS = {
 Column B keeps its default. Column A gives you 2 knobs + 2
 buttons for effect 1.
 
-**mini — full Echo on effect 1.** Positions `1 2 / 3 4` (knob
-above, button below in each):
+**twoDeckMini — full Echo on effect 1.** Positions `1 2 / 3 4`
+(knob above, button below in each):
 
 | | Knob | Button |
 |---|---|---|
@@ -625,7 +670,7 @@ layout drives.
 
 No Mixxx effect chain preset is shipped for the `split` default
 (unit 1) — its shape assumes a different per-effect arrangement,
-so build your own. Same for oneK3: its default is just meta
+so build your own. Same for twoDeck: its default is just meta
 knobs on effect 1 and 2 with their enables.
 
 The same shape works for focus mode (`FX_LAYOUTS`), with

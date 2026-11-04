@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <MixxxControllerPreset mixxxVersion="2.5" schemaVersion="1">
     <info>
-        <name>Allen&amp;Heath Xone K3 colorLab</name>
+        <name>myCatnip - A&amp;H Xone K3 colorLab</name>
         <author>myCatnip</author>
         <description>Xone K3 "colorLab" (ch 0x0E) — standalone LED gradient scheme builder.</description>
     </info>
