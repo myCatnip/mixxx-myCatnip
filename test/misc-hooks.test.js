@@ -200,32 +200,9 @@ test('hotcue colour watcher disconnected on unbind', function(t) {
     t.eq(conns.length, 0);
 });
 
-// ── outKey cache ──────────────────────────────────────────────
+// ── outKey live read ────────────────────────────────────────
 
-test('outKey cache: seeded on bind', function(t) {
-    var c = H.ctrl();
-    engine._set('[Channel1]', 'pfl', 1);
-    c._applyBinding('button0_0', {
-        group: '[Channel1]', inKey: 'pfl', outKey: 'pfl',
-        colorScheme: {scheme: 'red, 100, 20'}
-    });
-    t.eq(c.bindings.button0_0._lastOutKeyValue, 1,
-         'seeded with current CO at bind');
-});
-
-test('outKey cache: updated on listener fire', function(t) {
-    var c = H.ctrl();
-    c._applyBinding('button0_0', {
-        group: '[Channel1]', inKey: 'pfl', outKey: 'pfl',
-        colorScheme: {scheme: 'red, 100, 20'}
-    });
-    engine._trigger('[Channel1]', 'pfl', 1);
-    t.eq(c.bindings.button0_0._lastOutKeyValue, 1);
-    engine._trigger('[Channel1]', 'pfl', 0);
-    t.eq(c.bindings.button0_0._lastOutKeyValue, 0);
-});
-
-test('outKey cache: _isOn reflects CO value after change', function(t) {
+test('outKey: _isOn reflects CO value after change', function(t) {
     var c = H.ctrl();
     c._applyBinding('button0_0', {
         group: '[Channel1]', inKey: 'pfl', outKey: 'pfl',
@@ -237,19 +214,6 @@ test('outKey cache: _isOn reflects CO value after change', function(t) {
     // without observer fire'), so the _set is the load-bearing call.
     engine._set('[Channel1]', 'pfl', 1);
     engine._trigger('[Channel1]', 'pfl', 1);
-    t.eq(c.bindings.button0_0._isOn(), 1);
-});
-
-test('outKey cache: stale cache still updates on next CO change', function(t) {
-    var c = H.ctrl();
-    c._applyBinding('button0_0', {
-        group: '[Channel1]', inKey: 'pfl', outKey: 'pfl',
-        colorScheme: {scheme: 'red, 100, 20'}
-    });
-    engine._set('[Channel1]', 'pfl', 1);
-    engine._trigger('[Channel1]', 'pfl', 1);
-    t.eq(c.bindings.button0_0._lastOutKeyValue, 1,
-         'cache caught up after listener fire');
     t.eq(c.bindings.button0_0._isOn(), 1);
 });
 

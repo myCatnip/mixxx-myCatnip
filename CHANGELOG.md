@@ -5,6 +5,16 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.3.2] — 2026-11-04
+
+Tests updated to match v2.3.1 behaviour changes. No code change.
+
+## Tests
+- `beatinherit.test.js`: `applyBeat: preserves brightnessOff and type` split into two cases. When a cascade supplies a new rgb, `type` is now `'rgb'` (v2.3.1 fix — a base `'mixxx'` type would otherwise cause `_sendColor` to re-resolve the hotcue colour CO and drop the cascade colour). When the cascade overrides only brightness, the base type is preserved. Both brightnessOff preservation cases still tested.
+- `misc-hooks.test.js`: three `_lastOutKeyValue` cache tests removed — the field was deleted in v2.3.1. The behavioural test `outKey CO change repaints LED` (above) still covers the repaint trigger; `outKey: _isOn reflects CO value after change` covers the live read. No coverage lost. Section header renamed `outKey cache` → `outKey live read` since the cache is gone.
+
+---
+
 ## [v2.3.1] — 2026-11-04
 
 Correctness fixes, doc drift cleanup, Inpulse shutdown invariant. No wire-behaviour change to shipped presets.

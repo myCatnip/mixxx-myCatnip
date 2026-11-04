@@ -64,10 +64,22 @@ test('applyBeat: phrase inline brightness used when no other brightness set', fu
     t.eq(out.brightness, 20);
 });
 
-test('applyBeat: preserves brightnessOff and type', function(t) {
+test('applyBeat: preserves brightnessOff, overrides type to rgb', function(t) {
     var out = myCatnip.applyBeat(
         {rgb: [0,0,0], brightness: 100, brightnessOff: 5, type: 'mixxx'},
         {color: 'red'}, 2);
+    t.eq(out.brightnessOff, 5);
+    // v2.3.1: a cascade-supplied rgb overrides type to 'rgb'.
+    // A base 'mixxx' type would otherwise cause _sendColor to
+    // re-resolve the hotcue colour CO and silently drop the
+    // cascade colour.
+    t.eq(out.type, 'rgb');
+});
+
+test('applyBeat: preserves type when only brightness overridden', function(t) {
+    var out = myCatnip.applyBeat(
+        {rgb: [0,0,0], brightness: 100, brightnessOff: 5, type: 'mixxx'},
+        {brightness: 40}, 2);
     t.eq(out.brightnessOff, 5);
     t.eq(out.type, 'mixxx');
 });
