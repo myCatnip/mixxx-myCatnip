@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<MixxxControllerPreset mixxxVersion="2.5" schemaVersion="1">
+    <info>
+        <name>myCatnip - Akai APC64 ColorLab</name>
+        <author>myCatnip</author>
+        <description>Akai APC64 palette lab (DAW mode, Session view). Custom-pad palette editor with hardware-palette browser, brightness/mode preview, save/load arms, encoder dump.</description>
+    </info>
+    <controller id="APC64 DAW">
+        <scriptfiles>
+            <file filename="lib/core.js"/>
+            <file filename="lib/timing.js"/>
+            <file filename="lib/schemes.js"/>
+            <file filename="lib/perception.js"/>
+            <file filename="lib/binding.js"/>
+            <file filename="hw/apc64.js"/>
+            <file filename="lib/controller.js"/>
+            <file filename="lib/controller-colour.js"/>
+            <file filename="lib/controller-beat.js"/>
+            <file filename="lib/controller-render.js"/>
+            <file filename="lib/controller-boot.js"/>
+            <file filename="lib/funcs.js"/>
+            <file filename="lib/inspect.js"/>
+            <file filename="config/apc64-colorlab.js"/>
+            <file filename="apc64-colorlab.js" functionprefix="myCatnip"/>
+        </scriptfiles>
+        <controls>
+            <control><key>myCatnip.init</key></control>
+            <control><key>myCatnip.shutdown</key></control>
+        </controls>
+    </controller>
+</MixxxControllerPreset>

@@ -5,6 +5,91 @@ All notable changes to this controller preset are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.4.0] — 2026-11-20
+
+### Added
+- Palette-hardware support in the colour pipeline. An entry may
+  carry `paletteIdx` instead of RGB; `hw.send` receives it
+  unchanged. `resolveColorEntry` accepts an object entry
+  `{ rgb, brightness, brightnessOff, paletteIdx }`.
+- Named colour entries may resolve to an object
+  (`{ rgb, paletteIdx }`) in addition to an array.
+  `_parseNamedEntry` handles both shapes.
+- `hw/apc64.js`, `config/apc64-colorlab.js`, `apc64-colorlab.js`,
+  `apc64-colorlab.midi.xml` — Akai APC64 palette browser preset
+  (DAW mode, Session view). 24 custom slots, 8 section selectors,
+  16 palette options per page, brightness/mode steppers,
+  arm/save, encoder dump, two-row OLED.
+- `devices/APC64.md` — protocol reference: DAW handshake,
+  Session view, palette model, LED behaviour codes, OLED
+  framing, strip/button inventory, limits.
+
+### Changed
+- `_pickBr` / `_pickBrOrNull` accept string brightness tokens
+  (`'full'`, `'pulse.quarter'`). Numeric tokens behave as before.
+- `_generateOff` and the marker `brightnessOff` fallback honour
+  string hardware defaults. `paletteIdx` is preserved through
+  off-ramp generation.
+- `_solveHw` short-circuits string brightness values; they never
+  reach perception arithmetic.
+- `resolveNamedColour` documents that the return may be an RGB
+  array or an object.
+- `hw/inpulse500.js` — every descriptor `type: 'push'` corrected
+  to `type: 'button'`. Config still supplies `cfg.type = 'push'`
+  to get `buttonMode: 'push'`.
+- `F.ip500Play` detects an active preview (`cue_default` or any
+  `hotcue_N_activate` > 0) and sets `play = 0` while one is held.
+  Mixxx treats `play = 0` during a preview as a latch, not a
+  stop; the deck continues after the momentary releases.
+
+### Fixed
+- `hw/inpulse500.js` — jog `registerNote` note-off expression.
+  `(status & 0xF0) | 0x80 | (status & 0x0F)` returned the note-on
+  status; the intended note-off is `0x80 + (status & 0x0F)`.
+  Touch-release reaches the handler when hardware sends `0x81`.
+- `config/inpulse500-funcs.js` — `F.ip500PadHotcue` writes
+  `hotcue_N_activate` on both edges. Previous `_isPress` guard
+  swallowed the release, leaving the hotcue in preview/held
+  state after lift.
+- `config/inpulse500-funcs.js` — `F.ip500PlayShift` writes
+  `play_stutter` on both edges. Previous `_isPress` guard left it
+  stuck at 1 after release.
+- `hw/inpulse500.js` — descriptor `type: 'push'` bypassed bounce
+  guard, transaction capture, and `_defaultInput`. Corrected to
+  `type: 'button'`; those three now fire for every Inpulse pad.
+
+### Removed
+- None.
+
+### Tests
+- `node test/run.js` — all existing tests pass unchanged.
+- K3 presets: visual spot-check after reload, no behaviour change.
+- Inpulse preset: hold hotcue → activates and releases on lift;
+  press Play during a cue or hotcue hold → deck continues after
+  lift; shift+Play → stutter stops on lift; jog touch release →
+  scratch drops; double-tap any pad → single fire.
+- APC64 colorLab: pads render, section/option browse, brightness
+  and mode steppers, save/arm, OLED shows index and name,
+  shutdown dumps custom palette and exits DAW mode.
+
+### Review notes
+- The palette shim is minimal and backward-compatible.
+  `lib/perception.js`, `lib/controller-colour.js`, and every
+  RGB descriptor are untouched.
+- `_solveHw` string guard is defensive only — palette hardware
+  declares no `PERCEPTION`, so the guard would not fire. Kept
+  for explicitness; safe to remove in a later reshape.
+- The Inpulse fixes are independent of APC64. They were found
+  during the same session and bundled for release convenience.
+  `play_latched` reads 1 during a preview on Mixxx 2.5, which is
+  why the preview detection queries `cue_default` and
+  `hotcue_N_activate` directly.
+- A future reshape will move per-hardware colour semantics out of
+  `lib/schemes.js` into `lib/color/`. The shim is expected to be
+  replaced, not extended.
+
+---
+
 ## [v2.3.2] — 2026-11-04
 
 Tests updated to match v2.3.1 behaviour changes. No code change.

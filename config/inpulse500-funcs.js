@@ -11,29 +11,81 @@
 // channel for BEATJUMP_GAP_MS (130 ms) after the last loop touch —
 // same mechanism as K3's _beatjumpAllowed gate.
 //
+// Momentary COs (hotcue_N_activate, play_stutter, cue_default,
+// loop_in, loop_out, reloop_toggle) must be sent both on press
+// and release; sending only on press leaves the CO stuck at 1.
+// Funcs that write these COs accept both edges and pass v>0?1:0
+// through. Funcs that toggle (play, sync, vinyl, sampler, etc.)
+// fire on press only and read current state to flip.
+//
+// Play during a cue or hotcue hold latches. See F.ip500Play for
+// the latch details — the short version is that Mixxx uses
+// play = 0 as the "latch and keep playing" command when a
+// momentary preview (hotcue/cue) is active, and play_latched vs
+// play_indicator distinguish the three states.
+//
 // Pads with no func and no inKey fall through _defaultInput's
 // `!this.inKey` guard — true no-op, no explicit placeholder func
 // needed.
 
 var F = myCatnip.FUNCS;
 
+// play has three-state behaviour:
+//   latched=1, indicator=1  → playing normally, toggle to 0 (stop)
+//   latched=0, indicator=1  → previewing (hotcue/cue held),
+//                             set play=0 to latch
+//   latched=0, indicator=0  → stopped, set play=1 (start)
+//
+// The middle case is not obvious: during a preview, play is
+// already 1 internally. Setting play=1 is a no-op and the
+// preview release stops the deck. Setting play=0 is Mixxx's
+// latch command — keeps playback after the momentary CO
+// releases. play_latched (not play_indicator) is what reads the
+// latch state; play_indicator includes the preview.
+// A preview is active while any momentary trigger (cue or hotcue)
+// is held. During a preview, Mixxx's engine interprets play = 0
+// as a latch command, not a stop: the deck keeps playing after
+// the momentary CO releases. play_latched is not usable for this
+// — it reads 1 for both a preview and a latched play on 2.5.
+// Querying the momentary COs directly is stateless and cannot
+// desync from the engine.
+function _ip500PreviewActive(group) {
+    if (engine.getValue(group, 'cue_default') > 0) return true;
+    for (var i = 1; i <= 36; i++) {
+        if (engine.getValue(group, 'hotcue_' + i + '_activate') > 0) return true;
+    }
+    return false;
+}
+
 F.ip500Play = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
     if (this._ctrl._ip500UseAssist()) return F.ip500PlayShift.call(this, args, ch, c, v, s);
     var side = args[0];
     var ctrl = this._ctrl;
+
+    // Previewing → play = 0 is the engine's latch command.
+    if (_ip500PreviewActive(this.group)) {
+        engine.setValue(this.group, 'play', 0);
+        return;
+    }
+
+    // Slow-pause path — unchanged, keyed on play_latched.
     var playing = engine.getValue(this.group, 'play_latched');
     if (playing && ctrl._ip500SlowPause[side]) {
         var m = this.group.match(/\[Channel(\d)\]$/);
         if (m) engine.brake(parseInt(m[1], 10), 1, 54);
         return;
     }
+
     var cur = engine.getValue(this.group, 'play_indicator');
     engine.setValue(this.group, 'play', cur ? 0 : 1);
 };
+
+// play_stutter is a binary CO (set-value semantics, same as play).
+// Sending 0 on release stops the stutter. Sending only 1 on press
+// would leave it stuttering indefinitely.
 F.ip500PlayShift = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    engine.setValue(this.group, 'play_stutter', 1);
+    engine.setValue(this.group, 'play_stutter', v > 0 ? 1 : 0);
 };
 
 F.ip500Cue = function(args, ch, c, v, s) {
@@ -219,9 +271,12 @@ F.ip500SetPadMode = function(args, ch, c, v, s) {
     });
 };
 
+// hotcue_N_activate is momentary: 1 on press, 0 on release.
+// Play during the hold latches via F.ip500Play (see its comment).
+// No func-level coordination needed here — Mixxx's play_latched
+// handles "continue after release" once play was set to 0.
 F.ip500PadHotcue = function(args, ch, c, v, s) {
-    if (!this._ctrl._isPress(v, s)) return;
-    engine.setValue(this.group, 'hotcue_' + args[0] + '_activate', 1);
+    engine.setValue(this.group, 'hotcue_' + args[0] + '_activate', v > 0 ? 1 : 0);
 };
 F.ip500PadHotcueShift = function(args, ch, c, v, s) {
     if (!this._ctrl._isPress(v, s)) return;
@@ -479,6 +534,6 @@ F.ip500Crossfader = function(args, ch, c, v, s) {
         engine.setValue('[Master]', 'crossfader', xf);
     } else {
         engine.setParameter('[Master]', 'crossfader',
-            Math.max(0, Math.min(1, v / 127)));
+                            Math.max(0, Math.min(1, v / 127)));
     }
 };

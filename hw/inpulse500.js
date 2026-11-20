@@ -2,35 +2,45 @@
 // Hercules DJControl Inpulse 500.
 // Loop encoder is relative; loop buttons are momentary (push).
 // Master volume knob is hardware-only — no binding exists for it.
+//
+// Descriptor type is one of the four framework-native types:
+//   'button'  — momentary edge(s), wire = note-on / note-off
+//   'knob'    — absolute, 7-bit (bits: 14 set for 14-bit)
+//   'fader'   — absolute, 7-bit (bits: 14 set for 14-bit)
+//   'encoder' — relative, wire = CC ticks
+// 'push' is a config-level buttonMode, never a descriptor type.
+// Passing 'push' here would bypass bounce guard, transaction
+// capture, and _defaultInput, all of which require 'button'.
+// Config supplies 'push' at bind time to set buttonMode.
 
 function _add(status, note) { return (status << 8) | note; }
 
 var IP500_MODE_NAMES = [
     'hotcue', 'loop', 'slicer', 'sampler',
-    'pitch', 'roll', 'effect', 'beatjump'
+'pitch', 'roll', 'effect', 'beatjump'
 ];
 
 var IP500_PALETTE_ENTRIES = [
     { rgb: [  0,   0,   0], vel: 0x00 },
-    { rgb: [  0,   0,  63], vel: 0x02 },
-    { rgb: [  0,   0, 127], vel: 0x03 },
-    { rgb: [  0,  63,   0], vel: 0x10 },
-    { rgb: [  0,  63,  63], vel: 0x12 },
-    { rgb: [  0, 127,   0], vel: 0x1C },
-    { rgb: [  0, 127, 127], vel: 0x1F },
-    { rgb: [ 63,  63,   0], vel: 0x30 },
-    { rgb: [ 63,   0,   0], vel: 0x40 },
-    { rgb: [127,   0, 127], vel: 0x42 },
-    { rgb: [ 63,  30,   0], vel: 0x4C },
-    { rgb: [ 63,  63,   0], vel: 0x50 },
-    { rgb: [ 63,  63,  63], vel: 0x52 },
-    { rgb: [ 63, 127,   0], vel: 0x5C },
-    { rgb: [127,   0,   0], vel: 0x60 },
-    { rgb: [127,  40, 100], vel: 0x62 },
-    { rgb: [127,  63, 127], vel: 0x63 },
-    { rgb: [127,  63,   0], vel: 0x74 },
-    { rgb: [127, 127,   0], vel: 0x7C },
-    { rgb: [127, 127, 127], vel: 0x7F }
+{ rgb: [  0,   0,  63], vel: 0x02 },
+{ rgb: [  0,   0, 127], vel: 0x03 },
+{ rgb: [  0,  63,   0], vel: 0x10 },
+{ rgb: [  0,  63,  63], vel: 0x12 },
+{ rgb: [  0, 127,   0], vel: 0x1C },
+{ rgb: [  0, 127, 127], vel: 0x1F },
+{ rgb: [ 63,  63,   0], vel: 0x30 },
+{ rgb: [ 63,   0,   0], vel: 0x40 },
+{ rgb: [127,   0, 127], vel: 0x42 },
+{ rgb: [ 63,  30,   0], vel: 0x4C },
+{ rgb: [ 63,  63,   0], vel: 0x50 },
+{ rgb: [ 63,  63,  63], vel: 0x52 },
+{ rgb: [ 63, 127,   0], vel: 0x5C },
+{ rgb: [127,   0,   0], vel: 0x60 },
+{ rgb: [127,  40, 100], vel: 0x62 },
+{ rgb: [127,  63, 127], vel: 0x63 },
+{ rgb: [127,  63,   0], vel: 0x74 },
+{ rgb: [127, 127,   0], vel: 0x7C },
+{ rgb: [127, 127, 127], vel: 0x7F }
 ];
 
 myCatnip.IP500_JOG = {
@@ -135,36 +145,36 @@ myCatnip.HW_INPULSE500 = {
             bindings[name] = new myCatnip.Binding(name, spec, ctrl);
         }
 
-        // pfl / slip / quant are toggle buttons: type 'button' with
-        // the default buttonMode ('toggle') is the correct path.
-        // 'toggle' as a spec.type is not a valid Binding.type and
-        // would silently drop input dispatch.
+        // pfl / slip / quant are toggle buttons in Mixxx; their
+        // layer configs supply no func, so _defaultInput flips the
+        // CO on press. All momentary buttons use 'button' here —
+        // config sets 'push' in cfg.type to get buttonMode: 'push'.
         var deckDefs = [
-            [0x07, 'play',   'push'],
-            [0x06, 'cue',    'push'],
-            [0x05, 'sync',   'push'],
+            [0x07, 'play',   'button'],
+            [0x06, 'cue',    'button'],
+            [0x05, 'sync',   'button'],
             [0x0C, 'pfl',    'button'],
-            [0x0D, 'load',   'push'],
-            [0x03, 'vinyl',  'push'],
+            [0x0D, 'load',   'button'],
+            [0x03, 'vinyl',  'button'],
             [0x01, 'slip',   'button'],
             [0x02, 'quant',  'button'],
-            [0x09, 'loopIn', 'push'],
-            [0x0A, 'loopOut','push'],
-            [0x2C, 'loopPush','push']
+            [0x09, 'loopIn', 'button'],
+            [0x0A, 'loopOut','button'],
+            [0x2C, 'loopPush','button']
         ];
         var dn = ['A', 'B'];
         var statuses = [[0x91, 0x94], [0x92, 0x95]];
 
         for (var d = 0; d < 2; d++) {
             var base = statuses[d][0], shift = statuses[d][1], n = dn[d];
-            add('shift' + n, base, 0x04, 'push', -1);
+            add('shift' + n, base, 0x04, 'button', -1);
             for (var i = 0; i < deckDefs.length; i++) {
                 var note = deckDefs[i][0], nm = deckDefs[i][1], tp = deckDefs[i][2];
                 add(nm + n, base, note, tp, _add(base, note));
                 add(nm + n + '_shift', shift, note, tp, _add(shift, note));
             }
             for (var ps = 1; ps <= 8; ps++) {
-                add('padSelect' + n + ps, base, 0x0E + ps, 'push', -1);
+                add('padSelect' + n + ps, base, 0x0E + ps, 'button', -1);
             }
 
             var padStatus = 0x96 + d;
@@ -175,9 +185,9 @@ myCatnip.HW_INPULSE500 = {
                     var mname = IP500_MODE_NAMES[mode];
                     var pn = pad + 1;
                     add('pad' + n + pn + '_' + mname, padStatus, un,
-                        'push', _add(padStatus, un));
+                        'button', _add(padStatus, un));
                     add('pad' + n + pn + '_' + mname + '_shift', padStatus, sh,
-                        'push', _add(padStatus, sh));
+                        'button', _add(padStatus, sh));
                 }
             }
 
@@ -193,13 +203,13 @@ myCatnip.HW_INPULSE500 = {
         }
 
         // Master — browser, assistant, crossfader, deck select
-        add('browserPush', 0x90, 0x00, 'push', -1);
-        add('assistant',   0x90, 0x03, 'push', -1);
-        add('fxSel1',      0x90, 0x14, 'push', _add(0x90, 0x14));
-        add('fxSel2',      0x90, 0x15, 'push', _add(0x90, 0x15));
-        add('fxSel3',      0x90, 0x16, 'push', _add(0x90, 0x16));
-        add('fxSel4',      0x90, 0x17, 'push', _add(0x90, 0x17));
-        add('xfaderEnable',0x90, 0x18, 'push', -1);
+        add('browserPush', 0x90, 0x00, 'button', -1);
+        add('assistant',   0x90, 0x03, 'button', -1);
+        add('fxSel1',      0x90, 0x14, 'button', _add(0x90, 0x14));
+        add('fxSel2',      0x90, 0x15, 'button', _add(0x90, 0x15));
+        add('fxSel3',      0x90, 0x16, 'button', _add(0x90, 0x16));
+        add('fxSel4',      0x90, 0x17, 'button', _add(0x90, 0x17));
+        add('xfaderEnable',0x90, 0x18, 'button', -1);
         add('crossfader',  0xB0, 0x00, 'fader',  -1);
         add('browserKnob', 0xB0, 0x01, 'encoder', -1);
         add('xfaderCurve', 0xB0, 0x0B, 'knob',   -1);
@@ -245,7 +255,7 @@ myCatnip.HW_INPULSE500 = {
                 var isShift = (note & 0x08) !== 0;
                 var mname = IP500_MODE_NAMES[mode];
                 var target = 'pad' + n + pad + '_' + mname +
-                             (isShift ? '_shift' : '');
+                (isShift ? '_shift' : '');
                 register(padStatus, note, target);
             }
             register(0xB1 + d, 0x01, 'filter' + n);
@@ -310,7 +320,7 @@ myCatnip.HW_INPULSE500 = {
                 var touchSources = { nb: false, ns: false, cb: false, cs: false };
                 function anyTouch() {
                     return touchSources.nb || touchSources.ns ||
-                           touchSources.cb || touchSources.cs;
+                    touchSources.cb || touchSources.cs;
                 }
                 function currentChannel() {
                     return (side === 'A') ? ctrl.selectedDeckA : ctrl.selectedDeckB;
@@ -324,7 +334,7 @@ myCatnip.HW_INPULSE500 = {
                     if (anyTouch() && vinylOn()) {
                         var J = myCatnip.IP500_JOG;
                         engine.scratchEnable(chNum, J.wheelResolution,
-                            J.rpm, J.alpha, J.beta);
+                                             J.rpm, J.alpha, J.beta);
                     } else {
                         engine.scratchDisable(chNum);
                     }
@@ -340,8 +350,10 @@ myCatnip.HW_INPULSE500 = {
                 }
                 function registerNote(status, note, cb) {
                     midi.makeInputHandler(status, note, cb);
-                    midi.makeInputHandler(
-                        (status & 0xF0) | 0x80 | (status & 0x0F), note, cb);
+                    if ((status & 0xF0) === 0x90) {
+                        midi.makeInputHandler(
+                            0x80 + (status & 0x0F), note, cb);
+                    }
                 }
                 registerNote(baseNote,  0x08, onTouchSource('nb'));
                 registerNote(shiftNote, 0x08, onTouchSource('ns'));
@@ -364,9 +376,9 @@ myCatnip.HW_INPULSE500 = {
                 midi.makeInputHandler(baseCC,  0x0A, onTick(1));
                 midi.makeInputHandler(baseCC,  0x09, onTick(1));
                 midi.makeInputHandler(shiftCC, 0x0A,
-                    onTick(myCatnip.IP500_JOG.shiftMultiplier));
+                                      onTick(myCatnip.IP500_JOG.shiftMultiplier));
                 midi.makeInputHandler(shiftCC, 0x09,
-                    onTick(myCatnip.IP500_JOG.shiftMultiplier));
+                                      onTick(myCatnip.IP500_JOG.shiftMultiplier));
             })(['A', 'B'][dj], 0xB1 + dj, 0xB4 + dj, 0x91 + dj, 0x94 + dj);
         }
     },
@@ -388,7 +400,7 @@ myCatnip.HW_INPULSE500 = {
             midi.sendShortMsg(0x97, note, 0x00);
         }
         var transportNotes = [0x01, 0x02, 0x03, 0x05, 0x06, 0x07,
-                              0x09, 0x0A, 0x0C, 0x0D, 0x2C, 0x30];
+        0x09, 0x0A, 0x0C, 0x0D, 0x2C, 0x30];
         for (var i = 0; i < transportNotes.length; i++) {
             midi.sendShortMsg(0x91, transportNotes[i], 0x00);
             midi.sendShortMsg(0x92, transportNotes[i], 0x00);
@@ -420,8 +432,8 @@ myCatnip.HW_INPULSE500 = {
         }
         var dim = (hw < 0x40);
         var target = dim
-            ? [rgb[0] / 2, rgb[1] / 2, rgb[2] / 2]
-            : rgb;
+        ? [rgb[0] / 2, rgb[1] / 2, rgb[2] / 2]
+        : rgb;
         var best = null, bestDist = Infinity;
         for (var i = 0; i < IP500_PALETTE_ENTRIES.length; i++) {
             var e = IP500_PALETTE_ENTRIES[i];
